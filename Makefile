@@ -4,11 +4,16 @@ REST_API_TOKEN ?= $(shell bash -c 'read -p "What is your Signalwire REST API tok
 NGROK_TOKEN ?= $(shell bash -c 'read -p "What is your NGROK Token: " ngrok_token; echo $$ngrok_token')
 	
 
-signalwire_docker:
-	docker build --no-cache --build-arg SIGNALWIRE_SPACE=$(SIGNALWIRE_SPACE) \
+build:
+	docker build --build-arg SIGNALWIRE_SPACE=$(SIGNALWIRE_SPACE) \
 	--build-arg PROJECT_ID=$(PROJECT_ID) \
 	--build-arg REST_API_TOKEN=$(REST_API_TOKEN) \
 	--build-arg NGROK_TOKEN=$(NGROK_TOKEN) \
 	-t signalwire-getting-started ./docker/.
 
-all: signalwire_docker
+run:
+	docker run -it signalwire-getting-started
+
+up: build run
+
+all: build run 

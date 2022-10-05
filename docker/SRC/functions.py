@@ -10,12 +10,14 @@ def encode_auth(project_id, rest_api_token):
 
     return base64_auth
 
-
-
-def http_request(signalwire_space, project_id, rest_api_token, destination, req_type, payload={}, headers={}):
+def http_request(signalwire_space, project_id, rest_api_token, destination, req_type, payload={}, headers={}, url=""):
     http_basic_auth = str(encode_auth(project_id, rest_api_token))
 
-    url = 'https://%s.signalwire.com/api/relay/rest/' % signalwire_space
+    # if url is blank, then use this as a default
+    # this may change in the future if there are many different urls at play.
+    # adding this for api/relay/rest vs api/laml/2010-04-01 and making api/relay/rest the default
+    if len(url) == 0:
+        url = 'https://%s.signalwire.com/api/relay/rest/' % signalwire_space
 
     # This seems Janky, but I'm going with it.
     # If no other set of headers are being passed in.  Set to default
@@ -29,3 +31,5 @@ def http_request(signalwire_space, project_id, rest_api_token, destination, req_
     response = requests.request(req_type, fqdn, headers=headers, data=payload)
 
     return (response)
+
+

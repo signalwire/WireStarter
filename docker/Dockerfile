@@ -16,7 +16,11 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     apache2     \
     screen      \ 
-    curl
+    jq          \
+    curl        \
+    less        \
+    nano        \
+    vim
 
 # Install Ngrok
 # TODO eventually may want to change this to not use curl and remove curl from the image.
@@ -27,6 +31,7 @@ RUN pip3 install   \
     signalwire     \
     requests       \
     python-dotenv  \
+    cmd2           \
     setuptools
 
 # Enable Python -- Apache
@@ -48,6 +53,9 @@ RUN chmod +x /root/start_services.sh
 RUN echo "SIGNALWIRE_SPACE=\"$SIGNALWIRE_SPACE\""  > /usr/lib/cgi-bin/.env
 RUN echo "PROJECT_ID=\"$PROJECT_ID\""  >> /usr/lib/cgi-bin/.env
 RUN echo "REST_API_TOKEN=\"$REST_API_TOKEN\"" >> /usr/lib/cgi-bin/.env
+
+# Start the user in swsh
+RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
 
 # Start Apache and ngrok on container start
 ENTRYPOINT /root/start_services.sh && /bin/bash
