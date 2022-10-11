@@ -67,6 +67,7 @@ def delete_sip_endpoint(endpoint_sid):
     # TODO: Need some legitimate checking here to make sure the delete operation was successful
     print ("Complete")
 
+
 ## SIP PROFILES ##
 def get_sip_profiles():
     response = http_request(signalwire_space, project_id, rest_api_token, "/sip_profile", "GET")
@@ -112,6 +113,7 @@ def get_laml_bins(query_params):
     json_formatted_response = json.dumps(json_response, indent=2)
     print (json_formatted_response)
 
+
 ## DOMAIN APPLICATIONS ##
 def list_domain_applications(query_params):
     destination = "domain_applications/" + query_params
@@ -128,17 +130,58 @@ def delete_domain_application(sid):
     print ("Complete")
 
 
+## NUMBER GROUPS ##
+def list_number_groups(query_params):
+    destination = "number_groups" + query_params
+    print (destination)
+    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET" )
+    json_response = json.loads(response.text)
+    json_formatted_response = json.dumps(json_response, indent=2)
+    print (json_formatted_response)
+
+def create_number_group(payload):
+    http_basic_auth = str(encode_auth(project_id, rest_api_token))
+    headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Basic %s' % http_basic_auth
+    }
+    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
+    response = http_request(signalwire_space, project_id, rest_api_token, "/number_groups", "POST", payload=payload, headers=headers)
+    print(response.text)
+    #print ('Complete')
+
+def update_number_group(sid, payload):
+    destination = "/number_groups/" + sid
+    http_basic_auth = str(encode_auth(project_id, rest_api_token))
+    headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Basic %s' % http_basic_auth
+    }
+    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
+    response = http_request(signalwire_space, project_id, rest_api_token, destination, "PUT", payload=payload, headers=headers)
+    #print(response.text)
+    print ('Complete')
+
+def delete_number_group(sid):
+    destination = "/number_groups/" + sid
+    response = http_request(signalwire_space, project_id, rest_api_token, destination, "DELETE" )
+    # TODO: Need some legitimate checking here to make sure the delete operation was successful
+    print ("Complete")
+
+
 ############################
 class MyPrompt(cmd2.Cmd):
 
     # Remove CMD2 default commands.
-    #delattr(cmd2.Cmd, 'do_shell')
+    delattr(cmd2.Cmd, 'do_shell')
     #delattr(cmd2.Cmd, 'do_macro')
     delattr(cmd2.Cmd, 'do_shortcuts')
     delattr(cmd2.Cmd, 'do_run_script')
     delattr(cmd2.Cmd, 'do_run_pyscript')
     delattr(cmd2.Cmd, 'do_edit')  # This may be something to work back in, since it allows editing of files.
-    #delattr(cmd2.Cmd, 'do_set')   # This may be something to work back in.  Would allow user to set different editors and turn on debugging.
+    delattr(cmd2.Cmd, 'do_set')   # This may be something to work back in.  Would allow user to set different editors and turn on debugging.
     delattr(cmd2.Cmd, 'do_ipy')
     delattr(cmd2.Cmd, 'do_py')
 
@@ -238,7 +281,7 @@ class MyPrompt(cmd2.Cmd):
           "encryption": args.encryption
         }
         update_sip_endpoint_dictionary = {}
-        print (sip_endpoint_dictionary)
+        #print (sip_endpoint_dictionary)
         for x, y in sip_endpoint_dictionary.items():
             if y is not None:
               update_sip_endpoint_dictionary[x] = y
@@ -630,6 +673,112 @@ class MyPrompt(cmd2.Cmd):
             func(self, args)
         else:
             self.do_help('domain_application')
+
+
+## NUMBER GROUPS ##
+    # Create the top level parser for number groups: number_groups
+    base_number_group_parser = cmd2.Cmd2ArgumentParser()
+    base_number_group_subparsers = base_number_group_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+
+    # create the number groups list subcommand
+    number_group_parser_list = base_number_group_subparsers.add_parser('list', help='List Number Groups for the Project')
+    number_group_parser_list.add_argument('-n', '--name', nargs='+', help='Return all Number Groups containing this value')
+    number_group_parser_list.add_argument('-i', '--id',help='Return a Number Group with the given ID')
+
+    # create the number groups create command
+    number_group_parser_create = base_number_group_subparsers.add_parser('create', help='Create for the Project')
+    number_group_parser_create.add_argument('-n', '--name', nargs='+', help='Name given to a Number Group within the project', required=True)
+    number_group_parser_create.add_argument('-s', '--sticky-sender', help='Whether the number group uses the same From number for outbound requests',  choices=['true', 'false'], default='false')
+
+    # create the domain application update command
+    number_group_parser_update = base_number_group_subparsers.add_parser('update', help='Update Number Groups for the Project')
+    number_group_parser_update.add_argument('-n', '--name', nargs='+', help='Update the name of a Number Group')
+    number_group_parser_update.add_argument('-i', '--id', help='ID of the Number Group to be udpated', required=True)
+    number_group_parser_update.add_argument('-s', '--sticky-sender', help='Whether the number group uses the same From number for Outbound requests',  choices=['true', 'false'], default='false')
+
+    # create the domain application delete command
+    number_group_parser_delete = base_number_group_subparsers.add_parser('delete', help='Delete Number Groups for the Project')
+    number_group_parser_delete.add_argument('-i', '--id', help='Unique id of the Number Group to be removed', required=True)
+
+    def number_group_list(self, args):
+        '''list subcommand of number_group'''
+        query_params=""
+
+        if args.name:
+            if len(args.name) == 1:
+                name = args.name[0]
+            elif len(args.name) > 1:
+                name = "%20".join(args.name)
+            query_params ="?filter_name=%s" % name
+        elif args.id:
+            sid = args.id
+            query_params = "/%s" % sid
+        else:
+            query_params=""
+
+        list_number_groups(query_params=query_params)
+
+    def number_group_create(self, args):
+        '''create subcommand of number_group'''
+        number_group_dictionary = {
+          "name": args.name,
+          "sticky_sender": args.sticky_sender
+        }
+
+        payload = json.dumps(number_group_dictionary)
+        create_number_group(payload)
+
+    def number_group_update(self, args):
+        '''update subcommand of number_group'''
+        sid = args.id
+        number_group_dictionary = {
+          "name": args.name,
+          "sticky_sender": args.sticky_sender
+        }
+
+        update_number_group_dictionary = {}
+        for x, y in number_group_dictionary.items():
+            if y is not None:
+              update_number_group_dictionary[x] = y
+
+        payload = json.dumps(update_number_group_dictionary)
+        update_number_group(sid, payload)
+
+    def number_group_delete(self, args):
+        '''delete subcommand of number_group'''
+        sid = args.id
+        if sid is not None:
+            confirm = input("Remove Number Group " + sid + "? This cannot be undone! (y/n): " )
+            if (confirm == "Y" or confirm == "y"):
+                delete_number_group(sid)
+            else:
+                print ("Aborting.")
+        else:
+            print ("ERROR")
+
+    # Set default handlers for each sub command
+    number_group_parser_list.set_defaults(func=number_group_list)
+    number_group_parser_create.set_defaults(func=number_group_create)
+    number_group_parser_update.set_defaults(func=number_group_update)
+    number_group_parser_delete.set_defaults(func=number_group_delete)
+
+    @cmd2.with_argparser(base_number_group_parser)
+    def do_number_group(self, args: argparse.Namespace):
+        '''List, Create, Update, or Delete domain applications'''
+        func = getattr(args, 'func', None)
+        if func is not None:
+            func(self, args)
+        else:
+            self.do_help('number_group')
+
+
+
+
+
+
+
+
+
 
 
 ## SEND TEXT MESSAGE
