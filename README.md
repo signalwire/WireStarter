@@ -26,7 +26,7 @@ Prerequisites
 2. Clone repo
 3. Top menu click Repository > Open in Command Prompt
 4. cd docker
-5. docker build -t swish -f Dockerfile .
+5. docker build -t signalwire-getting-started -f Dockerfile .
 
 On Mac OSX or Linux:
  1.  git pull
