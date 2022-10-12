@@ -58,4 +58,4 @@ RUN echo "REST_API_TOKEN=\"$REST_API_TOKEN\"" >> /usr/lib/cgi-bin/.env
 RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
 
 # Start Apache and ngrok on container start
-ENTRYPOINT /root/start_services.sh && /bin/bash
+ENTRYPOINT sed -i -e 's/\r$//' /root/start_services.sh && /root/start_services.sh && /bin/bash

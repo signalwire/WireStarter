@@ -16,7 +16,18 @@ NGROK account AND token (for tunnel into signalwire-getting-started container)
 
 ## INSTALLATION ##
 On Windows:
-  TBD (Not yet tested)
+
+Prerequisites
+
+* Docker Desktop: https://docs.docker.com/desktop/install/windows-install/
+* Github Desktop: https://desktop.github.com/
+* NGROK account AND token: https://ngrok.com/
+  
+1. Open Github Desktop
+2. Clone repo
+3. Top menu click Repository > Open in Command Prompt
+4. cd docker
+5. windows.bat
 
 On Mac OSX or Linux:
  1.  git pull
