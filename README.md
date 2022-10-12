@@ -19,14 +19,14 @@ On Windows:
 
 Prerequisites
 
-* [Docker Desktop]<https://docs.docker.com/desktop/install/windows-install/>
-* [Github Desktop]<https://desktop.github.com/>
+* Docker Desktop: https://docs.docker.com/desktop/install/windows-install/
+* Github Desktop: https://desktop.github.com/
   
-  1. Open Github Desktop
-  2. Clone repo
-  3. Top menu click Repository > Open in Command Prompt
-  4. cd docker
-  5. docker build -t swish -f Dockerfile .
+1. Open Github Desktop
+2. Clone repo
+3. Top menu click Repository > Open in Command Prompt
+4. cd docker
+5. docker build -t swish -f Dockerfile .
 
 On Mac OSX or Linux:
  1.  git pull
