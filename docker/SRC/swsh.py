@@ -6,6 +6,7 @@ import argparse
 from functions import *
 import json
 import time
+import re
 ## This is temporary ##
 #from signalwire.voice_response import *
 #from twilio.twiml.messaging_response import Message, MessagingResponse
@@ -88,7 +89,7 @@ def update_sip_profiles(payload):
 
 
 
-##
+## PHONE NUMBERS FUNCTIONS ##
 def get_phone_numbers():
     response = http_request(signalwire_space, project_id, rest_api_token, "phone_numbers", "GET")
     # format the response into JSON
@@ -104,6 +105,15 @@ def get_phone_numbers_lookup(e164_number):
     json_formatted_response = json.dumps(json_response, indent=2)
     print (json_formatted_response)
 
+def phone_numbers_lookup(query_params):
+    destination = "lookup/phone_number/" + query_params
+    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET")
+    print (response.text)
+    json_response = json.loads(response.text)
+    json_formatted_response = json.dumps(json_response, indent=2)
+    print (json_formatted_response)
+
+## LAML BINS FUNCTIONS ##
 def get_laml_bins(query_params):
     destination = "Accounts/" + project_id + query_params
     url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
@@ -373,17 +383,21 @@ class MyPrompt(cmd2.Cmd):
     base_phone_numbers_parser = cmd2.Cmd2ArgumentParser()
     base_phone_numbers_subparsers = base_phone_numbers_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
 
-    # create the list subcommand
+    # create the phone_number list subcommand
     phone_numbers_parser_list = base_phone_numbers_subparsers.add_parser('list', help='List Phone Numbers for a Projects')
     phone_numbers_parser_list.add_argument('-j', '--json', action='store_true', help='List Phone Numbers for project JSON')
-    # TODO:  add lookup for single number
-    # phone_numbers_parser.add_argument('lookup', action='store_false',  help='Lookup a specific number.  Mut be formatted in E.164')
 
-    # create the update subcommand
+    # create the phone_number update subcommand
     phone_numbers_parser_update = base_phone_numbers_subparsers.add_parser('update', help='Update a Phone Number')
 
-    # create the delete subcommand
+    # create the phone_number delete subcommand
     phone_numbers_parser_delete = base_phone_numbers_subparsers.add_parser('delete', help='Delete/Remove a Phone Number')
+
+    # create the phone_number lookup sub
+    phone_numbers_parser_lookup = base_phone_numbers_subparsers.add_parser('lookup', help='Lookup a Phone Number (in E.164 format)')
+    phone_numbers_parser_lookup.add_argument('--number', help='Number you want to lookup (in E.164 format)', required=True)
+    phone_numbers_parser_lookup.add_argument('--cnam', action='store_true', help='Include carrier lookup')
+    phone_numbers_parser_lookup.add_argument('--carrier', action='store_true', help='Include carrier lookup')
 
     ## subcommand functions for phone numbers
     def phone_numbers_list(self, args):
@@ -391,6 +405,7 @@ class MyPrompt(cmd2.Cmd):
         if args.json:
             get_phone_numbers()
         else:
+            #TODO: Need to do this within swsh, not bounce out to a system call
             output = os.system(" python3 /usr/lib/cgi-bin/sig-get_phone_numbers_for_space.py | jq '.data[].number' | sed 's/\"//g' ")
 
     def phone_numbers_update(self, args):
@@ -401,10 +416,33 @@ class MyPrompt(cmd2.Cmd):
         '''create subcommand of sip_endpoint'''
         print('Delete/Remove a Phone Number')
 
+    def phone_numbers_lookup(self, args):
+        '''lookup subcommand of phone_numbers'''
+        # Verify its a 10 digit US number in e.164 format.
+        number = args.number
+        phone_num_regex = re.compile(r'^\+1\d{10}$')
+        good_num = phone_num_regex.search(number)
+
+        if good_num is not None:
+            if args.cnam and args.carrier:
+                include = "?include=cnam,carrier"
+            elif args.cnam:
+                include = "?include=cnam"
+            elif args.carrier:
+                include = "?include=carrier"
+            else:
+                include = ""
+
+            query_params = number + include
+            phone_numbers_lookup(query_params=query_params)
+        else:
+            print('ERROR: That number is not in a valid e.164 format')
+
     # Set default handlers for each sub command
     phone_numbers_parser_list.set_defaults(func=phone_numbers_list)
     phone_numbers_parser_update.set_defaults(func=phone_numbers_update)
     phone_numbers_parser_delete.set_defaults(func=phone_numbers_delete)
+    phone_numbers_parser_lookup.set_defaults(func=phone_numbers_lookup)
 
     @cmd2.with_argparser(base_phone_numbers_parser)
     def do_phone_numbers(self, args: argparse.Namespace):
@@ -414,6 +452,7 @@ class MyPrompt(cmd2.Cmd):
             func(self, args)
         else:
             self.do_help('phone_numbers')
+
 
 ## LaML BINS
     # Create the top level parser for laml bins: laml_bins
