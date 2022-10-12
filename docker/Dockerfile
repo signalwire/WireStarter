@@ -59,4 +59,3 @@ RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
 
 # Start Apache and ngrok on container start
 ENTRYPOINT sed -i -e 's/\r$//' /root/start_services.sh && /root/start_services.sh && /bin/bash
-#ENTRYPOINT /bin/bash
