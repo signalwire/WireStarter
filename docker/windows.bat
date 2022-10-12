@@ -12,6 +12,7 @@ set /p ngrok_token= "What is your NGROK Token "
 
 REM build:
 
+REM docker build --build-arg SIGNALWIRE_SPACE=%sig_space% --build-arg PROJECT_ID=%proj_id% --build-arg REST_API_TOKEN=%api_token% --build-arg NGROK_TOKEN=%ngrok_token% -t signalwire-getting-started %CD%docker\%CD%
 
 docker build --build-arg SIGNALWIRE_SPACE=%sig_space% --build-arg PROJECT_ID=%proj_id% --build-arg REST_API_TOKEN=%api_token% --build-arg NGROK_TOKEN=%ngrok_token% -t signalwire-getting-started  -f Dockerfile .
 
