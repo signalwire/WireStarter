@@ -1,6 +1,47 @@
 #!/usr/bin/env python3
 import base64
 import requests
+import os,sys
+from dotenv import load_dotenv
+import json
+####
+
+### SET ENVIRONMENT ###
+load_dotenv()
+
+signalwire_space = os.getenv('SIGNALWIRE_SPACE')
+project_id = os.getenv('PROJECT_ID')
+rest_api_token = os.getenv('REST_API_TOKEN')
+#######################
+
+
+######## PHONE NUMBER FUNCTIONS ########
+def phone_number_func( query_params="", req_type="GET", headers={}, payload={}):
+    destination = "phone_numbers" + query_params
+    response = http_request(signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload)
+    return (response.text)
+
+def phone_number_lookup(query_params):
+    destination = "lookup/phone_number/" + query_params
+    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET")
+    json_response = json.loads(response.text)
+    json_formatted_response = json.dumps(json_response, indent=2)
+    print (json_formatted_response)
+########################################
+
+
+
+
+
+
+###################################################
+def json_nice_print(j):
+    if len(j) == 0:
+        print("No Results Found!")
+    else:
+        json_formatted_response = json.dumps(j, indent=2)
+        print(json_formatted_response)
+
 
 def encode_auth(project_id, rest_api_token):
     auth = str(project_id + ":" + rest_api_token)
@@ -10,26 +51,37 @@ def encode_auth(project_id, rest_api_token):
 
     return base64_auth
 
-def http_request(signalwire_space, project_id, rest_api_token, destination, req_type, payload={}, headers={}, url=""):
+def http_request(signalwire_space, project_id, rest_api_token, destination, req_type, payload={}, headers={}, url="", query_params=""):
     http_basic_auth = str(encode_auth(project_id, rest_api_token))
 
     # if url is blank, then use this as a default
     # this may change in the future if there are many different urls at play.
-    # adding this for api/relay/rest vs api/laml/2010-04-01 and making api/relay/rest the default
+    # adding this for api/relay/rest vs api/laml/2010-04-01.
+    # This makes api/relay/rest the default
     if len(url) == 0:
         url = 'https://%s.signalwire.com/api/relay/rest/' % signalwire_space
 
-    # This seems Janky, but I'm going with it.
-    # If no other set of headers are being passed in.  Set to default
-    if len(headers) == 0:
+    if req_type == "GET":
         headers = {
           'Accept': 'applications/json',
           'Authorization': 'Basic %s' % http_basic_auth
         }
+    elif req_type == "POST" or req_type == "PUT" or req_type == "DELETE":
+        headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Basic %s' % http_basic_auth
+        }
+    else:
+        print ("Something bad has happened.  That is not a valid HTTP request type!")
+        quit()
 
-    fqdn = str(url + destination)
+    fqdn = str(url + destination + query_params)
+    ## UNCOMMENT FOR DEBUG PURPOSES!
+    # print (req_type)
+    # print (fqdn)
+    # print (payload)
+    # print (headers)
+    ##
     response = requests.request(req_type, fqdn, headers=headers, data=payload)
-
     return (response)
-
-

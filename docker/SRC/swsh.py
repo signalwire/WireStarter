@@ -20,10 +20,10 @@ signalwire_space = os.getenv('SIGNALWIRE_SPACE')
 project_id = os.getenv('PROJECT_ID')
 rest_api_token = os.getenv('REST_API_TOKEN')
 #######################
-
 ## Local Functions ##
-## TODO: make the json formatting a separate function to cut down on duplicate code.
 ## Format these so that they can be reused, rather than have one function for every single type of call
+## NOTE: ALL FUNCTIONS ARE SLOWLY BEING MOVED TO functions.py
+###
 def list_space_projects(query_params):
     destination = "Accounts" + query_params
     url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
@@ -88,30 +88,6 @@ def update_sip_profiles(payload):
     response = http_request(signalwire_space, project_id, rest_api_token, "/sip_profile", "PUT", payload=payload, headers=headers)
 
 
-
-## PHONE NUMBERS FUNCTIONS ##
-def get_phone_numbers():
-    response = http_request(signalwire_space, project_id, rest_api_token, "phone_numbers", "GET")
-    # format the response into JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-def get_phone_numbers_lookup(e164_number):
-    destination = "phone_numbers/%s" % e164_number
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET")
-    # format the response into JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-def phone_numbers_lookup(query_params):
-    destination = "lookup/phone_number/" + query_params
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET")
-    print (response.text)
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
 
 ## LAML BINS FUNCTIONS ##
 def get_laml_bins(query_params):
@@ -191,7 +167,7 @@ class MyPrompt(cmd2.Cmd):
     delattr(cmd2.Cmd, 'do_run_script')
     delattr(cmd2.Cmd, 'do_run_pyscript')
     delattr(cmd2.Cmd, 'do_edit')  # This may be something to work back in, since it allows editing of files.
-    delattr(cmd2.Cmd, 'do_set')   # This may be something to work back in.  Would allow user to set different editors and turn on debugging.
+    #delattr(cmd2.Cmd, 'do_set')   # This may be something to work back in.  Would allow user to set different editors and turn on debugging.
     delattr(cmd2.Cmd, 'do_ipy')
     delattr(cmd2.Cmd, 'do_py')
 
@@ -379,45 +355,163 @@ class MyPrompt(cmd2.Cmd):
 
 
 ## PHONE NUMBERS ##
-    # Create the top level parser for phone numbers: phone_numbers
-    base_phone_numbers_parser = cmd2.Cmd2ArgumentParser()
-    base_phone_numbers_subparsers = base_phone_numbers_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    # Create the top level parser for phone numbers: phone_number
+    base_phone_number_parser = cmd2.Cmd2ArgumentParser()
+    base_phone_number_subparsers = base_phone_number_parser.add_subparsers(title='phone_number subcommands',help='subcommand help')
 
     # create the phone_number list subcommand
-    phone_numbers_parser_list = base_phone_numbers_subparsers.add_parser('list', help='List Phone Numbers for a Projects')
-    phone_numbers_parser_list.add_argument('-j', '--json', action='store_true', help='List Phone Numbers for project JSON')
+    phone_number_parser_list = base_phone_number_subparsers.add_parser('list', help='List Phone Numbers for a Projects')
+    phone_number_parser_list.add_argument('-j', '--json', action='store_true', help='List Phone Numbers for project in JSON Format')
+    phone_number_parser_list.add_argument('-n', '--name', help='Find a phone number by object Name')
+    phone_number_parser_list.add_argument('-i', '--id', help='Find a phone number by SignalWire ID')
+    phone_number_parser_list.add_argument('-b', '--number', help='Return a phone number by number in E164 format')
 
     # create the phone_number update subcommand
-    phone_numbers_parser_update = base_phone_numbers_subparsers.add_parser('update', help='Update a Phone Number')
+    phone_number_parser_update = base_phone_number_subparsers.add_parser('update', help='Update a Phone Number')
+    phone_number_parser_update.add_argument('-i', '--id', help='ID of the SignalWire Phone Number', required=True)
+    phone_number_parser_update.add_argument('-n', '--name', help='Update the Friendly Name of a Phone Number')
+    phone_number_parser_update.add_argument('--call-handler', help='Type of handlers to use when processing calls to the Number', choices=["relay_context", "laml_webhooks", "laml_application", "dialogflow", "relay_connector", "relay_sip_endpoint", "relay_verto_endpoint", "video_room"])
+    phone_number_parser_update.add_argument('--call-receive-mode', help='How to receive the incoming call: Voice or Fax', choices=["voice", "fax"], default="voice")
+    phone_number_parser_update.add_argument('--call-request-url', help='URL to make a request when using the laml_webhooks call handler')
+    phone_number_parser_update.add_argument('--call-request-method', help='HTTP method type when using laml_webhook call handler', choices=["POST", "GET"], default="POST")
+    phone_number_parser_update.add_argument('--call-fallback-url', help='Secondary URL for laml_webhook call handler, in the instance the Primary webhook fails')
+    phone_number_parser_update.add_argument('--call-fallback-method', help='HTTP method type when using a fallback laml_webhook message handler', choices=["POST", "GET"], default="POST")
+    phone_number_parser_update.add_argument('--call-status-callback-url', help='URL to make status callbacks when using the laml_webhooks call handler')
+    phone_number_parser_update.add_argument('--call-status-callback-method', help='HTTP method type when using the call_status_callback_url', choices=["POST", "GET"], default="POST")
+    phone_number_parser_update.add_argument('--call-laml-application-id', help='ID of the LaML Webhook Application when using the laml_application call handler')
+    phone_number_parser_update.add_argument('--call-dialogflow-id', help='ID of the Dialogflow Agent to start when using the dialogflow call handler')
+    phone_number_parser_update.add_argument('--call-relay-context', help='The name of the Relay Context to send this call to when using the relay_context call handler')
+    phone_number_parser_update.add_argument('--call-relay-connector-id', help='ID of the Relay Connector to send this call to when using the relay_connector call hanlder')
+    phone_number_parser_update.add_argument('--call-sip-endpoint-id', help='ID of the SIP Endpoint to send this call to when using the sip_endpoint call handler')
+    phone_number_parser_update.add_argument('--call-verto-resourece', help='The name of the Verto Relay endpoint to send this call to when using the relay_verto_endpoint handler')
+    phone_number_parser_update.add_argument('--call-video-room-id', help='The OD of the Video Room to send this call to when using the video_room call handler')
+    phone_number_parser_update.add_argument('--message-handler', help='Type of handler to use on inbound text messages', choices=["relay_context", "laml_webhook", "laml_application"])
+    phone_number_parser_update.add_argument('--message-request-url', help='URL used to make requests using the laml_webhook message handler')
+    phone_number_parser_update.add_argument('--message-request-method', help='HTTP method type when using laml_webhook message handler', choices=["POST", "GET"], default="POST")
+    phone_number_parser_update.add_argument('--message-fallback-url', help='Secondary URL for laml_webhook, in the instance the Primary fails')
+    phone_number_parser_update.add_argument('--message-fallback-method', help='HTTP method type when using laml_webhook message handler', choices=["POST", "GET"], default="POST")
+    phone_number_parser_update.add_argument('--message-laml-application-id', help='The ID of the LamL Application to use when using the laml_application message handler')
+    phone_number_parser_update.add_argument('--message-relay-context', help='The name of the relay context to send this message when using the relay_context message handler')
 
-    # create the phone_number delete subcommand
-    phone_numbers_parser_delete = base_phone_numbers_subparsers.add_parser('delete', help='Delete/Remove a Phone Number')
+    # create the phone_number release subcommand
+    phone_number_parser_release = base_phone_number_subparsers.add_parser('release', help='release/Remove a Phone Number')
+    phone_number_parser_release.add_argument('-i', '--id', help='The SignalWire ID of the number that is being Released (removed)')
 
     # create the phone_number lookup sub
-    phone_numbers_parser_lookup = base_phone_numbers_subparsers.add_parser('lookup', help='Lookup a Phone Number (in E.164 format)')
-    phone_numbers_parser_lookup.add_argument('--number', help='Number you want to lookup (in E.164 format)', required=True)
-    phone_numbers_parser_lookup.add_argument('--cnam', action='store_true', help='Include carrier lookup')
-    phone_numbers_parser_lookup.add_argument('--carrier', action='store_true', help='Include carrier lookup')
+    phone_number_parser_lookup = base_phone_number_subparsers.add_parser('lookup', help='Lookup a Phone Number (in E.164 format)')
+    phone_number_parser_lookup.add_argument('--number', help='Number you want to lookup (in E.164 format)', required=True)
+    phone_number_parser_lookup.add_argument('--cnam', action='store_true', help='Include carrier lookup')
+    phone_number_parser_lookup.add_argument('--carrier', action='store_true', help='Include carrier lookup')
+
+    # create the phone numbers buy command
+    phone_number_parser_buy = base_phone_number_subparsers.add_parser('buy', help='Purchase Phone numbers for the Proect')
 
     ## subcommand functions for phone numbers
-    def phone_numbers_list(self, args):
-        '''list subcommand of phone_numbers'''
+    def phone_number_list(self, args):
+        '''list subcommand of phone_number'''
         if args.json:
-            get_phone_numbers()
+            output = json.loads( phone_number_func() )
+            data_json = output["data"]
+            json_nice_print( data_json )
+        elif args.id:
+            sid = args.id
+            query_params = "/" + sid
+            output = json.loads ( phone_number_func( query_params ) )
+            json_nice_print( output )
+        elif args.name:
+            # TODO: Currently only supporting a single name value AKA "name" as oppsed to "name test".  Try to make this support more (may not actually be supported by API)
+            # Keeping code into allow it to be mutiple values just in case.
+            #if len(args.name) == 1:
+            #    name = args.name[0]
+            #elif len(args.name) > 1:
+            #    name = "%20".join(args.name)
+            name = args.name
+            query_params = "?filter_name=%s" % name
+            output = json.loads( phone_number_func( query_params ) )
+            output_data = output["data"]
+            json_nice_print( output_data )
+        elif args.number:
+            number = args.number.replace('+', '%2b')      # URL encode the plus sign if there is one.  API does seem to work without it, so could be stripped too.
+            query_params = "?filter_number=%s" % number
+            output = json.loads( phone_number_func( query_params ) )
+            output_data = output["data"]
+            json_nice_print( output_data )
+        elif args.name and args.number:
+            number = args.number.repalce('+', '%2b')      # URL encode the plus sign if there is one.  API does seem to work without it, so could be stripped too.
+            name = args.name
+            query_params = "?filter_name=%s&filter_number=%s" % (name, number)
+            output = json.loads ( phone_number_func( query_params ) )
+            output_data = output["data"]
+            json_nice_print( output_data )
         else:
-            #TODO: Need to do this within swsh, not bounce out to a system call
-            output = os.system(" python3 /usr/lib/cgi-bin/sig-get_phone_numbers_for_space.py | jq '.data[].number' | sed 's/\"//g' ")
+            output = phone_number_func()
+            json_data = json.loads(output)
+            tn_data = json_data["data"]
+            for index, value in enumerate(tn_data):
+                # Create a temporary dictionary for each number then only return the number value
+                # NOTE: Someday this could be expanded to return the number and the ID or something like that
+                temp_d = value
+                print (temp_d["number"])
 
-    def phone_numbers_update(self, args):
-        '''create subcommand of sip_endpoint'''
-        print('Update a Phone Number')
+    def phone_number_update(self, args):
+        '''Update subcommand of phone_number'''
+        # NOTE: I found that if the number DOES NOT have a name, the API won't allow it to be udpated and will require a name.  After that, it is no longer needed.
+        sid = args.id
+        query_params = "/" + sid
+        print (args.call_request_url)
+        print (args.call_request_method)
+        phone_number_dictionary = {
+          "name": args.name,
+          "call_handler": args.call_handler,
+          "call_receive_mode": args.call_receive_mode,
+          "call_request_url": args.call_request_url,
+          "call_request_method": args.call_request_method,
+          "call_fallback_url": args.call_fallback_url,
+          "call_fallback_method": args.call_fallback_method,
+          "call_status_callback_url": args.call_status_callback_url,
+          "call_status_callback_method": args.call_status_callback_method,
+          "call_laml_application_id": args.call_laml_application_id,
+          "call_dialogflow_id": args.call_dialogflow_id,
+          "call_relay_context": args.call_relay_context,
+          "call_relay_connector_id": args.call_relay_connector_id,
+          "call_sip_endpoint_id": args.call_sip_endpoint_id,
+          "call_verto_resourece": args.call_verto_resourece,
+          "call_video_room_id": args.call_video_room_id,
+          "message_handler": args.message_handler,
+          "message_request_url": args.message_request_url,
+          "message_request_method": args.message_request_method,
+          "message_fallback_url": args.message_fallback_url,
+          "message_fallback_method": args.message_fallback_method,
+          "message_laml_application_id": args.message_laml_application_id,
+          "message_relay_context": args.message_relay_context
+        }
 
-    def phone_numbers_delete(self, args):
-        '''create subcommand of sip_endpoint'''
-        print('Delete/Remove a Phone Number')
+        update_phone_number_dictionary = {}
+        for x, y in phone_number_dictionary.items():
+            if y is not None:
+                update_phone_number_dictionary[x] = y
 
-    def phone_numbers_lookup(self, args):
-        '''lookup subcommand of phone_numbers'''
+        payload = json.dumps(update_phone_number_dictionary)
+        phone_number_func(query_params, "PUT",  payload=payload)
+        # TODO: Check the return code here.  If its a 422, then output that it requires a name to be added to the command.
+        print("Complete!")
+
+    def phone_number_release(self, args):
+        '''Release subcommand of phone_number'''
+        # TODO: allow the number to be used for release as well
+        # We can get the id from the number and then release.
+        sid = args.id
+        query_params = "/" + sid
+        confirm = str(input("Are you sure you want to proceed removing id " + sid + "?  This cannot be undone! (Y/n): " ))
+        # Need validation here.  There are times when the number is too new to be released.  Would be nice to be able to relay that.
+        if confirm.lower() == "yes" or confirm.lower() == "y":
+            print("we are here")
+            phone_number_func(query_params, "DELETE")
+        else:
+            print("Cancelling...\n")
+
+    def phone_number_lookup(self, args):
+        '''lookup subcommand of phone_number'''
         # Verify its a 10 digit US number in e.164 format.
         number = args.number
         phone_num_regex = re.compile(r'^\+1\d{10}$')
@@ -434,24 +528,29 @@ class MyPrompt(cmd2.Cmd):
                 include = ""
 
             query_params = number + include
-            phone_numbers_lookup(query_params=query_params)
+            phone_number_lookup(query_params=query_params)
         else:
             print('ERROR: That number is not in a valid e.164 format')
 
-    # Set default handlers for each sub command
-    phone_numbers_parser_list.set_defaults(func=phone_numbers_list)
-    phone_numbers_parser_update.set_defaults(func=phone_numbers_update)
-    phone_numbers_parser_delete.set_defaults(func=phone_numbers_delete)
-    phone_numbers_parser_lookup.set_defaults(func=phone_numbers_lookup)
+    def phone_number_buy(self, args):
+        '''buy subcommand of phone_number'''
+        os.system(" python3 /usr/lib/cgi-bin/buy_a_phone_number.py ")
 
-    @cmd2.with_argparser(base_phone_numbers_parser)
-    def do_phone_numbers(self, args: argparse.Namespace):
+    # Set default handlers for each sub command
+    phone_number_parser_list.set_defaults(func=phone_number_list)
+    phone_number_parser_update.set_defaults(func=phone_number_update)
+    phone_number_parser_release.set_defaults(func=phone_number_release)
+    phone_number_parser_lookup.set_defaults(func=phone_number_lookup)
+    phone_number_parser_buy.set_defaults(func=phone_number_buy)
+
+    @cmd2.with_argparser(base_phone_number_parser)
+    def do_phone_number(self, args: argparse.Namespace):
         '''List, Update, and Buy Phone numbers'''
         func = getattr(args, 'func', None)
         if func is not None:
             func(self, args)
         else:
-            self.do_help('phone_numbers')
+            self.do_help('phone_number')
 
 
 ## LaML BINS
