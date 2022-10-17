@@ -33,62 +33,6 @@ def list_space_projects(query_params):
     json_formatted_response = json.dumps(json_response, indent=2)
     print(json_formatted_response)
 
-def get_sip_endpoints():
-    response = http_request(signalwire_space, project_id, rest_api_token, "/endpoints/sip", "GET")
-    # format the response into JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-def create_sip_endpoint(payload):
-    http_basic_auth = str(encode_auth(project_id, rest_api_token))
-    headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Basic %s' % http_basic_auth
-    }
-    response = http_request(signalwire_space, project_id, rest_api_token, "endpoints/sip", "POST", payload=payload, headers=headers)
-    # TODO:  Need some legitimate checking here to make sure it was actually completed successfully
-    print ("Complete")
-
-def update_sip_endpoint(endpoint_sid, payload):
-    destination = "endpoints/sip/" + endpoint_sid
-    http_basic_auth = str(encode_auth(project_id, rest_api_token))
-    headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Basic %s' % http_basic_auth
-    }
-    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "PUT", payload=payload, headers=headers)
-
-def delete_sip_endpoint(endpoint_sid):
-    destination = "endpoints/sip/" + endpoint_sid
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "DELETE" )
-    # TODO: Need some legitimate checking here to make sure the delete operation was successful
-    print ("Complete")
-
-
-## SIP PROFILES ##
-def get_sip_profiles():
-    response = http_request(signalwire_space, project_id, rest_api_token, "/sip_profile", "GET")
-    # format the response into JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-def update_sip_profiles(payload):
-    http_basic_auth = str(encode_auth(project_id, rest_api_token))
-    headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Basic %s' % http_basic_auth
-    }
-    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
-    response = http_request(signalwire_space, project_id, rest_api_token, "/sip_profile", "PUT", payload=payload, headers=headers)
-
-
-
 ## LAML BINS FUNCTIONS ##
 def get_laml_bins(query_params):
     destination = "Accounts/" + project_id + query_params
@@ -197,7 +141,7 @@ class MyPrompt(cmd2.Cmd):
     do_quit = do_exit
     help_quit = help_exit
 
-## SIP ENDPOINT
+## SIP ENDPOINT ##
     # Create the top level parser for sip endpoints: sip_endpoint
     base_sip_endpoint_parser = cmd2.Cmd2ArgumentParser()
     base_sip_endpoint_subparsers = base_sip_endpoint_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
@@ -236,11 +180,13 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_endpoint
     def sip_endpoint_list(self, args):
         '''list subcommand of sip_endpoint'''
-        get_sip_endpoints()
+        output = json.loads( sip_endpoint_func() )
+        data_json = output["data"]
+        json_nice_print( data_json )
 
     def sip_endpoint_create(self, args):
         '''create subcommand of sip_endpoint'''
-        # TODO: Add Codecs and Ciphers
+        query_params = ""
         sip_endpoint_dictionary = {
           "username": args.username,
           "password": args.password,
@@ -251,12 +197,20 @@ class MyPrompt(cmd2.Cmd):
           "encryption": args.encryption
         }
 
-        payload = json.dumps(sip_endpoint_dictionary)
-        create_sip_endpoint(payload)
+        create_sip_endpoint_dictionary = {}
+        for x, y in sip_endpoint_dictionary.items():
+            if y is not None:
+              create_sip_endpoint_dictionary[x] = y
+
+        payload = json.dumps( create_sip_endpoint_dictionary )
+        output = sip_endpoint_func(query_params, "POST",  payload=payload)
+        # TODO: Check the return code and validate
+        print("Succes! SIP Endpoint Created")
 
     def sip_endpoint_update(self, args):
         '''update subcommand of sip_endpoint'''
         sid = args.id
+        query_params = "/" + sid
         sip_endpoint_dictionary = {
           "username": args.username,
           "password": args.password,
@@ -266,26 +220,31 @@ class MyPrompt(cmd2.Cmd):
           "ciphers": args.ciphers,
           "encryption": args.encryption
         }
+
         update_sip_endpoint_dictionary = {}
-        #print (sip_endpoint_dictionary)
         for x, y in sip_endpoint_dictionary.items():
             if y is not None:
               update_sip_endpoint_dictionary[x] = y
 
-        payload = json.dumps (update_sip_endpoint_dictionary)
-        update_sip_endpoint(sid, payload)
+        payload = json.dumps ( update_sip_endpoint_dictionary )
+        output = sip_endpoint_func(query_params, "PUT",  payload=payload)
+        # TODO: Check the return code and validate
+        print("Success! SIP Endpoint Updated")
 
     def sip_endpoint_delete(self, args):
         '''delete subcommand of sip_endpoint'''
         sid = args.id
+        query_params = "/" + sid
         if sid is not None:
             confirm = input("Remove SIP Endpoint " + sid + "? This cannot be undone! (y/n): " )
             if (confirm == "Y" or confirm == "y"):
-                delete_sip_endpoint(sid)
+                output = sip_endpoint_func(query_params, "DELETE")
+                # TODO: Check the return code and validate
+                print("Success! SIP Endpoint Removed")
             else:
-                print ("Aborting.")
+                print ("OK.  Cancelling...\n")
         else:
-            print ("ERROR")
+            print ("ERROR: Please enter a valid SID")
 
     # Set default handlers for each sub command
     sip_endpoint_parser_list.set_defaults(func=sip_endpoint_list)
@@ -302,10 +261,11 @@ class MyPrompt(cmd2.Cmd):
         else:
             self.do_help('sip_endpoint')
 
+
 ## SIP PROFILES ##
     # Create the top level parser for sip profiles: sip_profile
     base_sip_profile_parser = cmd2.Cmd2ArgumentParser()
-    base_sip_profile_subparsers = base_sip_profile_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    base_sip_profile_subparsers = base_sip_profile_parser.add_subparsers(title='subcommands',help='subcommand help')
 
     # create the sip_profile list subcommand
     sip_profile_parser_list = base_sip_profile_subparsers.add_parser('list', help='List SIP Profiles')
@@ -321,7 +281,9 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_profile
     def sip_profile_list(self, args):
         '''list subcommand of sip_profile'''
-        get_sip_profiles()
+        output = json.loads( sip_profile_func() )
+        #data_json = output["data"]
+        json_nice_print( output )
 
     def sip_profile_update(self, args):
         '''update subcommand of sip_profile'''
@@ -332,13 +294,15 @@ class MyPrompt(cmd2.Cmd):
           "default_ciphers": args.ciphers,
           "default_encryption": args.encryption
         }
+
         update_sip_profile_dictionary = {}
         for x, y in sip_profile_dictionary.items():
             if y is not None:
               update_sip_profile_dictionary[x] = y
 
-        payload = json.dumps (update_sip_profile_dictionary)
-        update_sip_profiles(payload)
+        payload = json.dumps(update_sip_profile_dictionary)
+        output = sip_profile_func(req_type="PUT", payload=payload)
+        print("Complete.  The SIP Profile has been updated.\n")
 
     # Set default handlers for each sub command
     sip_profile_parser_list.set_defaults(func=sip_profile_list)
@@ -458,8 +422,6 @@ class MyPrompt(cmd2.Cmd):
         # NOTE: I found that if the number DOES NOT have a name, the API won't allow it to be udpated and will require a name.  After that, it is no longer needed.
         sid = args.id
         query_params = "/" + sid
-        print (args.call_request_url)
-        print (args.call_request_method)
         phone_number_dictionary = {
           "name": args.name,
           "call_handler": args.call_handler,

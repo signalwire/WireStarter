@@ -14,11 +14,12 @@ project_id = os.getenv('PROJECT_ID')
 rest_api_token = os.getenv('REST_API_TOKEN')
 #######################
 
-
+########################################
 ######## PHONE NUMBER FUNCTIONS ########
-def phone_number_func( query_params="", req_type="GET", headers={}, payload={}):
+########################################
+def phone_number_func( query_params="", req_type="GET", headers={}, payload={} ):
     destination = "phone_numbers" + query_params
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload)
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
     return (response.text)
 
 def phone_number_lookup(query_params):
@@ -28,6 +29,28 @@ def phone_number_lookup(query_params):
     json_formatted_response = json.dumps(json_response, indent=2)
     print (json_formatted_response)
 ########################################
+
+
+########################################
+######## SIP ENDPOINT FUNCTIONS ########
+########################################
+def sip_endpoint_func( query_params="", req_type="GET", headers={}, payload={} ):
+    destination = "endpoints/sip" + query_params
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
+    return (response.text)
+########################################
+
+
+########################################
+############ SIP PROFILE ###############
+########################################
+def sip_profile_func( query_params="", req_type="GET", headers={}, payload={} ):
+    destination = "sip_profile" + query_params
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
+    return (response.text)
+########################################
+
+
 
 
 
