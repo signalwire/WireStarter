@@ -43,6 +43,7 @@ RUN ngrok config add-authtoken $NGROK_TOKEN
 
 # Copy files to /opt/signalwire
 COPY SRC /usr/lib/cgi-bin
+COPY SRC/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 RUN chmod +x -R /usr/lib/cgi-bin/
 
 # copy script to start services
