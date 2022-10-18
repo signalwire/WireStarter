@@ -7,6 +7,7 @@ from functions import *
 import json
 import time
 import re
+import urllib.parse
 ## This is temporary ##
 #from signalwire.voice_response import *
 #from twilio.twiml.messaging_response import Message, MessagingResponse
@@ -33,17 +34,6 @@ def list_space_projects(query_params):
     json_formatted_response = json.dumps(json_response, indent=2)
     print(json_formatted_response)
 
-## LAML BINS FUNCTIONS ##
-def get_laml_bins(query_params):
-    destination = "Accounts/" + project_id + query_params
-    url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET", url=url)
-    # format the response into JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-
 ## DOMAIN APPLICATIONS ##
 def list_domain_applications(query_params):
     destination = "domain_applications/" + query_params
@@ -58,49 +48,6 @@ def delete_domain_application(sid):
     response = http_request(signalwire_space, project_id, rest_api_token, destination, "DELETE" )
     # TODO: Need some legitimate checking here to make sure the delete operation was successful
     print ("Complete")
-
-
-## NUMBER GROUPS ##
-def list_number_groups(query_params):
-    destination = "number_groups" + query_params
-    print (destination)
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET" )
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-def create_number_group(payload):
-    http_basic_auth = str(encode_auth(project_id, rest_api_token))
-    headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Basic %s' % http_basic_auth
-    }
-    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
-    response = http_request(signalwire_space, project_id, rest_api_token, "/number_groups", "POST", payload=payload, headers=headers)
-    print(response.text)
-    #print ('Complete')
-
-def update_number_group(sid, payload):
-    destination = "/number_groups/" + sid
-    http_basic_auth = str(encode_auth(project_id, rest_api_token))
-    headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Basic %s' % http_basic_auth
-    }
-    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "PUT", payload=payload, headers=headers)
-    #print(response.text)
-    print ('Complete')
-
-def delete_number_group(sid):
-    destination = "/number_groups/" + sid
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "DELETE" )
-    # TODO: Need some legitimate checking here to make sure the delete operation was successful
-    print ("Complete")
-
-
 ############################
 class MyPrompt(cmd2.Cmd):
 
@@ -515,59 +462,156 @@ class MyPrompt(cmd2.Cmd):
             self.do_help('phone_number')
 
 
-## LaML BINS
-    # Create the top level parser for laml bins: laml_bins
-    base_laml_bins_parser = cmd2.Cmd2ArgumentParser()
-    base_laml_bins_subparsers = base_laml_bins_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+## LaML BINS ##
+    # Create the top level parser for laml bins: laml_bin
+    base_laml_bin_parser = cmd2.Cmd2ArgumentParser()
+    base_laml_bin_subparsers = base_laml_bin_parser.add_subparsers(title='subcommands',help='subcommand help')
 
     # create the laml_bin list subcommand
-    laml_bins_parser_list = base_laml_bins_subparsers.add_parser('list', help='List LaML Bins for a Projects')
-    laml_bins_parser_list.add_argument('-f', '--friendly-name', type=str, nargs='+', help='List Single LaML Bin by name')
+    laml_bin_parser_list = base_laml_bin_subparsers.add_parser('list', help='List LaML Bins for a Projects')
+    laml_bin_parser_list.add_argument('-n', '--name', type=str, nargs='+', help='List Single LaML Bin by name')
+    laml_bin_parser_list.add_argument('-i', '--id', help='List Single LaML Bin by SignalWire ID')
 
     # create the laml_bin update subcommand
-    laml_bins_parser_update = base_laml_bins_subparsers.add_parser('update', help='Update a LaML Bins')
+    laml_bin_parser_create = base_laml_bin_subparsers.add_parser('create', help='Create a LaML Bins')
+    laml_bin_parser_create.add_argument('-n', '--name', nargs='+', help='Identifiable name of the LaML Bin', required=True)
+    laml_bin_parser_create.add_argument('--contents',  nargs='+', help='XML contents of the LaML Bin.  Put formatted XML in single quotes, or leave blank to use an editor')
 
     # create the laml_bin update subcommand
-    laml_bins_parser_create = base_laml_bins_subparsers.add_parser('create', help='Create a LaML Bins')
+    laml_bin_parser_update = base_laml_bin_subparsers.add_parser('update', help='Update a LaML Bins')
+    laml_bin_parser_update.add_argument('-i', '--id', help='SignalWire ID of the LaML Bin')
+    laml_bin_parser_update.add_argument('-n', '--name', nargs='+', help='Identifiable name of the LaML Bin')
+    laml_bin_parser_update.add_argument('--contents', nargs='+', help='XML contents of the LaML Bin.  Put formatted XML in single quotes, or leave blank to use an editor')
 
     # create the laml_bin delete subcommand
-    laml_bins_parser_delete = base_laml_bins_subparsers.add_parser('delete', help='Delete/Remove a LaML Bin')
+    laml_bin_parser_delete = base_laml_bin_subparsers.add_parser('delete', help='Delete/Remove a LaML Bin')
+    laml_bin_parser_delete.add_argument('-i', '--id', help='SignalWire ID of the LaML Bin to be deleted')
 
+    # Note: Adding contents on the command line via create and update isn't quite working right 
+    # because of character escaping it does on  newlines and tabs.
+    # It works, just the formatting is a little strange.  Need to come back to this and clean it up
+    
     ## subcommand functions for laml bins
-    def laml_bins_list(self, args):
-        '''list subcommand of laml_bins'''
-        if args.friendly_name:
-            if len(args.friendly_name) == 1:
-                friendly_name = args.friendly_name[0]
-            elif len(args.friendly_name) > 1:
-                friendly_name = "%20".join(args.friendly_name)
+    def laml_bin_list(self, args):
+        '''list subcommand of laml_bin'''
+        query_params = ""
+        if args.name:
+            if len(args.name) == 1:
+                name = args.name[0]
+            elif len(args.name) > 1:
+                name = "%20".join(args.name)
             else:
                 print ("ERROR: Not valid arguments")
-            query_params="/LamlBins?Name=%s" % friendly_name
-            get_laml_bins(query_params)
+            query_params="?Name=%s" % name
+        if args.id:
+            sid = args.id
+            query_params="/" % sid
+
+        output = json.loads( laml_bin_func(query_params) )
+        if args.id:
+            output_laml_bin = output
         else:
-            query_params = "/LamlBins"
-            get_laml_bins(query_params)
+            output_laml_bin = output["laml_bins"]
+        json_nice_print ( output_laml_bin )
 
-    def laml_bins_create(self, args):
-        '''create subcommand of laml_bins'''
-        print('Create a LamL Bin')
+    def laml_bin_create(self, args):
+        '''create subcommand of laml_bin'''
+        # Arg lists Needs to be converted into strings before they can be url encoded.
+        if args.contents is None:
+            # NOTE: There may be a better way to check whether or not the file was changed, than using system calls to sha1sum.
+            # However, just looking for the basic functionality at this point.  If the editor is opened, and nothing changes, don't create anything.
+            # IF something DOES change in the XML, then push to the API call.
+            laml_sha1_orig = os.popen( "sha1sum /tmp/.foo_laml.xml.orig" ).read()  # the sha1sum of the original template
+            os.system( "cp /tmp/.foo_laml.xml.orig /tmp/foo_laml.xml")
+            os.system( "vim /tmp/foo_laml.xml" )
+            laml_sha1_new = os.popen( "sha1sum /tmp/foo_laml.xml").read()          # sha1sum after any changes
+            if laml_sha1_orig != laml_sha1_new:
+                with open('/tmp/foo_laml.xml') as f:
+                    lines = f.readlines()
+                    #print(lines)
+                    args.contents = lines
+                    # Delete the new file, its no longer needed
+                    os.system( "rm /tmp/foo_laml.xml")
+            else:
+                args.contents=""
 
-    def laml_bins_update(self, args):
-        '''create subcommand of laml_bins'''
-        print('Create a LaML Bin')
+        # if contents is still blank, then nothing has changed, and exit gracefully
+        if args.contents == "":
+            print("LaML Bin XML contents are required!")
+        else:
+            name = ' '.join(args.name)
+            contents = ' '.join(args.contents)
+            name_url_encode = urllib.parse.quote(name)
+            contents_url_encode = urllib.parse.quote(contents, safe='/')
+            payload = "Contents=%s&Name=%s" % (contents_url_encode, name_url_encode)
+            output = laml_bin_func(req_type="POST", payload=payload)
+            #print (output)
+            print ("LaML Bin Created")
 
-    def laml_bins_delete(self, args):
-        '''create subcommand of laml_bins'''
-        print('Delete/Remove a Phone Number')
+    def laml_bin_update(self, args):
+        '''create subcommand of laml_bin'''
+        sid = args.id
+        query_params = "/" + sid
+        if args.contents is None:
+            # Get the LaML bin to Edit and save it to a temp file
+            query_params = "/" + sid
+            output = json.loads( laml_bin_func(query_params) )
+            output_laml_bin_contents = output["contents"]
+            filename = '/tmp/%s.xml' % sid
+            with open(filename, 'w')  as f:
+                print(output_laml_bin_contents, file=f)
+            sha1_hash_orig = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
+            os.system( "vim %s" % filename )
+            sha1_hash_new = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
+
+            if sha1_hash_orig != sha1_hash_new:
+                with open(filename) as f:
+                    lines = f.readlines()
+                    args.contents = lines
+                    os.system( "rm %s" % filename )
+
+        # URL Encode the params
+        if args.name:
+            name = ' '.join(args.name)
+            name_url_encode = urllib.parse.quote(name)
+        if args.contents:
+            contents = ' '.join(args.contents)
+            contents_url_encode = urllib.parse.quote(contents, safe='/')
+
+        payload = ""
+        if args.name and args.contents:
+            payload = "Contents=%s&Name=%s" % (contents_url_encode, name_url_encode)
+        elif args.name:
+            payload = "Name=%s" % (name_url_encode)
+        elif args.contents:
+            payload = "Contents=%s" % (contents_url_encode)
+        else:
+            print("Nothing has changed.  Exiting.\n")
+
+        if payload != "":
+            output = laml_bin_func(query_params, req_type="POST", payload=payload)
+            #print (output)
+            print ("LaML Bin Has been updated")
+
+    def laml_bin_delete(self, args):
+        '''create subcommand of laml_bin'''
+        sid = args.id
+        query_params = '/' + sid
+        confirm = str(input("Are you sure you want to proceed removing this LaML Bin?  This cannot be undone (Y/n): "))
+        if confirm.lower() == "yes" or confirm.lower() == "y":
+            output = laml_bin_func( query_params, "DELETE" )
+            #print (output)
+            print ("LaML Bin " + sid + " Removed.")
+        else:
+            print("Cancelling...")
 
     # Set default handlers for each sub command
-    laml_bins_parser_list.set_defaults(func=laml_bins_list)
-    laml_bins_parser_create.set_defaults(func=laml_bins_create)
-    laml_bins_parser_update.set_defaults(func=laml_bins_update)
-    laml_bins_parser_delete.set_defaults(func=laml_bins_delete)
+    laml_bin_parser_list.set_defaults(func=laml_bin_list)
+    laml_bin_parser_create.set_defaults(func=laml_bin_create)
+    laml_bin_parser_update.set_defaults(func=laml_bin_update)
+    laml_bin_parser_delete.set_defaults(func=laml_bin_delete)
 
-    @cmd2.with_argparser(base_laml_bins_parser)
+    @cmd2.with_argparser(base_laml_bin_parser)
     def do_laml_bin(self, args: argparse.Namespace):
         '''List, Update, and LaML Bins'''
         func = getattr(args, 'func', None)
@@ -802,8 +846,6 @@ class MyPrompt(cmd2.Cmd):
 
     def number_group_list(self, args):
         '''list subcommand of number_group'''
-        query_params=""
-
         if args.name:
             if len(args.name) == 1:
                 name = args.name[0]
@@ -816,7 +858,9 @@ class MyPrompt(cmd2.Cmd):
         else:
             query_params=""
 
-        list_number_groups(query_params=query_params)
+        output = json.loads( number_group_func( query_params ) )
+        output_data = output["data"]
+        json_nice_print (output_data)
 
     def number_group_create(self, args):
         '''create subcommand of number_group'''
@@ -826,11 +870,14 @@ class MyPrompt(cmd2.Cmd):
         }
 
         payload = json.dumps(number_group_dictionary)
-        create_number_group(payload)
+        output = number_group_func(req_type="POST", payload=payload)
+        #print (output)
+        print("Number Group Created")
 
     def number_group_update(self, args):
         '''update subcommand of number_group'''
         sid = args.id
+        query_params = "/" + sid
         number_group_dictionary = {
           "name": args.name,
           "sticky_sender": args.sticky_sender
@@ -842,17 +889,20 @@ class MyPrompt(cmd2.Cmd):
               update_number_group_dictionary[x] = y
 
         payload = json.dumps(update_number_group_dictionary)
-        update_number_group(sid, payload)
+        output = number_group_func(query_params, req_type="PUT", payload=payload)
+        #print (output)
+        print("Number Group has been updated")
 
     def number_group_delete(self, args):
         '''delete subcommand of number_group'''
         sid = args.id
+        query_params = "/" + sid
         if sid is not None:
             confirm = input("Remove Number Group " + sid + "? This cannot be undone! (y/n): " )
             if (confirm == "Y" or confirm == "y"):
-                delete_number_group(sid)
+                output = number_group_func(query_params, req_type="DELETE")
             else:
-                print ("Aborting.")
+                print ("OK. Cancelling")
         else:
             print ("ERROR")
 
