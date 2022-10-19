@@ -1,4 +1,4 @@
-# signalwire-getting-started
+# WireStarter
 
 Required Prerequisites:
 A Signalwire Account
