@@ -48,49 +48,6 @@ def delete_domain_application(sid):
     response = http_request(signalwire_space, project_id, rest_api_token, destination, "DELETE" )
     # TODO: Need some legitimate checking here to make sure the delete operation was successful
     print ("Complete")
-
-
-## NUMBER GROUPS ##
-def list_number_groups(query_params):
-    destination = "number_groups" + query_params
-    print (destination)
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET" )
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-def create_number_group(payload):
-    http_basic_auth = str(encode_auth(project_id, rest_api_token))
-    headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Basic %s' % http_basic_auth
-    }
-    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
-    response = http_request(signalwire_space, project_id, rest_api_token, "/number_groups", "POST", payload=payload, headers=headers)
-    print(response.text)
-    #print ('Complete')
-
-def update_number_group(sid, payload):
-    destination = "/number_groups/" + sid
-    http_basic_auth = str(encode_auth(project_id, rest_api_token))
-    headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Basic %s' % http_basic_auth
-    }
-    # TODO: Need some legitimate checking here to make sure it was actually completed successfully
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "PUT", payload=payload, headers=headers)
-    #print(response.text)
-    print ('Complete')
-
-def delete_number_group(sid):
-    destination = "/number_groups/" + sid
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "DELETE" )
-    # TODO: Need some legitimate checking here to make sure the delete operation was successful
-    print ("Complete")
-
-
 ############################
 class MyPrompt(cmd2.Cmd):
 
@@ -889,8 +846,6 @@ class MyPrompt(cmd2.Cmd):
 
     def number_group_list(self, args):
         '''list subcommand of number_group'''
-        query_params=""
-
         if args.name:
             if len(args.name) == 1:
                 name = args.name[0]
@@ -903,7 +858,9 @@ class MyPrompt(cmd2.Cmd):
         else:
             query_params=""
 
-        list_number_groups(query_params=query_params)
+        output = json.loads( number_group_func( query_params ) )
+        output_data = output["data"]
+        json_nice_print (output_data)
 
     def number_group_create(self, args):
         '''create subcommand of number_group'''
@@ -913,11 +870,14 @@ class MyPrompt(cmd2.Cmd):
         }
 
         payload = json.dumps(number_group_dictionary)
-        create_number_group(payload)
+        output = number_group_func(req_type="POST", payload=payload)
+        #print (output)
+        print("Number Group Created")
 
     def number_group_update(self, args):
         '''update subcommand of number_group'''
         sid = args.id
+        query_params = "/" + sid
         number_group_dictionary = {
           "name": args.name,
           "sticky_sender": args.sticky_sender
@@ -929,17 +889,20 @@ class MyPrompt(cmd2.Cmd):
               update_number_group_dictionary[x] = y
 
         payload = json.dumps(update_number_group_dictionary)
-        update_number_group(sid, payload)
+        output = number_group_func(query_params, req_type="PUT", payload=payload)
+        #print (output)
+        print("Number Group has been updated")
 
     def number_group_delete(self, args):
         '''delete subcommand of number_group'''
         sid = args.id
+        query_params = "/" + sid
         if sid is not None:
             confirm = input("Remove Number Group " + sid + "? This cannot be undone! (y/n): " )
             if (confirm == "Y" or confirm == "y"):
-                delete_number_group(sid)
+                output = number_group_func(query_params, req_type="DELETE")
             else:
-                print ("Aborting.")
+                print ("OK. Cancelling")
         else:
             print ("ERROR")
 

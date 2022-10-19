@@ -67,6 +67,17 @@ def laml_bin_func( query_params="", req_type="GET", headers={}, payload = {} ):
         }
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
     return (response.text)
+########################################
+
+
+########################################
+########### NUMBER GROUPS ##############
+########################################
+def number_group_func( query_params = "", req_type="GET", headers={}, payload={} ):
+    destination = "number_groups" + query_params
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
+    return (response.text)
+########################################
 
 
 
