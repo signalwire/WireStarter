@@ -6,10 +6,15 @@
 FROM debian:buster-slim
 
 ARG NGROK_TOKEN
+ENV NGROK_TOKEN=${NGROK_TOKEN}
 ARG SIGNALWIRE_SPACE
+ENV SIGNALWIRE_SPACE=${SIGNALWIRE_SPACE}
 ARG PROJECT_ID
+ENV PROJECT_ID=${PROJECT_ID}
 ARG REST_API_TOKEN
+ENV REST_API_TOKEN=${REST_API_TOKEN}
 ARG VISUAL
+ENV VISUAL=${VISUAL}
 
 # Install the basic package
 RUN apt-get update && apt-get install -y \
@@ -33,6 +38,9 @@ RUN apt-key adv --fetch-keys https://cli.github.com/packages/githubcli-archive-k
 RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com buster main" |  tee /etc/apt/sources.list.d/ngrok.list && \
     apt update && apt install ngrok
 
+# Install NVM
+RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash 
+
 # Install Python modules 
 RUN pip3 install   \
     signalwire     \
@@ -49,12 +57,13 @@ RUN a2enmod cgid
 RUN ngrok config add-authtoken $NGROK_TOKEN
 
 # Copy files to /opt/signalwire
-COPY SRC /usr/lib/cgi-bin
-COPY SRC/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
+RUN pwd
+COPY docker/SRC /usr/lib/cgi-bin
+COPY docker/SRC/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 RUN chmod +x -R /usr/lib/cgi-bin/
 
 # copy script to start services
-COPY start_services.sh /root/start_services.sh
+COPY docker/start_services.sh /root/start_services.sh
 RUN chmod +x /root/start_services.sh
 
 # Pass in VARS #
