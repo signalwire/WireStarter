@@ -8,6 +8,8 @@ services:
     image: signalwire/wirestarter
     command: ["/root/start_services.sh"]
     env_file: ../.env
+    volumes:
+      - storage:/usr/local
     ports:
       - 443:443/tcp
       - 80:80/tcp
@@ -26,6 +28,9 @@ services:
     networks:
       wirestarter:
         ipv4_address: 172.50.0.100
+
+volumes:
+  storage:
 
 networks:
   wirestarter:
