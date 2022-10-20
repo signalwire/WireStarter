@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y \
     vim		\
     emacs-nox	
 
+# Install NVM
+RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+
 # Install GH Cli
 RUN apt-key adv --fetch-keys https://cli.github.com/packages/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture)] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list && \
     apt update && apt install gh -y
