@@ -33,21 +33,6 @@ def list_space_projects(query_params):
     json_response = json.loads(response.text)
     json_formatted_response = json.dumps(json_response, indent=2)
     print(json_formatted_response)
-
-## DOMAIN APPLICATIONS ##
-def list_domain_applications(query_params):
-    destination = "domain_applications/" + query_params
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET")
-    # format the response into JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print (json_formatted_response)
-
-def delete_domain_application(sid):
-    destination = "domain_applications/" + sid
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "DELETE" )
-    # TODO: Need some legitimate checking here to make sure the delete operation was successful
-    print ("Complete")
 ############################
 class MyPrompt(cmd2.Cmd):
 
@@ -487,10 +472,10 @@ class MyPrompt(cmd2.Cmd):
     laml_bin_parser_delete = base_laml_bin_subparsers.add_parser('delete', help='Delete/Remove a LaML Bin')
     laml_bin_parser_delete.add_argument('-i', '--id', help='SignalWire ID of the LaML Bin to be deleted')
 
-    # Note: Adding contents on the command line via create and update isn't quite working right 
+    # Note: Adding contents on the command line via create and update isn't quite working right
     # because of character escaping it does on  newlines and tabs.
     # It works, just the formatting is a little strange.  Need to come back to this and clean it up
-    
+
     ## subcommand functions for laml bins
     def laml_bin_list(self, args):
         '''list subcommand of laml_bin'''
@@ -743,6 +728,206 @@ class MyPrompt(cmd2.Cmd):
             self.do_help('project_help')
 
 
+## LaML APPLICATIONS ##
+    # Create the top level parser for domain application: laml_app
+    base_laml_app_parser = cmd2.Cmd2ArgumentParser()
+    base_laml_app_subparsers = base_laml_app_parser.add_subparsers(title='subcommands',help='subcommand help')
+
+    # create the domain application list subcommand
+    laml_app_parser_list = base_laml_app_subparsers.add_parser('list', help='List LaML Applications for the Project')
+    laml_app_parser_list.add_argument('-i', '--id', help='SignalWire ID of the LamL Application')
+
+    # create the domain application create command
+    laml_app_parser_create = base_laml_app_subparsers.add_parser('create', help='List Domain Applications for the Project')
+    laml_app_parser_create.add_argument('-n', '--name',  nargs='+', help='Friendly name for the domain application', required=True)
+    laml_app_parser_create.add_argument('--status-callback', help='URL to pass status updates to the application')
+    laml_app_parser_create.add_argument('--status-callback-method',  help='HTTP method for status_callback.  Default is POST.', choices=["POST", "GET"], default="POST" )
+    laml_app_parser_create.add_argument('--voice-caller-id-lookup',  help='Look up a callers ID from the database.  Possible values are true or false.  Default is false.', choices=["true", "false"], default="false")
+    laml_app_parser_create.add_argument('--voice-url',  help='URL to request when an voice or fax is received')
+    laml_app_parser_create.add_argument('--voice-method', help='HTTP method for voice_url.  Default is POST.')
+    laml_app_parser_create.add_argument('--voice-fallback-url', help='URL to request if there is an error at primary')
+    laml_app_parser_create.add_argument('--voice-fallback-method', help='HTTP method for voice_fallback.  Default is POST.', choices=["POST", "GET"], default="POST")
+    laml_app_parser_create.add_argument('--message-status-callback', help='When a message receives a status change, a POST request to this URL with message details')
+    laml_app_parser_create.add_argument('--sms-url',  help='URL to request when an SMS is received')
+    laml_app_parser_create.add_argument('--sms-method',  help='HTTP method for sms_url.  Default is POST.', choices=["POST", "GET"], default="POST" )
+    laml_app_parser_create.add_argument('--sms-fallback-url',  help='URL Signalwire will request if errors occur when fetching the sms_url ' )
+    laml_app_parser_create.add_argument('--sms-fallback-method',  help='HTTP method for sms_fallback_url.  Default is POST.', choices=["POST", "GET"], default="POST" )
+    laml_app_parser_create.add_argument('--sms-status-callback', help='When a message recevies a status change, a POST request to this URL with message details')
+
+    # create the domain application update command
+    laml_app_parser_update = base_laml_app_subparsers.add_parser('update', help='List Domain Applications for the Project')
+    laml_app_parser_update.add_argument('-i', '--id', help='ID of the Domain Application to be updated', required=True)
+    laml_app_parser_update.add_argument('-n', '--name',  nargs='+', help='Friendly name for the domain application')
+    laml_app_parser_update.add_argument('--status-callback', help='URL to pass status updates to the application')
+    laml_app_parser_update.add_argument('--status-callback-method',  help='HTTP method for status_callback.  Default is POST.', choices=["POST", "GET"], default="POST" )
+    laml_app_parser_update.add_argument('--voice-caller-id-lookup',  help='Look up a callers ID from the database.  Possible values are true or false.  Default is false.', choices=["true", "false"], default="false")
+    laml_app_parser_update.add_argument('--voice-url',  help='URL to request when an voice or fax is received')
+    laml_app_parser_update.add_argument('--voice-method', help='HTTP method for voice_url.  Default is POST.')
+    laml_app_parser_update.add_argument('--voice-fallback-url', help='URL to request if there is an error at primary')
+    laml_app_parser_update.add_argument('--voice-fallback-method', help='HTTP method for voice_fallback.  Default is POST.', choices=["POST", "GET"], default="POST")
+    laml_app_parser_update.add_argument('--message-status-callback', help='When a message receives a status change, a POST request to this URL with message details')
+    laml_app_parser_update.add_argument('--sms-url',  help='URL to request when an SMS is received')
+    laml_app_parser_update.add_argument('--sms-method',  help='HTTP method for sms_url.  Default is POST.', choices=["POST", "GET"], default="POST" )
+    laml_app_parser_update.add_argument('--sms-fallback-url',  help='URL Signalwire will request if errors occur when fetching the sms_url ' )
+    laml_app_parser_update.add_argument('--sms-fallback-method',  help='HTTP method for sms_fallback_url.  Default is POST.', choices=["POST", "GET"], default="POST" )
+    laml_app_parser_update.add_argument('--sms-status-callback', help='When a message recevies a status change, a POST request to this URL with message details')
+
+
+    # create the laml_app delete command
+    laml_app_parser_delete = base_laml_app_subparsers.add_parser('delete', help='List Domain Applications for the Project')
+    laml_app_parser_delete.add_argument('-i', '--id', help='Unique id of the SIP Endpoint', required=True)
+
+    def laml_app_list(self, args):
+        '''list subcommand of laml_app'''
+        if args.id:
+            sid = args.id
+            query_params = "/" + sid
+        else:
+            query_params=""
+
+        # When retrieving just an ID, there is no data json object
+        output = json.loads( laml_app_func(query_params) )
+        if args.id:
+            json_nice_print(output)
+        else:
+            output_applications = output["applications"]
+            json_nice_print(output_applications)
+
+    def laml_app_create(self, args):
+        '''create subcommand of laml_app'''
+        FriendlyName = ""
+        MessageStatusCallback = ""
+        SmsFallbackMethod = ""
+        SmsFallbackUrl = ""
+        SmsMethod = ""
+        SmsStatusCallback = ""
+        SmsUrl = ""
+        StatusCallback = ""
+        StatusCallbackMethod = ""
+        VoiceCallerIdLookup = ""
+        VoiceFallbackMethod = ""
+        VoiceFallbackUrl = ""
+        VoiceMethod = ""
+        VoiceUrl = ""
+
+        if args.name:
+            args.name = ' '.join(args.name)
+            FriendlyName = "&FriendlyName=" + urllib.parse.quote(args.name)
+        if args.message_status_callback:
+            MessageStatusCallback = "&MessageStatusCallback=" + urllib.parse.quote(args.message_status_callback)
+        if args.sms_fallback_method:
+            SmsFallbackMethod = "&SmsFallbackMethod=" + urllib.parse.quote(args.sms_fallback_method)
+        if args.sms_fallback_url:
+            SmsFallbackUrl = "&SmsFallbackUrl=" + urllib.parse.quote(args.sms_fallback_url)
+        if args.sms_method:
+            SmsMethod = "&SmsMethod=" + urllib.parse.quote(args.sms_method)
+        if args.sms_status_callback:
+            SmsStatusCallback = "SmsStatusCallback=" + urllib.parse.quote(args.sms_status_callback)
+        if args.sms_url:
+            SmsUrl = "&SmsUrl=" + urllib.parse.quote(args.sms_url)
+        if args.status_callback:
+            StatusCallback = "&StatusCallback=" + urllib.parse.quote(args.status_callback)
+        if args.status_callback_method:
+            StatusCallbackMethod = "&StatusCallbackMethod=" + urllib.parse.quote(args.status_callback_method)
+        if args.voice_caller_id_lookup:
+            VoiceCallerIdLookup = "&VoiceCallerIdLookup=" + urllib.parse.quote(args.voice_caller_id_lookup)
+        if args.voice_fallback_method:
+            VoiceFallbackMethod = "&VoiceFallbackMethod=" + urllib.parse.quote(args.voice_fallback_method)
+        if args.voice_fallback_url:
+            VoiceFallbackUrl = "&VoiceFallbackUrl=" + urllib.parse.quote(args.voice_fallback_url)
+        if args.voice_method:
+            VoiceMethod = "&VoiceMethod=" + urllib.parse.quote(args.voice_fallback_url)
+        if args.voice_url:
+            VoiceUrl = "&VoiceUrl=" + urllib.parse.quote(args.voice_url)
+
+        payload = FriendlyName + MessageStatusCallback + SmsFallbackMethod + SmsFallbackUrl + SmsMethod + SmsStatusCallback + SmsUrl + StatusCallback + StatusCallbackMethod + VoiceCallerIdLookup + VoiceFallbackMethod + VoiceFallbackUrl + VoiceMethod + VoiceUrl
+
+        output = laml_app_func(req_type="POST", payload=payload)
+        print ("LaML Application Created\n")
+
+    def laml_app_update(self, args):
+        '''update subcommand of laml_app'''
+        sid = args.id
+        query_params = "/" + sid
+        FriendlyName = ""
+        MessageStatusCallback = ""
+        SmsFallbackMethod = ""
+        SmsFallbackUrl = ""
+        SmsMethod = ""
+        SmsStatusCallback = ""
+        SmsUrl = ""
+        StatusCallback = ""
+        StatusCallbackMethod = ""
+        VoiceCallerIdLookup = ""
+        VoiceFallbackMethod = ""
+        VoiceFallbackUrl = ""
+        VoiceMethod = ""
+        VoiceUrl = ""
+
+        if args.name:
+            args.name = ' '.join(args.name)
+            FriendlyName = "&FriendlyName=" + urllib.parse.quote(args.name)
+        if args.message_status_callback:
+            MessageStatusCallback = "&MessageStatusCallback=" + urllib.parse.quote(args.message_status_callback)
+        if args.sms_fallback_method:
+            SmsFallbackMethod = "&SmsFallbackMethod=" + urllib.parse.quote(args.sms_fallback_method)
+        if args.sms_fallback_url:
+            SmsFallbackUrl = "&SmsFallbackUrl=" + urllib.parse.quote(args.sms_fallback_url)
+        if args.sms_method:
+            SmsMethod = "&SmsMethod=" + urllib.parse.quote(args.sms_method)
+        if args.sms_status_callback:
+            SmsStatusCallback = "SmsStatusCallback=" + urllib.parse.quote(args.sms_status_callback)
+        if args.sms_url:
+            SmsUrl = "&SmsUrl=" + urllib.parse.quote(args.sms_url)
+        if args.status_callback:
+            StatusCallback = "&StatusCallback=" + urllib.parse.quote(args.status_callback)
+        if args.status_callback_method:
+            StatusCallbackMethod = "&StatusCallbackMethod=" + urllib.parse.quote(args.status_callback_method)
+        if args.voice_caller_id_lookup:
+            VoiceCallerIdLookup = "&VoiceCallerIdLookup=" + urllib.parse.quote(args.voice_caller_id_lookup)
+        if args.voice_fallback_method:
+            VoiceFallbackMethod = "&VoiceFallbackMethod=" + urllib.parse.quote(args.voice_fallback_method)
+        if args.voice_fallback_url:
+            VoiceFallbackUrl = "&VoiceFallbackUrl=" + urllib.parse.quote(args.voice_fallback_url)
+        if args.voice_method:
+            VoiceMethod = "&VoiceMethod=" + urllib.parse.quote(args.voice_fallback_url)
+        if args.voice_url:
+            VoiceUrl = "&VoiceUrl=" + urllib.parse.quote(args.voice_url)
+
+        payload = FriendlyName + MessageStatusCallback + SmsFallbackMethod + SmsFallbackUrl + SmsMethod + SmsStatusCallback + SmsUrl + StatusCallback + StatusCallbackMethod + VoiceCallerIdLookup + VoiceFallbackMethod + VoiceFallbackUrl + VoiceMethod + VoiceUrl
+
+        output = laml_app_func(query_params, req_type="POST", payload=payload)
+        print (output)
+        print ("LaML Application Updated\n")
+
+    def laml_app_delete(self, args):
+        sid = args.id
+        query_params = "/" + sid
+        if sid is not None:
+            confirm = input("Remove LaML Application " + sid + "?  This cannot be undone! (y/n): ")
+            if (confirm.lower() == "y" or confirm.lower() == "yes"):
+                output = laml_app_func(query_params, req_type="DELETE")
+            else:
+                print ("OK. Cancelling.")
+        else:
+            print ("ERROR: An error has occurred")
+
+    # Set default handlers for each sub command
+    laml_app_parser_list.set_defaults(func=laml_app_list)
+    laml_app_parser_create.set_defaults(func=laml_app_create)
+    laml_app_parser_update.set_defaults(func=laml_app_update)
+    laml_app_parser_delete.set_defaults(func=laml_app_delete)
+
+    @cmd2.with_argparser(base_laml_app_parser)
+    def do_laml_app(self, args: argparse.Namespace):
+        '''List, Create, Update, or Delete domain applications'''
+        func = getattr(args, 'func', None)
+        if func is not None:
+            func(self, args)
+        else:
+            self.do_help('laml_app')
+
+
 ## DOMAIN APPLICATIONS ##
     # Create the top level parser for domain application: domain_application
     base_domain_application_parser = cmd2.Cmd2ArgumentParser()
@@ -752,20 +937,48 @@ class MyPrompt(cmd2.Cmd):
     domain_application_parser_list = base_domain_application_subparsers.add_parser('list', help='List Domain Applications for the Project')
     domain_application_parser_list.add_argument('-d', '--domain', type=str, nargs='+', help='Return all values for given domain of Domain App')
     domain_application_parser_list.add_argument('-n', '--name', type=str, nargs='+', help='Return all values for the given name of Domain App')
+    domain_application_parser_list.add_argument('-i', '--id', help='SignalWire ID of the Domain Application')
 
     # create the domain application create command
     domain_application_parser_create = base_domain_application_subparsers.add_parser('create', help='List Domain Applications for the Project')
-    domain_application_parser_create.add_argument('-n', '--name', help='Friendly name for the domain application')
-    domain_application_parser_create.add_argument('-i', '--identifier', help='Identifier of the domain.  Must be unique accross the project.')
+    domain_application_parser_create.add_argument('-n', '--name',  nargs='+', help='Friendly name for the domain application', required=True)
+    domain_application_parser_create.add_argument('--identifier', help='Identifier of the domain.  Must be unique accross the project.', required=True)
     domain_application_parser_create.add_argument('--ip-auth-enabled',  help='Whether the domain application will enforce IP authentication (Boolean)', choices=['true','false'] )
-    domain_application_parser_create.add_argument('--ip-auth',  help='A List of whitelisted / allowed IPs when --ip-auth-enabled is true ' )
-    domain_application_parser_create.add_argument('-c', '--call-handler', help='How the domain Application handles calls', choices=['relay_context','laml_webhooks','laml_application','video_room'] )
+    domain_application_parser_create.add_argument('--ip-auth', nargs='+',  help='A List of whitelisted / allowed IPs when --ip-auth-enabled is true ' )
+    domain_application_parser_create.add_argument('--call-handler', help='How the domain Application handles calls', choices=['relay_context','laml_webhooks','laml_application','video_room'] )
+    domain_application_parser_create.add_argument('--call-request-url', help='The LaML URL to access when a call is received.  This is only used with laml_webhooks call handler')
+    domain_application_parser_create.add_argument('--call-request-method', help='The HTTP method to use with call_request_url', choices=["POST", "GET"], default="POST")
+    domain_application_parser_create.add_argument('--call-fallback-url', help='The LaML URL to access when call_request_url fails')
+    domain_application_parser_create.add_argument('--call-fallback-method', help='The HTTP method to use with call_call_back_url', choices=["POST", "GET"], default="POST")
+    domain_application_parser_create.add_argument('--call-status-callback-url', help='The URL to send status change messages to. This is only sed when call_hander is set to laml_webhooks')
+    domain_application_parser_create.add_argument('--call-status-callback-method', help='The HTTP method to use with call_status_callback_url', choices=["POST", "GET"], default="POST")
+    domain_application_parser_create.add_argument('--call-relay-context', help='Relay context to forward incoming calls to.  This is only used when call_handler is set to relay_context')
+    domain_application_parser_create.add_argument('--call-laml-application-id', help='The ID of the LaML application to forward incoming calls to.  this is only used when call_handler is set to laml_application')
+    domain_application_parser_create.add_argument('--call-video-room-id', help='The ID of the Video Room to forward incoming calls to.  This is only used when call_handler is set to video_room')
     domain_application_parser_create.add_argument('-e', '--encryption', type=str, help='Default Codecs', choices=['default', 'required', 'optional'])
     domain_application_parser_create.add_argument('--codecs', type=str, nargs='+', help='Default Codecs', choices=['OPUS', 'G722', 'PCMU', 'PCMA', 'VP8', 'H264'])
     domain_application_parser_create.add_argument('--ciphers', type=str, nargs='+',  help='Default Ciphers', choices=['AEAD_AES_256_GCM_8','AES_256_CM_HMAC_SHA1_80','AES_CM_128_HMAC_SHA1_80','AES_256_CM_HMAC_SHA1_32','AES_CM_128_HMAC_SHA1_32'])
 
     # create the domain application update command
     domain_application_parser_update = base_domain_application_subparsers.add_parser('update', help='List Domain Applications for the Project')
+    domain_application_parser_update.add_argument('-i', '--id', help='ID of the Domain Application to be updated', required=True)
+    domain_application_parser_update.add_argument('-n', '--name',  nargs='+', help='Friendly name for the domain application')
+    domain_application_parser_update.add_argument('--identifier', help='Identifier of the domain.  Must be unique accross the project.')
+    domain_application_parser_update.add_argument('--ip-auth-enabled',  help='Whether the domain application will enforce IP authentication (Boolean)', choices=['true','false'] )
+    domain_application_parser_update.add_argument('--ip-auth', nargs='+',  help='A List of whitelisted / allowed IPs when --ip-auth-enabled is true ' )
+    domain_application_parser_update.add_argument('--call-handler', help='How the domain Application handles calls', choices=['relay_context','laml_webhooks','laml_application','video_room'] )
+    domain_application_parser_update.add_argument('--call-request-url', help='The LaML URL to access when a call is received.  This is only used with laml_webhooks call handler')
+    domain_application_parser_update.add_argument('--call-request-method', help='The HTTP method to use with call_request_url', choices=["POST", "GET"], default="POST")
+    domain_application_parser_update.add_argument('--call-fallback-url', help='The LaML URL to access when call_request_url fails')
+    domain_application_parser_update.add_argument('--call-fallback-method', help='The HTTP method to use with call_call_back_url', choices=["POST", "GET"], default="POST")
+    domain_application_parser_update.add_argument('--call-status-callback-url', help='The URL to send status change messages to. This is only sed when call_hander is set to laml_webhooks')
+    domain_application_parser_update.add_argument('--call-status-callback-method', help='The HTTP method to use with call_status_callback_url', choices=["POST", "GET"], default="POST")
+    domain_application_parser_update.add_argument('--call-relay-context', help='Relay context to forward incoming calls to.  This is only used when call_handler is set to relay_context')
+    domain_application_parser_update.add_argument('--call-laml-application-id', help='The ID of the LaML application to forward incoming calls to.  this is only used when call_handler is set to laml_application')
+    domain_application_parser_update.add_argument('--call-video-room-id', help='The ID of the Video Room to forward incoming calls to.  This is only used when call_handler is set to video_room')
+    domain_application_parser_update.add_argument('-e', '--encryption', type=str, help='Default Codecs', choices=['default', 'required', 'optional'])
+    domain_application_parser_update.add_argument('--codecs', type=str, nargs='+', help='Default Codecs', choices=['OPUS', 'G722', 'PCMU', 'PCMA', 'VP8', 'H264'])
+    domain_application_parser_update.add_argument('--ciphers', type=str, nargs='+',  help='Default Ciphers', choices=['AEAD_AES_256_GCM_8','AES_256_CM_HMAC_SHA1_80','AES_CM_128_HMAC_SHA1_80','AES_256_CM_HMAC_SHA1_32','AES_CM_128_HMAC_SHA1_32'])
 
     # create the domain application delete command
     domain_application_parser_delete = base_domain_application_subparsers.add_parser('delete', help='List Domain Applications for the Project')
@@ -783,23 +996,106 @@ class MyPrompt(cmd2.Cmd):
                 domain = "%20".join(args.domain)
             query_params ="?filter_domain=%s" % domain
         elif args.name:
-             if len(args.name) == 1:
-                 name = args.name[0]
-             elif len(args.name) > 1:
-                 name = "%20".join(args.name)
-             query_params = "?filter_name=%s" % name
+            if len(args.name) == 1:
+                name = args.name[0]
+            elif len(args.name) > 1:
+                name = "%20".join(args.name)
+            query_params = "?filter_name=%s" % name
+        elif args.id:
+            sid = args.id
+            query_params = "/" + sid
         else:
+            # Will list all Domain Applications
             query_params=""
 
-        list_domain_applications(query_params=query_params)
+        # When retrieving just an ID, there is no data json object
+        output = json.loads( domain_application_func(query_params) )
+        if args.id:
+            json_nice_print (output)
+        else:
+            output_data = output["data"]
+            json_nice_print (output_data)
+
+    def domain_application_create(self, args):
+        '''create subcommand of domain_application'''
+        # Make the Name look nice
+        if args.name:
+            print(args.name)
+            args.name = ' '.join(args.name)
+        domain_application_dictionary = {
+           "name": args.name,
+           "identifier": args.identifier,
+           "ip_auth_enabled": args.ip_auth_enabled,
+           "ip_auth": args.ip_auth,
+           "call_handler": args.call_handler,
+           "call_request_url": args.call_request_url,
+           "call_request_method": args.call_request_method,
+           "call_fallback_url": args.call_fallback_url,
+           "call_fallback_method": args.call_fallback_method,
+           "call_status_callback_url": args.call_status_callback_url,
+           "call_status_callback_method": args.call_status_callback_method,
+           "call_relay_context": args.call_relay_context,
+           "call_laml_application_id": args.call_laml_application_id,
+           "call_video_room_id": args.call_video_room_id,
+           "encryption": args.encryption,
+           "codecs": args.codecs,
+           "ciphers": args.ciphers
+        }
+
+        create_domain_application_dictionary = {}
+        for x, y in domain_application_dictionary.items():
+            if y is not None:
+                create_domain_application_dictionary[x] = y
+
+        payload = json.dumps(create_domain_application_dictionary)
+        output = domain_application_func(req_type="POST", payload=payload)
+        print("Domain Application Created")
+
+    def domain_application_update(self, args):
+        '''create subcommand of domain_application'''
+        sid = args.id
+        query_params = "/" + sid
+        # Make the Name look nice
+        if args.name:
+            print(args.name)
+            args.name = ' '.join(args.name)
+        domain_application_dictionary = {
+           "name": args.name,
+           "identifier": args.identifier,
+           "ip_auth_enabled": args.ip_auth_enabled,
+           "ip_auth": args.ip_auth,
+           "call_handler": args.call_handler,
+           "call_request_url": args.call_request_url,
+           "call_request_method": args.call_request_method,
+           "call_fallback_url": args.call_fallback_url,
+           "call_fallback_method": args.call_fallback_method,
+           "call_status_callback_url": args.call_status_callback_url,
+           "call_status_callback_method": args.call_status_callback_method,
+           "call_relay_context": args.call_relay_context,
+           "call_laml_application_id": args.call_laml_application_id,
+           "call_video_room_id": args.call_video_room_id,
+           "encryption": args.encryption,
+           "codecs": args.codecs,
+           "ciphers": args.ciphers
+        }
+
+        update_domain_application_dictionary = {}
+        for x, y in domain_application_dictionary.items():
+            if y is not None:
+                update_domain_application_dictionary[x] = y
+
+        payload = json.dumps(update_domain_application_dictionary)
+        output = domain_application_func(query_params, req_type="PUT", payload=payload)
+        print("Domain Application Updated")
 
     def domain_application_delete(self, args):
         '''delete subcommand of domain_application'''
         sid = args.id
+        query_params = "/" + sid
         if sid is not None:
             confirm = input("Remove Domain Application " + sid + "? This cannot be undone! (y/n): " )
             if (confirm == "Y" or confirm == "y"):
-                delete_domain_application(sid)
+                domain_application_func(query_params, req_type="DELETE")
             else:
                 print ("Aborting.")
         else:
@@ -807,6 +1103,8 @@ class MyPrompt(cmd2.Cmd):
 
     # Set default handlers for each sub command
     domain_application_parser_list.set_defaults(func=domain_application_list)
+    domain_application_parser_create.set_defaults(func=domain_application_create)
+    domain_application_parser_update.set_defaults(func=domain_application_update)
     domain_application_parser_delete.set_defaults(func=domain_application_delete)
 
     @cmd2.with_argparser(base_domain_application_parser)

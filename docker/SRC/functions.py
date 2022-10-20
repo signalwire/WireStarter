@@ -69,6 +69,24 @@ def laml_bin_func( query_params="", req_type="GET", headers={}, payload = {} ):
     return (response.text)
 ########################################
 
+########################################
+############# LAML APPS ################
+########################################
+def laml_app_func( query_params="", req_type="GET", headers={}, payload = {} ):
+    # Uses the Compatibility API
+    destination = "Accounts/" + project_id + "/Applications" + query_params
+    url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
+    print (payload)
+    if req_type == "POST":
+        http_basic_auth = str(encode_auth(project_id, rest_api_token))
+        headers = {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'Authorization': 'Basic %s' % http_basic_auth
+        }
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
+    return (response.text)
+########################################
 
 ########################################
 ########### NUMBER GROUPS ##############
@@ -79,6 +97,14 @@ def number_group_func( query_params = "", req_type="GET", headers={}, payload={}
     return (response.text)
 ########################################
 
+########################################
+######### DOMAIN APPLICATIONS ##########
+########################################
+def domain_application_func( query_params = "", req_type="GET", headers={}, payload={} ):
+    destination = "domain_applications" + query_params
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
+    return (response.text)
+########################################
 
 
 
