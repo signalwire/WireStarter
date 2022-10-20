@@ -17,21 +17,19 @@ ARG VISUAL
 ENV VISUAL=${VISUAL}
 
 # Install the basic package
-RUN apt-get update && apt-get install -y \
-    python3     \
-    python3-pip \
-    apache2     \
-    screen      \ 
-    jq          \
-    curl        \
-    less        \
-    nano        \
-    vim		\
-    emacs-nox	\
-    golang
+RUN apt update && apt install -y apache2 screen jq curl wget less git gawk
 
-# Install NVM
-RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+# Install Editors
+RUN apt update && apt install -y nano vim emacs-nox
+
+# Install Python
+RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools
+
+# Install golang
+#RUN apt update && apt install -y golang 
+
+# Install PHP
+#RUN apt update && apt install -y php-cli composer 
 
 # Install GH Cli
 RUN apt-key adv --fetch-keys https://cli.github.com/packages/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture)] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list && \
@@ -42,16 +40,8 @@ RUN apt-key adv --fetch-keys https://cli.github.com/packages/githubcli-archive-k
 RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com buster main" |  tee /etc/apt/sources.list.d/ngrok.list && \
     apt update && apt install ngrok
 
-# Install NVM
-RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash 
-
-# Install Python modules 
-RUN pip3 install   \
-    signalwire     \
-    requests       \
-    python-dotenv  \
-    cmd2           \
-    setuptools
+# Install NVM and Node
+RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
 
 # Enable Python -- Apache
 # This may need to just be creating the symlink since the image doesn't run
@@ -70,7 +60,7 @@ RUN chmod +x -R /usr/lib/cgi-bin/
 COPY docker/start_services.sh /root/start_services.sh
 RUN chmod +x /root/start_services.sh
 
-# Copy in VARS #
+# Copy in VARS 
 COPY .env /usr/lib/cgi-bin/.env
 
 # Start the user in swsh
