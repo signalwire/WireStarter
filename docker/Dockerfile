@@ -27,7 +27,8 @@ RUN apt-get update && apt-get install -y \
     less        \
     nano        \
     vim		\
-    emacs-nox	
+    emacs-nox	\
+    golang
 
 # Install NVM
 RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
@@ -69,11 +70,9 @@ RUN chmod +x -R /usr/lib/cgi-bin/
 COPY docker/start_services.sh /root/start_services.sh
 RUN chmod +x /root/start_services.sh
 
-# Pass in VARS #
-RUN echo "SIGNALWIRE_SPACE=\"$SIGNALWIRE_SPACE\""  > /usr/lib/cgi-bin/.env
-RUN echo "PROJECT_ID=\"$PROJECT_ID\""  >> /usr/lib/cgi-bin/.env
-RUN echo "REST_API_TOKEN=\"$REST_API_TOKEN\"" >> /usr/lib/cgi-bin/.env
-RUN echo "VISUAL=\"$VISUAL\"" >> /usr/lib/cgi-bin/.env
+# Copy in VARS #
+COPY .env /usr/lib/cgi-bin/.env
+
 # Start the user in swsh
 RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
 RUN ln -s /usr/lib/cgi-bin/swsh.py /usr/bin/swsh

@@ -10,9 +10,13 @@ Docker Desktop
  - Windows: https://docs.docker.com/desktop/install/windows-install/
  - Linux:   https://docs.docker.com/desktop/install/linux-install/
 
-NGROK account AND token (for tunnel into signalwire-getting-started container)
+NGROK account AND token (for tunnel into the WireStarter container)
  - https://ngrok.com
 
+
+## BUILDING ##
+* ./docker-dev build
+* ./docker-dev up -d
 
 ## INSTALLATION ##
 On Windows:
