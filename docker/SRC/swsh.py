@@ -897,7 +897,6 @@ class MyPrompt(cmd2.Cmd):
         payload = FriendlyName + MessageStatusCallback + SmsFallbackMethod + SmsFallbackUrl + SmsMethod + SmsStatusCallback + SmsUrl + StatusCallback + StatusCallbackMethod + VoiceCallerIdLookup + VoiceFallbackMethod + VoiceFallbackUrl + VoiceMethod + VoiceUrl
 
         output = laml_app_func(query_params, req_type="POST", payload=payload)
-        print (output)
         print ("LaML Application Updated\n")
 
     def laml_app_delete(self, args):
@@ -907,6 +906,7 @@ class MyPrompt(cmd2.Cmd):
             confirm = input("Remove LaML Application " + sid + "?  This cannot be undone! (y/n): ")
             if (confirm.lower() == "y" or confirm.lower() == "yes"):
                 output = laml_app_func(query_params, req_type="DELETE")
+                print ("LaML App Removed")
             else:
                 print ("OK. Cancelling.")
         else:

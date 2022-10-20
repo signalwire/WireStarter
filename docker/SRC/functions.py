@@ -76,7 +76,6 @@ def laml_app_func( query_params="", req_type="GET", headers={}, payload = {} ):
     # Uses the Compatibility API
     destination = "Accounts/" + project_id + "/Applications" + query_params
     url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
-    print (payload)
     if req_type == "POST":
         http_basic_auth = str(encode_auth(project_id, rest_api_token))
         headers = {
