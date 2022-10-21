@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from typing_extensions import Required
 import cmd2
 from dotenv import load_dotenv
 import os
@@ -945,7 +946,7 @@ class MyPrompt(cmd2.Cmd):
     domain_application_parser_create.add_argument('--identifier', help='Identifier of the domain.  Must be unique accross the project.', required=True)
     domain_application_parser_create.add_argument('--ip-auth-enabled',  help='Whether the domain application will enforce IP authentication (Boolean)', choices=['true','false'] )
     domain_application_parser_create.add_argument('--ip-auth', nargs='+',  help='A List of whitelisted / allowed IPs when --ip-auth-enabled is true ' )
-    domain_application_parser_create.add_argument('--call-handler', help='How the domain Application handles calls', choices=['relay_context','laml_webhooks','laml_application','video_room'] )
+    domain_application_parser_create.add_argument('--call-handler', help='How the domain Application handles calls', choices=['relay_context','laml_webhooks','laml_application','video_room'], required=True )
     domain_application_parser_create.add_argument('--call-request-url', help='The LaML URL to access when a call is received.  This is only used with laml_webhooks call handler')
     domain_application_parser_create.add_argument('--call-request-method', help='The HTTP method to use with call_request_url', choices=["POST", "GET"], default="POST")
     domain_application_parser_create.add_argument('--call-fallback-url', help='The LaML URL to access when call_request_url fails')
