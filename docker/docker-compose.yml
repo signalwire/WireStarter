@@ -9,6 +9,7 @@ services:
     command: ["/root/start_services.sh"]
     env_file: ../.env
     volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
       - storage:/usr/local
     ports:
       - 80:80/tcp

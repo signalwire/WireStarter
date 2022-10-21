@@ -17,7 +17,7 @@ ARG VISUAL
 ENV VISUAL=${VISUAL}
 
 # Install the basic package
-RUN apt update && apt install -y apache2 screen jq curl wget less git gawk
+RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox
@@ -33,14 +33,18 @@ RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire 
 
 # Install GH Cli
 RUN apt-key adv --fetch-keys https://cli.github.com/packages/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture)] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list && \
-    apt update && apt install gh -y
+    apt update && apt install -y gh
+
+# Install Docker 
+RUN apt-key adv --fetch-keys https://download.docker.com/linux/debian/gpg && echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list && \
+    apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
 # Install Ngrok
 # TODO eventually may want to change this to not use curl and remove curl from the image.
-RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com buster main" |  tee /etc/apt/sources.list.d/ngrok.list && \
-    apt update && apt install ngrok
+RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com $(lsb_release -cs) main" |  tee /etc/apt/sources.list.d/ngrok.list && \
+    apt update && apt install -y ngrok 
 
-# Install NVM and Node
+# Install NVM 
 RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
 
 # Enable Python -- Apache
