@@ -1020,7 +1020,6 @@ class MyPrompt(cmd2.Cmd):
         '''create subcommand of domain_application'''
         # Make the Name look nice
         if args.name:
-            print(args.name)
             args.name = ' '.join(args.name)
         domain_application_dictionary = {
            "name": args.name,
