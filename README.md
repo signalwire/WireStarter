@@ -13,10 +13,13 @@ Docker Desktop
 NGROK account AND token (for tunnel into the WireStarter container)
  - https://ngrok.com
 
-
 ## BUILDING ##
+* cp env.example .env
+* edit .env and fill out details
 * ./docker-dev build
 * ./docker-dev up -d
+* docker ps
+* docker exec -ti <id> bash
 
 ## INSTALLATION ##
 On Windows:
