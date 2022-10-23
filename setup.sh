@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ask the user for their name
+# TODO: Validate input and test on each build that it still works (prevents support cases)
 
 if [ ! -f ".env" ]; then
 
