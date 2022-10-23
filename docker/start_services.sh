@@ -10,7 +10,7 @@ sleep 3  # wait for the tunnel to start #
 
 ## What is the NGROK URL?
 # t=2022-08-26T15:25:29+0000 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:80 url=https://f4ce-24-239-215-106.ngrok.io
-NGROK_URL=$( grep url /root/ngrok.log | cut -d= -f 8 | sed 's/https:\/\///g' )
+NGROK_URL=$( grep url /root/ngrok.log | cut -d= -f 8 | sed 's/https:\/\///g' | tail -1 )
 echo $NGROK_URL > /root/ngrok_url
 
 # Run python script to update the numbers
