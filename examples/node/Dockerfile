@@ -10,4 +10,3 @@ WORKDIR /app
 RUN npm install @signalwire/realtime-api
 COPY start.js .
 CMD [ "node", "start.js" ]
-#CMD bash
