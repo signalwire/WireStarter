@@ -54,6 +54,9 @@ RUN a2enmod cgid
 # Configure Ngrok
 RUN ngrok config add-authtoken $NGROK_TOKEN
 
+# Install Docker examples
+COPY examples /root/examples
+
 # Copy files to /opt/signalwire
 RUN pwd
 COPY docker/SRC /usr/lib/cgi-bin
