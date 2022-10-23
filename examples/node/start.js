@@ -1,7 +1,7 @@
 const { Voice } = require('@signalwire/realtime-api')
 
 const projectId = process.env.PROJECT_ID;
-const token = process.env.API_TOKEN;
+const token = process.env.REST_API_TOKEN;
 
 const client = new Voice.Client({
  project: projectId,

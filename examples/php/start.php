@@ -3,14 +3,14 @@
 require dirname(__FILE__) . '/vendor/autoload.php';
 
 define("PROJECT_ID", $_SERVER['PROJECT_ID']);
-define("API_TOKEN",  $_SERVER['API_TOKEN']);
+define("REST_API_TOKEN",  $_SERVER['REST_API_TOKEN']);
 
 use Generator as Coroutine;
 use SignalWire\Relay\Consumer;
 
 class CustomConsumer extends Consumer {
   public $project = PROJECT_ID;
-  public $token = API_TOKEN;
+  public $token = REST_API_TOKEN;
   public $contexts = ['home', 'office'];
 
   public function ready(): Coroutine {

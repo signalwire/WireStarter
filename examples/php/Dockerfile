@@ -2,8 +2,8 @@ FROM debian:buster-slim
 
 ARG PROJECT_ID
 ENV PROJECT_ID=${PROJECT_ID}
-ARG API_TOKEN
-ENV API_TOKEN=${API_TOKEN}
+ARG REST_API_TOKEN
+ENV REST_API_TOKEN=${REST_API_TOKEN}
 RUN apt update && apt install -y php-cli composer
 RUN composer require signalwire/signalwire
 COPY start.php .

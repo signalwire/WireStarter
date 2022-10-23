@@ -10,4 +10,4 @@ class MyConsumer < Signalwire::Relay::Consumer
  end
 end
 
-MyConsumer.new(project: ENV['PROJECT_ID'], token: ENV['API_TOKEN']).run
+MyConsumer.new(project: ENV['PROJECT_ID'], token: ENV['REST_API_TOKEN']).run

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 class CustomConsumer(Consumer):
  def setup(self):
   self.project = os.getenv('PROJECT_ID')
-  self.token = os.getenv('API_TOKEN')
+  self.token = os.getenv('REST_API_TOKEN')
   self.contexts = ['home', 'office']
 
  async def ready(self):
