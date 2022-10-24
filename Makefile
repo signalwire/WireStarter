@@ -3,7 +3,7 @@ build:
 	@./docker-dev build
 
 run: build
-	@docker run -it wirestarter
+	@./docker-dev up -d
 
 up: build run
 
