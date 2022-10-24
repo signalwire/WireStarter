@@ -2,60 +2,61 @@
 import base64
 import requests
 import os,sys
-from dotenv import load_dotenv
 import json
 ####
 
-### SET ENVIRONMENT ###
-load_dotenv()
-
-signalwire_space = os.getenv('SIGNALWIRE_SPACE')
-project_id = os.getenv('PROJECT_ID')
-rest_api_token = os.getenv('REST_API_TOKEN')
-#######################
+########################################
+########### SPACE  FUNCTIONS ###########
+########################################
+def space_projects_func( query_params="", req_type="GET", headers={}, payload={} ):
+    # Uses compatibility API
+    signalwire_space, project_id, rest_api_token = get_environment()
+    destination = "Accounts" + query_params
+    url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
+    return (response.text)
 
 ########################################
 ######## PHONE NUMBER FUNCTIONS ########
 ########################################
 def phone_number_func( query_params="", req_type="GET", headers={}, payload={} ):
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "phone_numbers" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
     return (response.text)
 
 def phone_number_lookup(query_params):
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "lookup/phone_number/" + query_params
     response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET")
     json_response = json.loads(response.text)
     json_formatted_response = json.dumps(json_response, indent=2)
     print (json_formatted_response)
-########################################
-
 
 ########################################
 ######## SIP ENDPOINT FUNCTIONS ########
 ########################################
 def sip_endpoint_func( query_params="", req_type="GET", headers={}, payload={} ):
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "endpoints/sip" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
     return (response.text)
-########################################
-
 
 ########################################
 ############ SIP PROFILE ###############
 ########################################
 def sip_profile_func( query_params="", req_type="GET", headers={}, payload={} ):
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "sip_profile" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
     return (response.text)
-########################################
-
 
 ########################################
 ############# LAML BINS ################
 ########################################
 def laml_bin_func( query_params="", req_type="GET", headers={}, payload = {} ):
     # Uses the Compatibility API
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "Accounts/" + project_id + "/LamlBins" + query_params
     url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
     if req_type == "POST":
@@ -67,13 +68,13 @@ def laml_bin_func( query_params="", req_type="GET", headers={}, payload = {} ):
         }
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
     return (response.text)
-########################################
 
 ########################################
 ############# LAML APPS ################
 ########################################
 def laml_app_func( query_params="", req_type="GET", headers={}, payload = {} ):
     # Uses the Compatibility API
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "Accounts/" + project_id + "/Applications" + query_params
     url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
     if req_type == "POST":
@@ -85,29 +86,32 @@ def laml_app_func( query_params="", req_type="GET", headers={}, payload = {} ):
         }
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
     return (response.text)
-########################################
 
 ########################################
 ########### NUMBER GROUPS ##############
 ########################################
 def number_group_func( query_params = "", req_type="GET", headers={}, payload={} ):
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "number_groups" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
     return (response.text)
-########################################
 
 ########################################
 ######### DOMAIN APPLICATIONS ##########
 ########################################
 def domain_application_func( query_params = "", req_type="GET", headers={}, payload={} ):
+    signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "domain_applications" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
     return (response.text)
+
 ########################################
+def get_environment():
+    signalwire_space = os.getenv('SIGNALWIRE_SPACE')
+    project_id = os.getenv('PROJECT_ID')
+    rest_api_token = os.getenv('REST_API_TOKEN')
+    return (signalwire_space, project_id, rest_api_token)
 
-
-
-###################################################
 def json_nice_print(j):
     if len(j) == 0:
         print("No Results Found!")

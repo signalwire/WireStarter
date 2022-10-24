@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from typing_extensions import Required
 import cmd2
-from dotenv import load_dotenv
 import os
 import argparse
 from functions import *
@@ -15,26 +14,7 @@ import urllib.parse
 from signalwire.rest import Client as signalwire_client
 
 
-### SET ENVIRONMENT ###
-load_dotenv()
-
-signalwire_space = os.getenv('SIGNALWIRE_SPACE')
-project_id = os.getenv('PROJECT_ID')
-rest_api_token = os.getenv('REST_API_TOKEN')
-#######################
-## Local Functions ##
-## Format these so that they can be reused, rather than have one function for every single type of call
-## NOTE: ALL FUNCTIONS ARE SLOWLY BEING MOVED TO functions.py
-###
-def list_space_projects(query_params):
-    destination = "Accounts" + query_params
-    url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET", url=url)
-    # format the response into nice JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print(json_formatted_response)
-############################
+###########################################################################
 class MyPrompt(cmd2.Cmd):
 
     # Remove CMD2 default commands.
@@ -78,7 +58,7 @@ class MyPrompt(cmd2.Cmd):
     # Create the top level parser for sip endpoints: sip_endpoint
     base_sip_endpoint_parser = cmd2.Cmd2ArgumentParser()
     base_sip_endpoint_subparsers = base_sip_endpoint_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
-
+    
     # create the sip_endpoint list subcommand
     sip_endpoint_parser_list = base_sip_endpoint_subparsers.add_parser('list', help='List SIP Endpoints')
 
@@ -625,27 +605,19 @@ class MyPrompt(cmd2.Cmd):
     # Subcommand functions for space
     def space_cd(self, args):
         '''change directory subcommand of space'''
+        os.environ['SIGNALWIRE_SPACE'] = args.hostname
+        os.environ['PROJECT_ID'] = args.project_id
+        os.environ['REST_API_TOKEN'] = args.token
 
-        #
-        # This will write out the new config to the .env file and be set for restart.
-        # Not sure this is really the way I'd like to go.  Maybe it makes sense to just keep what the image was built with as the default.
-        # Leaving the code in commented out, just in case its needed later.
-        #
-        # f = open(".env", "w")
-        # f.write("SIGNALWIRE_SPACE=" + args.hostname + "\nPROJECT_ID=" + args.project_id + "\nREST_API_TOKEN=" + args.token)
-        # f.close()
+        # TODO: Add validation to verify the space and creds added are actually valid.
+        # Would also be nice to password validate somehow to make sure only an authorized user for the space has access (Although I guess that is what an API token is designed to do)
+        signalwire_space, project_id, rest_api_token = get_environment()
 
-        # Not sure if there is a better way to accomplish this, but using global was the only way I could get the variables to persist.
-        global signalwire_space
-        global project_id
-        global rest_api_token
-
-        signalwire_space = args.hostname
-        project_id = args.project_id
-        rest_api_token = args.token
+        print ("\nNow working in project, " + project_id + ", in the " + signalwire_space + " SignalWire space")
 
     def space_show(self, args):
         '''show the working space and project configuration'''
+        signalwire_space, project_id, rest_api_token = get_environment()
         if args.token:
             output = "SignalWire Space: " + signalwire_space + "\nProject ID: " + project_id + "\nToken: " + rest_api_token + "\n"
         else:
@@ -699,7 +671,9 @@ class MyPrompt(cmd2.Cmd):
         else:
             query_params=""
 
-        list_space_projects(query_params=query_params)
+        output = json.loads( space_projects_func(query_params=query_params) )
+        output_accounts = output["accounts"]
+        json_nice_print (output_accounts)
 
     def project_create(self, args):
         '''create subcommand of project'''
@@ -1237,6 +1211,8 @@ class MyPrompt(cmd2.Cmd):
     @cmd2.with_argparser(sms_parser)
     def do_send_text(self, args: argparse.Namespace):
         '''Send an SMS Text Message'''
+        # TODO: Move this into the functions file
+        signalwire_space, project_id, rest_api_token = get_environment()
         from_no = args.from_num
         to_no = args.to_num
         text_body = " ".join(args.text_body)
