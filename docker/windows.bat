@@ -23,6 +23,6 @@ echo VISUAL=%visual_editor% >> .env
 echo LOCALTONET_API_TOKEN=%localtonet_api_token% >> .env
 
 
-docker "run" "-it" "wirestarter"
+REM docker "run" "-it" "wirestarter"
 
 )
