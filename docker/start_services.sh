@@ -22,5 +22,7 @@ fi
 #LocalToNet                                                                                                                                                                                                                                                                                        
 if [ ! -z $LOCALTONET_AUTH_TOKEN ]; then
     /usr/bin/screen -dmS localtonet /usr/bin/localtonet authtoken $LOCALTONET_AUTH_TOKEN
-    curl -s -o -  -X GET https://localtonet.com/api/GetTunnelsByAuthToken/${LOCALTONET_AUTH_TOKEN} -H 'accept: */*' -H "Authorization: Bearer ${LOCALTONET_API_TOKEN}"| jq -r '.result[].url' > /root/localtonet.url
+    if [ ! -z $LOCALTONET_API_TOKEN ]; then
+	curl -s -o -  -X GET https://localtonet.com/api/GetTunnelsByAuthToken/$LOCALTONET_AUTH_TOKEN -H 'accept: */*' -H "Authorization: Bearer $LOCALTONET_API_TOKEN"| jq -r '.result[].url' > /root/localtonet.url
+    fi
 fi
