@@ -17,7 +17,7 @@ ARG VISUAL
 ENV VISUAL=${VISUAL}
 
 # Install the basic package
-RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg
+RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox
@@ -43,6 +43,9 @@ RUN apt-key adv --fetch-keys https://download.docker.com/linux/debian/gpg && ech
 # TODO eventually may want to change this to not use curl and remove curl from the image.
 RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com $(lsb_release -cs) main" |  tee /etc/apt/sources.list.d/ngrok.list && \
     apt update && apt install -y ngrok 
+
+# Install localtonet
+RUN export LOCALTONETARCH=`uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/x64/g'` && wget https://www.localtonet.com/download/localtonet-linux-${LOCALTONETARCH}.zip && unzip localtonet-linux-${LOCALTONETARCH}.zip && mv localtonet /usr/bin/ && rm -f localtonet-linux-${LOCALTONETARCH}.zip
 
 # Install NVM 
 RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
