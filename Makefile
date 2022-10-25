@@ -2,9 +2,20 @@ build:
 	@./setup.sh
 	@./docker-dev build
 
-run: build
-	@./docker-dev up -d
+up: build
+	./docker-dev up -d
 
-up: build run
+up: build 
 
-all: build run 
+all: build up
+
+down:
+	@./docker-dev down
+
+prune:
+	@docker system prune -a
+
+enter:
+	docker exec -it wirestarter /bin/bash
+
+restart: down up

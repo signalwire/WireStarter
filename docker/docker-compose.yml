@@ -6,6 +6,7 @@ services:
 
   wirestarter:
     image: signalwire/wirestarter
+    container_name: wirestarter
     command: ["/root/start_services.sh"]
     env_file: ../.env
     volumes:
