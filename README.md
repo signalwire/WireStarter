@@ -10,8 +10,11 @@ Docker Desktop
  - Windows: https://docs.docker.com/desktop/install/windows-install/
  - Linux:   https://docs.docker.com/desktop/install/linux-install/
 
-NGROK account AND token (for tunnel into the WireStarter container)
+NGROK account AND token (for tunnel into the WireStarter container, optional)
  - https://ngrok.com
+ 
+Localtonet account
+ - https://localtonet.com (needs tunnel auth token and api token, optional)
 
 ## BUILDING ##
 * cp env.example .env
