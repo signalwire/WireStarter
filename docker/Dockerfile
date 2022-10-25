@@ -56,7 +56,7 @@ RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | ba
 RUN a2enmod cgid
 
 # Configure Ngrok
-RUN ngrok config add-authtoken $NGROK_TOKEN
+RUN if [ ! -z "${BUILD_ENV}" = "test" ]; then ngrok config add-authtoken $NGROK_TOKEN; fi
 
 # Install Docker examples
 COPY examples /root/examples
