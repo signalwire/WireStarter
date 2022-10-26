@@ -19,6 +19,8 @@ ARG LOCALTONET_API_TOKEN
 ENV LOCALTONET_API_TOKEN=${LOCALTONET_API_TOKEN}
 ARG LOCALTONET_AUTH_TOKEN
 ENV LOCALTONET_AUTH_TOKEN=${LOCALTONET_AUTH_TOKEN}
+ARG WORKDIR
+ENV WORKDIR=${WORKDIR}
 
 # Install the basic package
 RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip
@@ -77,6 +79,9 @@ RUN chmod +x /root/start_services.sh
 
 # Copy in VARS 
 COPY .env /usr/lib/cgi-bin/.env
+
+# Make workdir
+RUN mkdir /workdir
 
 # Start the user in swsh
 RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc

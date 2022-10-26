@@ -11,7 +11,7 @@ services:
     env_file: ../.env
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - storage:/usr/local
+      - ${WORKDIR}:/workdir
     ports:
       - 80:80/tcp
     stdin_open: true
@@ -29,9 +29,6 @@ services:
     networks:
       wirestarter:
         ipv4_address: 172.50.0.100
-
-volumes:
-  storage:
 
 networks:
   wirestarter:

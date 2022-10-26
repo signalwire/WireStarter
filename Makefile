@@ -15,7 +15,7 @@ down:
 prune:
 	@docker system prune -a
 
-enter:
+enter: up
 	docker exec -it wirestarter /bin/bash
 
 restart: down up
