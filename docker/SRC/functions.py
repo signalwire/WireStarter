@@ -8,13 +8,13 @@ import json
 ########################################
 ########### SPACE  FUNCTIONS ###########
 ########################################
-def space_projects_func( query_params="", req_type="GET", headers={}, payload={} ):
+def project_func( query_params="", req_type="GET", headers={}, payload={} ):
     # Uses compatibility API
     signalwire_space, project_id, rest_api_token = get_environment()
     destination = "Accounts" + query_params
     url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
-    return (response.text)
+    return (response.text, response.status_code)
 
 ########################################
 ######## PHONE NUMBER FUNCTIONS ########
@@ -23,7 +23,7 @@ def phone_number_func( query_params="", req_type="GET", headers={}, payload={} )
     signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "phone_numbers" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
-    return (response.text)
+    return (response.text, response.status_code)
 
 def phone_number_lookup(query_params):
     signalwire_space, project_id, rest_api_token =  get_environment()
@@ -40,7 +40,7 @@ def sip_endpoint_func( query_params="", req_type="GET", headers={}, payload={} )
     signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "endpoints/sip" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
-    return (response.text)
+    return (response.text, response.status_code)
 
 ########################################
 ############ SIP PROFILE ###############
@@ -49,7 +49,7 @@ def sip_profile_func( query_params="", req_type="GET", headers={}, payload={} ):
     signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "sip_profile" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
-    return (response.text)
+    return (response.text, response.status_code)
 
 ########################################
 ############# LAML BINS ################
@@ -67,7 +67,7 @@ def laml_bin_func( query_params="", req_type="GET", headers={}, payload = {} ):
           'Authorization': 'Basic %s' % http_basic_auth
         }
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
-    return (response.text)
+    return (response.text, response.status_code)
 
 ########################################
 ############# LAML APPS ################
@@ -85,7 +85,7 @@ def laml_app_func( query_params="", req_type="GET", headers={}, payload = {} ):
           'Authorization': 'Basic %s' % http_basic_auth
         }
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
-    return (response.text)
+    return (response.text, response.status_code)
 
 ########################################
 ########### NUMBER GROUPS ##############
@@ -94,7 +94,7 @@ def number_group_func( query_params = "", req_type="GET", headers={}, payload={}
     signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "number_groups" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
-    return (response.text)
+    return (response.text, response.status_code)
 
 ########################################
 ######### DOMAIN APPLICATIONS ##########
@@ -103,7 +103,8 @@ def domain_application_func( query_params = "", req_type="GET", headers={}, payl
     signalwire_space, project_id, rest_api_token =  get_environment()
     destination = "domain_applications" + query_params
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
-    return (response.text)
+    return (response.text, response.status_code)
+
 
 ########################################
 def get_environment():
@@ -126,6 +127,44 @@ def encode_auth(project_id, rest_api_token):
     base64_auth = base64_auth_bytes.decode('ascii')
 
     return base64_auth
+
+def validate_http(status_code):
+    # Validate an API response, and determine if it is an error
+    # Keeping track of 2XX codes I've seen.  Maybe these need to be passed w/ specific calls for validation.
+    # For now, if 2XX, then Pass.
+    # Seen: 200, 201, 204
+    if status_code == 200 or status_code == 201 or status_code == 204:
+        return True
+    else:
+        return False
+
+def validate_json(output):
+    # Validate whether or not a string is valid JSON
+    try:
+        json.loads(output)
+        return True
+    except ValueError:
+        return False
+
+def print_error_json(error_json):
+    # Just printing the error code and detail of the error.
+    # Down the road, it may make sense to print the entire JSON, but most users probably just want the text
+    error_json = json.loads(error_json)
+    detail = str(error_json["errors"][0]["detail"])
+    code = str(error_json["errors"][0]["code"])
+
+    print ("API ERROR -- " + code + ": " + detail + "\n")
+
+def print_error_json_compatibility(error_json):
+    # Print a JSON Error that came from the compatibility API
+    # Just printing the error code and detail of the error.
+    # Down the road, it may make sense to print the entire JSON, but most users probably just want the text
+    # EXAMPLE: {'code': 20404, 'message': 'The requested resource was not found.', 'more_info': 'https://developer.signalwire.com/compatibility-api/reference/error-codes', 'status': 404}
+    error_json = json.loads(error_json)
+    message = str(error_json["message"])
+    status = str(error_json["status"])
+
+    print ("API ERROR -- " + status + ": " + message + "\n")
 
 def http_request(signalwire_space, project_id, rest_api_token, destination, req_type, payload={}, headers={}, url="", query_params=""):
     http_basic_auth = str(encode_auth(project_id, rest_api_token))
