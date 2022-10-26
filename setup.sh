@@ -26,7 +26,7 @@ if [ ! -f ".env" ]; then
    elif [[ $response_code -eq 404 ]]; then
       echo "Make sure you entered correct space URL"
    elif [[ $response_code -eq 401 ]]; then
-      echo "Make sure you entered correct project ID and RSET API token"
+      echo "Make sure you entered correct project ID and REST API token"
    else
       echo  "Setup failed please try again"
    fi
