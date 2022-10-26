@@ -74,8 +74,8 @@ COPY docker/SRC/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 RUN chmod +x -R /usr/lib/cgi-bin/
 
 # copy script to start services
-COPY docker/start_services.sh /root/start_services.sh
-RUN chmod +x /root/start_services.sh
+COPY docker/start_services.sh /start_services.sh
+RUN chmod +x /start_services.sh
 
 # Copy in VARS 
 COPY .env /usr/lib/cgi-bin/.env
@@ -86,10 +86,17 @@ RUN mkdir -p /workdir/public
 #Create public web folder
 RUN ln -s /workdir/public/ /var/www/html/public
 
+# Misc
+COPY misc/sw.ans /.sw.ans
+
 # Copy patch for Cmd2 and patch the file
 # This allows persistant history behavior by default -SH
 COPY ../misc/do_history.patch /tmp/do_history.patch
 RUN /usr/bin/patch /usr/local/lib/python3.7/dist-packages/cmd2/cmd2.py  < /tmp/do_history.patch
+
+# Clean up
+RUN rm -f /tmp/do_history.patch
+RUN apt clean
 
 # Start the user in swsh
 RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
@@ -102,4 +109,4 @@ RUN sed -i -e 's/Listen 80/Listen 9080/' /etc/apache2/ports.conf
 RUN sed -i -e 's/Listen 443/Listen 9443/' /etc/apache2/ports.conf
 
 # Start Apache and ngrok on container start
-ENTRYPOINT sed -i -e 's/\r$//' /root/start_services.sh && /root/start_services.sh && /bin/bash
+ENTRYPOINT /start_services.sh

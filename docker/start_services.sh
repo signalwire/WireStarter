@@ -25,3 +25,29 @@ if [ ! -z $LOCALTONET_AUTH_TOKEN ]; then
 	curl -s -o -  -X GET https://localtonet.com/api/GetTunnelsByAuthToken/$LOCALTONET_AUTH_TOKEN -H 'accept: */*' -H "Authorization: Bearer $LOCALTONET_API_TOKEN"| jq -r '.result[].url' | sed 's/https:\/\///g' > /root/localtonet.url
     fi
 fi
+
+export NGROK_URL=`cat /root/ngrok.url`;
+export LOCALTONET_URL=`cat /root/localtonet.url`;
+
+clear
+echo -e "\n\n";
+cat /.sw.ans
+echo -e "\n\n";
+echo -e "Welcome to WireStarter!";
+echo -e "\n"
+
+if [ ! -z $NGROK_URL ]; then
+    echo -e "NGROK Tunnel: https://$NGROK_URL";
+    echo -e "/workdir/public -> https://$NGROK_URL/public\n";
+fi
+if [ ! -z $LOCALTONET_URL ]; then
+    echo "LocalToNet Tunnel: https://$LOCALTONET_URL";
+    echo -e "/workdir/public -> https://$LOCALTONET_URL/public\n";
+fi
+if [ ! -z $WORKDIR ]; then
+    echo -e "Persistent host direcotry is $WORKDIR -> /workdir\n";
+fi
+
+echo -e "\n-- Thank you!\nsupport@signalwire.com\n\n";
+
+sleep infinity
