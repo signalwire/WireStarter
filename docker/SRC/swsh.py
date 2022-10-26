@@ -17,16 +17,25 @@ from signalwire.rest import Client as signalwire_client
 ###########################################################################
 class MyPrompt(cmd2.Cmd):
 
-    # Remove CMD2 default commands.
-    delattr(cmd2.Cmd, 'do_shell')
-    #delattr(cmd2.Cmd, 'do_macro')
-    delattr(cmd2.Cmd, 'do_shortcuts')
-    delattr(cmd2.Cmd, 'do_run_script')
-    delattr(cmd2.Cmd, 'do_run_pyscript')
-    delattr(cmd2.Cmd, 'do_edit')  # This may be something to work back in, since it allows editing of files.
-    #delattr(cmd2.Cmd, 'do_set')   # This may be something to work back in.  Would allow user to set different editors and turn on debugging.
-    delattr(cmd2.Cmd, 'do_ipy')
-    delattr(cmd2.Cmd, 'do_py')
+    def __init__(self):
+        super().__init__(
+            completekey='tab',
+            persistent_history_file='~/.swsh_history'
+        )
+
+        self.hidden_commands.append('macro')
+        self.hidden_commands.append('alias')
+        self.hidden_commands.append('set')
+        self.hidden_commands.append('exit')
+
+        del cmd2.Cmd.do_shell
+        del cmd2.Cmd.do_shortcuts
+        del cmd2.Cmd.do_run_script
+        del cmd2.Cmd.do_run_pyscript
+        del cmd2.Cmd.do_edit    # this may be something to add back in later to allow users to edit files.
+        #del cmd2.Cmd.do_set    # Eventually I'd like to remove this, but for now leaving on, because it can toggle debug mode on.
+        del cmd2.Cmd.do_ipy
+        del cmd2.Cmd.do_py
 
 
     prompt = 'swsh> '
@@ -1502,4 +1511,4 @@ class MyPrompt(cmd2.Cmd):
 
 ##
 if __name__ == '__main__':
-    MyPrompt(completekey='tab').cmdloop()
+    MyPrompt(completekey='tab',persistent_history_file='~/.swsh_history').cmdloop()
