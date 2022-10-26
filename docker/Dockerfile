@@ -15,6 +15,10 @@ ARG REST_API_TOKEN
 ENV REST_API_TOKEN=${REST_API_TOKEN}
 ARG VISUAL
 ENV VISUAL=${VISUAL}
+ARG LOCALTONET_API_TOKEN
+ENV LOCALTONET_API_TOKEN=${LOCALTONET_API_TOKEN}
+ARG LOCALTONET_AUTH_TOKEN
+ENV LOCALTONET_AUTH_TOKEN=${LOCALTONET_AUTH_TOKEN}
 
 # Install the basic package
 RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip
