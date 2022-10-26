@@ -5,9 +5,9 @@ if [ ! -f ".env" ]; then
    read -p "What is your Signalwire space: " sig_space;
    read -p "What is your Signalwire project ID: " proj_id;
    read -p "What is your Signalwire REST API token: " api_token;
-   read -p "What is your NGROK Token: " ngrok_token;
-   read -p "What is your LocaltoNet API TOKEN: " localtonet_api_token;
-   read -p "What is your LocaltoNet AUTH TOKEN: " localtonet_auth_token;
+   read -p "What is your NGROK Token (optional): " ngrok_token;
+   read -p "What is your LocaltoNet API TOKEN (optional): " localtonet_api_token;
+   read -p "What is your LocaltoNet AUTH TOKEN (optional): " localtonet_auth_token;
    read -p "What is your Work Dir: " workdir;
    read -p "Editor (nano, vim, emacs): " visual;
 
