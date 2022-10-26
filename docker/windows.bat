@@ -4,8 +4,9 @@ title ~#~#~#~#~#~#~Swish~#~#~#~#~#~#~
 :start
 
 if exist .env ( 
-REM echo "Remove .env to run again. Press the key to exit. Yes, that one."
- pause  exit
+REM echo Remove .env to setup again
+docker ps
+docker run -i -t signalwire/wirestarter /bin/bash
 ) else (
 
 set /p sig_space="What is your Signalwire space "
@@ -27,5 +28,6 @@ echo LOCALTONET_TUNNEL_TOKEN=%localtonet_api_token%>> .env
 REM CD docker
 docker network create --attachable wirestarter --subnet 172.50.0.1/24
 docker compose up -d
-
+docker ps
+docker run -i -t signalwire/wirestarter /bin/bash
 )
