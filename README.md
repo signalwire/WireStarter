@@ -39,7 +39,7 @@ Prerequisites
 1. Open Github Desktop
 2. Clone repo
 3. Top menu click Repository > Open in Command Prompt
-4. windows.bat
+4. setup.bat
 
 ### On Mac OSX or Linux:
  1.  git pull
