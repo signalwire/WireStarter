@@ -3,7 +3,7 @@ build:
 	@./docker-dev build
 
 up: build
-	./docker-dev up -d
+	@./docker-dev up -d
 
 up: build 
 
@@ -16,6 +16,6 @@ prune:
 	@docker system prune -a
 
 enter: up
-	docker exec -it wirestarter /bin/bash
+	@docker exec -it wirestarter /bin/bash
 
 restart: down up

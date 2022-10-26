@@ -62,7 +62,7 @@ RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | ba
 RUN a2enmod cgid
 
 # Configure Ngrok
-RUN if [ ! -z "${BUILD_ENV}" = "test" ]; then ngrok config add-authtoken $NGROK_TOKEN; fi
+RUN if [ ! -z "${NGROK_TOKEN}" ]; then ngrok config add-authtoken $NGROK_TOKEN; fi
 
 # Install Docker examples
 COPY examples /root/examples
@@ -81,11 +81,16 @@ RUN chmod +x /root/start_services.sh
 COPY .env /usr/lib/cgi-bin/.env
 
 # Make workdir
-RUN mkdir /workdir
+RUN mkdir -p /workdir/public
+
+#Create public web folder
+RUN ln -s /workdir/public/ /var/www/html/public
 
 # Start the user in swsh
 RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
 RUN ln -s /usr/lib/cgi-bin/swsh.py /usr/bin/swsh
+
+WORKDIR /workdir
 
 # Start Apache and ngrok on container start
 ENTRYPOINT sed -i -e 's/\r$//' /root/start_services.sh && /root/start_services.sh && /bin/bash
