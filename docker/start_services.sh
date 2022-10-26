@@ -45,7 +45,7 @@ if [ ! -z $LOCALTONET_URL ]; then
     echo -e "/workdir/public -> https://$LOCALTONET_URL/public\n";
 fi
 if [ ! -z $WORKDIR ]; then
-    echo -e "Persistent host direcotry is $WORKDIR -> /workdir\n";
+    echo -e "Persistent host directory is $WORKDIR -> /workdir\n";
 fi
 
 echo -e "\n-- Thank you!\nsupport@signalwire.com\n\n";
