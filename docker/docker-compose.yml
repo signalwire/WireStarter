@@ -13,7 +13,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - ${WORKDIR}:/workdir
     ports:
-      - 80:80/tcp
+      - 9080:9080/tcp
     stdin_open: true
     tty: true
     build:
@@ -25,6 +25,8 @@ services:
         NGROK_TOKEN: ${NGROK_TOKEN}
         SIGNALWIRE_SPACE: ${SIGNALWIRE_SPACE}
         VISUAL: ${VISUAL}
+        LOCALTONET_API_TOKEN: ${LOCALTONET_API_TOKEN}
+        LOCALTONET_AUTH_TOKEN: ${LOCALTONET_AUTH_TOKEN}
     privileged: true
     networks:
       wirestarter:

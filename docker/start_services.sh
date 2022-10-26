@@ -5,7 +5,7 @@
 #apache2ctl -D FOREGROUND
 
 # Start Nrok in a screen
-/usr/bin/screen -dmS ngrok /usr/local/bin/ngrok --log=/root/ngrok.log http 80
+/usr/bin/screen -dmS ngrok /usr/local/bin/ngrok --log=/root/ngrok.log http 9080
 sleep 3  # wait for the tunnel to start #
 
 ## What is the NGROK URL?

@@ -97,5 +97,9 @@ RUN ln -s /usr/lib/cgi-bin/swsh.py /usr/bin/swsh
 
 WORKDIR /workdir
 
+# Fix ports
+RUN sed -i -e 's/Listen 80/Listen 9080/' /etc/apache2/ports.conf
+RUN sed -i -e 's/Listen 443/Listen 9443/' /etc/apache2/ports.conf
+
 # Start Apache and ngrok on container start
 ENTRYPOINT sed -i -e 's/\r$//' /root/start_services.sh && /root/start_services.sh && /bin/bash
