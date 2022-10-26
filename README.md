@@ -10,6 +10,8 @@ Docker Desktop
  - Windows: https://docs.docker.com/desktop/install/windows-install/
  - Linux:   https://docs.docker.com/desktop/install/linux-install/
 
+ `NOTE: Docker account required for docker compose`
+
 NGROK account AND token (for tunnel into the WireStarter container, optional)
  - https://ngrok.com
  
@@ -25,7 +27,8 @@ Localtonet account
 * docker exec -ti <id> bash
 
 ## INSTALLATION ##
-On Windows:
+
+ ### On Windows:
 
 Prerequisites
 
@@ -39,7 +42,7 @@ Prerequisites
 4. cd docker
 5. windows.bat
 
-On Mac OSX or Linux:
+### On Mac OSX or Linux:
  1.  git pull
  2.  make up
 

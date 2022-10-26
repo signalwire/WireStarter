@@ -2,24 +2,32 @@
 
 title ~#~#~#~#~#~#~Swish~#~#~#~#~#~#~
 :start
+
+if exist .env ( 
+REM echo Remove .env to setup again
+docker ps
+docker run -i -t signalwire/wirestarter /bin/bash
+) else (
+
 set /p sig_space="What is your Signalwire space "
+set /p proj_id="What is your Signalwire Project ID "
+set /p api_token="What is your Signalwire REST API token "
+set /p ngrok_token="What is your NGROK Token "
+set /p visual_editor="What editor to use? nano, vim, emacs "
+set /p localtonet_api_token="What is your localtonet API Token "
+set /p localtonet_auth_token="What is your localtonet Tunnel Token "
 
-set /p proj_id= "What is your Signalwire project ID "
-set /p api_token= "What is your Signalwire REST API token "
-set /p ngrok_token= "What is your NGROK Token "
+echo SIGNALWIRE_SPACE=%sig_space%> .env
+echo PROJECT_ID=%proj_id%>> .env
+echo REST_API_TOKEN=%api_token%>> .env
+echo NGROK_TOKEN=%ngrok_token%>> .env
+echo VISUAL=%visual_editor%>> .env
+echo LOCALTONET_API_TOKEN=%localtonet_api_token%>> .env
+echo LOCALTONET_AUTH_TOKEN=%localtonet_auth_token%>> .env
 
-
-
-REM build:
-
-REM docker build --build-arg SIGNALWIRE_SPACE=%sig_space% --build-arg PROJECT_ID=%proj_id% --build-arg REST_API_TOKEN=%api_token% --build-arg NGROK_TOKEN=%ngrok_token% -t signalwire-getting-started %CD%docker\%CD%
-
-docker build --build-arg SIGNALWIRE_SPACE=%sig_space% --build-arg PROJECT_ID=%proj_id% --build-arg REST_API_TOKEN=%api_token% --build-arg NGROK_TOKEN=%ngrok_token% -t signalwire-getting-started  -f Dockerfile .
-
-REM run:
-
-docker "run" "-it" "signalwire-getting-started"
-
-REM up: "build" "run"
-
-REM all: "build" "run"
+REM CD docker
+docker network create --attachable wirestarter --subnet 172.50.0.1/24
+docker compose up -d
+docker ps
+docker run -i -t signalwire/wirestarter /bin/bash
+)
