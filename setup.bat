@@ -15,7 +15,7 @@ set /p proj_id="What is your Signalwire Project ID "
 set /p api_token="What is your Signalwire REST API token "
 set /p ngrok_token="What is your NGROK Token (Optional) "
 set /p visual_editor="What editor to use? nano, vim, emacs "
-set /p localtonet_api_token="What is your localtonet API Token "
+set /p localtonet_api_token="What is your localtonet API Token (Optional) "
 set /p localtonet_auth_token="What is your localtonet Tunnel Token (Optional) "
 
 echo SIGNALWIRE_SPACE=%sig_space%> .env
