@@ -1511,4 +1511,4 @@ class MyPrompt(cmd2.Cmd):
 
 ##
 if __name__ == '__main__':
-    MyPrompt(completekey='tab',persistent_history_file='~/.swsh_history').cmdloop()
+    MyPrompt().cmdloop()
