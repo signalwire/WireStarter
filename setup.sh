@@ -19,7 +19,7 @@ if [ ! -f ".env" ]; then
       echo "REST_API_TOKEN=$api_token" >> .env
       echo "NGROK_TOKEN=$ngrok_token" >> .env
       echo "VISUAL=$visual" >> .env
-      echo "LOCALTONET_API_TOKEN=$localtonet_api_token"
+      echo "LOCALTONET_API_TOKEN=$localtonet_api_token" >> .env
       echo "LOCALTONET_AUTH_TOKEN=$localtonet_auth_token" >> .env
       echo "WORKDIR=$workdir" >> .env
       echo "setup successful"
