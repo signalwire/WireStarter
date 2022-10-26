@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
+from typing_extensions import Required
 import cmd2
-from dotenv import load_dotenv
 import os
 import argparse
 from functions import *
@@ -14,26 +14,7 @@ import urllib.parse
 from signalwire.rest import Client as signalwire_client
 
 
-### SET ENVIRONMENT ###
-load_dotenv()
-
-signalwire_space = os.getenv('SIGNALWIRE_SPACE')
-project_id = os.getenv('PROJECT_ID')
-rest_api_token = os.getenv('REST_API_TOKEN')
-#######################
-## Local Functions ##
-## Format these so that they can be reused, rather than have one function for every single type of call
-## NOTE: ALL FUNCTIONS ARE SLOWLY BEING MOVED TO functions.py
-###
-def list_space_projects(query_params):
-    destination = "Accounts" + query_params
-    url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
-    response = http_request(signalwire_space, project_id, rest_api_token, destination, "GET", url=url)
-    # format the response into nice JSON
-    json_response = json.loads(response.text)
-    json_formatted_response = json.dumps(json_response, indent=2)
-    print(json_formatted_response)
-############################
+###########################################################################
 class MyPrompt(cmd2.Cmd):
 
     # Remove CMD2 default commands.
@@ -73,10 +54,10 @@ class MyPrompt(cmd2.Cmd):
     do_quit = do_exit
     help_quit = help_exit
 
-## SIP ENDPOINT ##
+## SIP ENDPOINT COMMAND ##
     # Create the top level parser for sip endpoints: sip_endpoint
     base_sip_endpoint_parser = cmd2.Cmd2ArgumentParser()
-    base_sip_endpoint_subparsers = base_sip_endpoint_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    base_sip_endpoint_subparsers = base_sip_endpoint_parser.add_subparsers(title='SIP ENDPOINT',help='sip_endpoint help')
 
     # create the sip_endpoint list subcommand
     sip_endpoint_parser_list = base_sip_endpoint_subparsers.add_parser('list', help='List SIP Endpoints')
@@ -112,9 +93,18 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_endpoint
     def sip_endpoint_list(self, args):
         '''list subcommand of sip_endpoint'''
-        output = json.loads( sip_endpoint_func() )
-        data_json = output["data"]
-        json_nice_print( data_json )
+        output, status_code =  sip_endpoint_func()
+        valid = validate_http(status_code)
+        if valid:
+            output_data = json.loads(output)
+            data_json = output_data["data"]
+            json_nice_print(data_json)
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print ("Error: " + output + "\n")
 
     def sip_endpoint_create(self, args):
         '''create subcommand of sip_endpoint'''
@@ -135,9 +125,19 @@ class MyPrompt(cmd2.Cmd):
               create_sip_endpoint_dictionary[x] = y
 
         payload = json.dumps( create_sip_endpoint_dictionary )
-        output = sip_endpoint_func(query_params, "POST",  payload=payload)
-        # TODO: Check the return code and validate
-        print("Succes! SIP Endpoint Created")
+        output, status_code = sip_endpoint_func(query_params, "POST",  payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            # Grab the New ID and print for the user
+            output_json = json.loads(output)
+            endpoint_id = output_json["id"]
+            print("SIP Endpoint created with ID: " + sid + "\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print (status_code + ": " + output + "\n" )
 
     def sip_endpoint_update(self, args):
         '''update subcommand of sip_endpoint'''
@@ -159,9 +159,17 @@ class MyPrompt(cmd2.Cmd):
               update_sip_endpoint_dictionary[x] = y
 
         payload = json.dumps ( update_sip_endpoint_dictionary )
-        output = sip_endpoint_func(query_params, "PUT",  payload=payload)
-        # TODO: Check the return code and validate
-        print("Success! SIP Endpoint Updated")
+        output, status_code = sip_endpoint_func(query_params, "PUT",  payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            # TODO: Output the sip endpoint after updated.  Maybe?
+            print("SIP Endpoint " + sid + " updated.\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print (status_code + ": " + output + "\n" )
 
     def sip_endpoint_delete(self, args):
         '''delete subcommand of sip_endpoint'''
@@ -170,13 +178,21 @@ class MyPrompt(cmd2.Cmd):
         if sid is not None:
             confirm = input("Remove SIP Endpoint " + sid + "? This cannot be undone! (y/n): " )
             if (confirm == "Y" or confirm == "y"):
-                output = sip_endpoint_func(query_params, "DELETE")
-                # TODO: Check the return code and validate
-                print("Success! SIP Endpoint Removed")
+                output, status_code = sip_endpoint_func(query_params, "DELETE")
+                valid = validate_http(status_code)
+                if valid:
+                    print("Success! SIP Endpoint " + sid + " Removed\n")
+                else:
+                    is_json = validate_json(output)
+                    if is_json:
+                        print_error_json(output)
+                    else:
+                        status_code = str(status_code)
+                        print ( status_code + ": " + output + "\n" )
             else:
                 print ("OK.  Cancelling...\n")
         else:
-            print ("ERROR: Please enter a valid SID")
+            print ("ERROR: Please enter a valid SID\n")
 
     # Set default handlers for each sub command
     sip_endpoint_parser_list.set_defaults(func=sip_endpoint_list)
@@ -194,10 +210,10 @@ class MyPrompt(cmd2.Cmd):
             self.do_help('sip_endpoint')
 
 
-## SIP PROFILES ##
+## SIP PROFILE COMMAND ##
     # Create the top level parser for sip profiles: sip_profile
     base_sip_profile_parser = cmd2.Cmd2ArgumentParser()
-    base_sip_profile_subparsers = base_sip_profile_parser.add_subparsers(title='subcommands',help='subcommand help')
+    base_sip_profile_subparsers = base_sip_profile_parser.add_subparsers(title='SIP PROFILE',help='sip_profile help')
 
     # create the sip_profile list subcommand
     sip_profile_parser_list = base_sip_profile_subparsers.add_parser('list', help='List SIP Profiles')
@@ -213,9 +229,17 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_profile
     def sip_profile_list(self, args):
         '''list subcommand of sip_profile'''
-        output = json.loads( sip_profile_func() )
-        #data_json = output["data"]
-        json_nice_print( output )
+        output, status_code = sip_profile_func()
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            json_nice_print(output_json)
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print (status_code + ": " + output + "\n" )
 
     def sip_profile_update(self, args):
         '''update subcommand of sip_profile'''
@@ -233,8 +257,16 @@ class MyPrompt(cmd2.Cmd):
               update_sip_profile_dictionary[x] = y
 
         payload = json.dumps(update_sip_profile_dictionary)
-        output = sip_profile_func(req_type="PUT", payload=payload)
-        print("Complete.  The SIP Profile has been updated.\n")
+        output, status_code = sip_profile_func(req_type="PUT", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            print("Complete.  The SIP Profile has been updated.\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print (status_code + ": " + output + "\n" )
 
     # Set default handlers for each sub command
     sip_profile_parser_list.set_defaults(func=sip_profile_list)
@@ -250,10 +282,10 @@ class MyPrompt(cmd2.Cmd):
             self.do_help('sip_profile')
 
 
-## PHONE NUMBERS ##
+## PHONE NUMBER COMMAND ##
     # Create the top level parser for phone numbers: phone_number
     base_phone_number_parser = cmd2.Cmd2ArgumentParser()
-    base_phone_number_subparsers = base_phone_number_parser.add_subparsers(title='phone_number subcommands',help='subcommand help')
+    base_phone_number_subparsers = base_phone_number_parser.add_subparsers(title='PHONE NUMBER',help='phone_number help')
 
     # create the phone_number list subcommand
     phone_number_parser_list = base_phone_number_subparsers.add_parser('list', help='List Phone Numbers for a Projects')
@@ -306,48 +338,78 @@ class MyPrompt(cmd2.Cmd):
     def phone_number_list(self, args):
         '''list subcommand of phone_number'''
         if args.json:
-            output = json.loads( phone_number_func() )
-            data_json = output["data"]
-            json_nice_print( data_json )
+            output, status_code = phone_number_func()
+            valid = validate_http(status_code)
+            if valid:
+                output_json = json.loads(output)
+                data_json = output_json["data"]
+                json_nice_print(data_json)
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    print (status_code + ": " + output + "\n" )
         elif args.id:
             sid = args.id
             query_params = "/" + sid
-            output = json.loads ( phone_number_func( query_params ) )
-            json_nice_print( output )
-        elif args.name:
+            output, status_code = phone_number_func(query_params)
+            valid = validate_http(status_code)
+            if valid:
+                output_json = json.loads(output)
+                json_nice_print(output_json)
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    print (status_code + ": " + output + "\n" )
+        elif args.name or args.number:
             # TODO: Currently only supporting a single name value AKA "name" as oppsed to "name test".  Try to make this support more (may not actually be supported by API)
             # Keeping code into allow it to be mutiple values just in case.
             #if len(args.name) == 1:
             #    name = args.name[0]
             #elif len(args.name) > 1:
             #    name = "%20".join(args.name)
-            name = args.name
-            query_params = "?filter_name=%s" % name
-            output = json.loads( phone_number_func( query_params ) )
-            output_data = output["data"]
-            json_nice_print( output_data )
-        elif args.number:
-            number = args.number.replace('+', '%2b')      # URL encode the plus sign if there is one.  API does seem to work without it, so could be stripped too.
-            query_params = "?filter_number=%s" % number
-            output = json.loads( phone_number_func( query_params ) )
-            output_data = output["data"]
-            json_nice_print( output_data )
-        elif args.name and args.number:
-            number = args.number.repalce('+', '%2b')      # URL encode the plus sign if there is one.  API does seem to work without it, so could be stripped too.
-            name = args.name
-            query_params = "?filter_name=%s&filter_number=%s" % (name, number)
-            output = json.loads ( phone_number_func( query_params ) )
-            output_data = output["data"]
-            json_nice_print( output_data )
+            query_params = "?"
+            if args.name:
+                name = urllib.parse.quote(args.name)
+                query_params = query_params + "filter_name=%s&" % name
+            if args.number:
+                number = urllib.parse.quote(args.number)
+                query_params = query_params + "filter_number=%s&" % number
+
+            query_params = query_params[:-1] # Removing the final character to clean up dangling &
+            output, status_code = phone_number_func(query_params)
+            valid = validate_http(status_code)
+            if valid:
+                output_json = json.loads(output)
+                data_json = output_json["data"]
+                json_nice_print(data_json)
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    print (status_code + ": " + output + "\n" )
         else:
-            output = phone_number_func()
-            json_data = json.loads(output)
-            tn_data = json_data["data"]
-            for index, value in enumerate(tn_data):
-                # Create a temporary dictionary for each number then only return the number value
-                # NOTE: Someday this could be expanded to return the number and the ID or something like that
-                temp_d = value
-                print (temp_d["number"])
+            output, status_code = phone_number_func()
+            valid = validate_http(status_code)
+            if valid:
+                json_data = json.loads(output)
+                tn_data = json_data["data"]
+                for index, value in enumerate(tn_data):
+                    # Create a temporary dictionary for each number then only return the number value
+                    # NOTE: Someday this could be expanded to return the number and the ID or something like that
+                    temp_d = value
+                    print (temp_d["number"])
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    print (status_code + ": " + output + "\n" )
+
 
     def phone_number_update(self, args):
         '''Update subcommand of phone_number'''
@@ -386,9 +448,23 @@ class MyPrompt(cmd2.Cmd):
                 update_phone_number_dictionary[x] = y
 
         payload = json.dumps(update_phone_number_dictionary)
-        phone_number_func(query_params, "PUT",  payload=payload)
-        # TODO: Check the return code here.  If its a 422, then output that it requires a name to be added to the command.
-        print("Complete!")
+        output, status_code = phone_number_func(query_params, "PUT",  payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            phone_number = output_json["number"]
+            print(phone_number + " has been updated successfully\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    print (status_code + ": " + output + "\n" )
+
 
     def phone_number_release(self, args):
         '''Release subcommand of phone_number'''
@@ -400,12 +476,27 @@ class MyPrompt(cmd2.Cmd):
         # Need validation here.  There are times when the number is too new to be released.  Would be nice to be able to relay that.
         if confirm.lower() == "yes" or confirm.lower() == "y":
             print("we are here")
-            phone_number_func(query_params, "DELETE")
+            output, status_code = phone_number_func(query_params, "DELETE")
+            valid = validate_http(status_code)
+            if valid:
+                # TODO: Pull the number from the API first, that way we have all the data here and can output the number correctly, rather than the SID.
+                print("Phone number with SID, " + sid + ", has been successfully Removed\n")
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    is_json = validate_json(output)
+                    if is_json:
+                        print_error_json(output)
+                    else:
+                        print (status_code + ": " + output + "\n" )
         else:
             print("Cancelling...\n")
 
     def phone_number_lookup(self, args):
         '''lookup subcommand of phone_number'''
+        # TODO: Refactor this command using new(er) functions
         # Verify its a 10 digit US number in e.164 format.
         number = args.number
         phone_num_regex = re.compile(r'^\+1\d{10}$')
@@ -428,6 +519,9 @@ class MyPrompt(cmd2.Cmd):
 
     def phone_number_buy(self, args):
         '''buy subcommand of phone_number'''
+        # TODO: Make this much more robust.
+        # TODO: Add switches to pass in from command line
+        # TODO: Buy multiple numbers / bulk numbers
         os.system(" python3 /usr/lib/cgi-bin/buy_a_phone_number.py ")
 
     # Set default handlers for each sub command
@@ -450,7 +544,7 @@ class MyPrompt(cmd2.Cmd):
 ## LaML BINS ##
     # Create the top level parser for laml bins: laml_bin
     base_laml_bin_parser = cmd2.Cmd2ArgumentParser()
-    base_laml_bin_subparsers = base_laml_bin_parser.add_subparsers(title='subcommands',help='subcommand help')
+    base_laml_bin_subparsers = base_laml_bin_parser.add_subparsers(title='LaML BINS',help='laml_bin help')
 
     # create the laml_bin list subcommand
     laml_bin_parser_list = base_laml_bin_subparsers.add_parser('list', help='List LaML Bins for a Projects')
@@ -490,14 +584,23 @@ class MyPrompt(cmd2.Cmd):
             query_params="?Name=%s" % name
         if args.id:
             sid = args.id
-            query_params="/" % sid
+            query_params="/" + sid
 
-        output = json.loads( laml_bin_func(query_params) )
-        if args.id:
-            output_laml_bin = output
+        output, status_code = laml_bin_func(query_params)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            if args.id:
+                output_laml_bin = output_json
+            else:
+                output_laml_bin = output_json["laml_bins"]
+            json_nice_print(output_laml_bin)
         else:
-            output_laml_bin = output["laml_bins"]
-        json_nice_print ( output_laml_bin )
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print ("Error: " + output + "\n")
 
     def laml_bin_create(self, args):
         '''create subcommand of laml_bin'''
@@ -529,9 +632,18 @@ class MyPrompt(cmd2.Cmd):
             name_url_encode = urllib.parse.quote(name)
             contents_url_encode = urllib.parse.quote(contents, safe='/')
             payload = "Contents=%s&Name=%s" % (contents_url_encode, name_url_encode)
-            output = laml_bin_func(req_type="POST", payload=payload)
-            #print (output)
-            print ("LaML Bin Created")
+            output, status_code = laml_bin_func(req_type="POST", payload=payload)
+            valid = validate_http(status_code)
+            if valid:
+                output_json = json.loads(output)
+                sid = str(output_json["sid"])
+                print ("LaML Bin, " + sid + " has been created successfully\n")
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json_compatibility(output)
+                else:
+                    print ("Error: " + output + "\n")
 
     def laml_bin_update(self, args):
         '''create subcommand of laml_bin'''
@@ -540,20 +652,25 @@ class MyPrompt(cmd2.Cmd):
         if args.contents is None:
             # Get the LaML bin to Edit and save it to a temp file
             query_params = "/" + sid
-            output = json.loads( laml_bin_func(query_params) )
-            output_laml_bin_contents = output["contents"]
-            filename = '/tmp/%s.xml' % sid
-            with open(filename, 'w')  as f:
-                print(output_laml_bin_contents, file=f)
-            sha1_hash_orig = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
-            os.system( "vim %s" % filename )
-            sha1_hash_new = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
+            output, status_code =  laml_bin_func(query_params)
+            valid = validate_http(status_code)  # We can probably get away without validating here, but may as well
+            if valid:
+                output_json = json.loads(output)
+                output_laml_bin_contents = output_json["contents"]
+                filename = '/tmp/%s.xml' % sid
+                with open(filename, 'w')  as f:
+                    print(output_laml_bin_contents, file=f)
+                sha1_hash_orig = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
+                os.system( "vim %s" % filename )
+                sha1_hash_new = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
 
-            if sha1_hash_orig != sha1_hash_new:
-                with open(filename) as f:
-                    lines = f.readlines()
-                    args.contents = lines
-                    os.system( "rm %s" % filename )
+                if sha1_hash_orig != sha1_hash_new:
+                    with open(filename) as f:
+                        lines = f.readlines()
+                        args.contents = lines
+                        os.system( "rm %s" % filename )
+            else:
+                print ("Error: Something bad happened")
 
         # URL Encode the params
         if args.name:
@@ -574,9 +691,17 @@ class MyPrompt(cmd2.Cmd):
             print("Nothing has changed.  Exiting.\n")
 
         if payload != "":
-            output = laml_bin_func(query_params, req_type="POST", payload=payload)
-            #print (output)
-            print ("LaML Bin Has been updated")
+            output, status_code = laml_bin_func(query_params, req_type="POST", payload=payload)
+            valid = validate_http(status_code)
+            if valid:
+                output_json = json.loads(output)
+                print ("LaML Bin, " + sid + " has been updated successfully\n")
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json_compatibility(output)
+                else:
+                    print ("Error: " + output + "\n")
 
     def laml_bin_delete(self, args):
         '''create subcommand of laml_bin'''
@@ -584,9 +709,17 @@ class MyPrompt(cmd2.Cmd):
         query_params = '/' + sid
         confirm = str(input("Are you sure you want to proceed removing this LaML Bin?  This cannot be undone (Y/n): "))
         if confirm.lower() == "yes" or confirm.lower() == "y":
-            output = laml_bin_func( query_params, "DELETE" )
-            #print (output)
-            print ("LaML Bin " + sid + " Removed.")
+            output, status_code = laml_bin_func( query_params, "DELETE" )
+            valid = validate_http(status_code)
+            if valid:
+                print("Success! LaML Bin " + sid + " Removed\n")
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json_compatibility(output)
+                else:
+                    status_code = str(status_code)
+                    print ( status_code + ": " + output + "\n" )
         else:
             print("Cancelling...")
 
@@ -609,7 +742,7 @@ class MyPrompt(cmd2.Cmd):
 ## SIGNALWIRE SPACES / PROJECTs
     # Create the top level parser for space: space
     base_space_parser = cmd2.Cmd2ArgumentParser()
-    base_space_subparsers = base_space_parser.add_subparsers(title='subcommands', help='subcommand help') # TODO: Fix help text
+    base_space_subparsers = base_space_parser.add_subparsers(title='SPACE', help='space help')
 
     # Create the space cd subcommand
     space_parser_change = base_space_subparsers.add_parser('cd', help='change to a different space')
@@ -624,27 +757,19 @@ class MyPrompt(cmd2.Cmd):
     # Subcommand functions for space
     def space_cd(self, args):
         '''change directory subcommand of space'''
+        os.environ['SIGNALWIRE_SPACE'] = args.hostname
+        os.environ['PROJECT_ID'] = args.project_id
+        os.environ['REST_API_TOKEN'] = args.token
 
-        #
-        # This will write out the new config to the .env file and be set for restart.
-        # Not sure this is really the way I'd like to go.  Maybe it makes sense to just keep what the image was built with as the default.
-        # Leaving the code in commented out, just in case its needed later.
-        #
-        # f = open(".env", "w")
-        # f.write("SIGNALWIRE_SPACE=" + args.hostname + "\nPROJECT_ID=" + args.project_id + "\nREST_API_TOKEN=" + args.token)
-        # f.close()
+        # TODO: Add validation to verify the space and creds added are actually valid.
+        # Would also be nice to password validate somehow to make sure only an authorized user for the space has access (Although I guess that is what an API token is designed to do)
+        signalwire_space, project_id, rest_api_token = get_environment()
 
-        # Not sure if there is a better way to accomplish this, but using global was the only way I could get the variables to persist.
-        global signalwire_space
-        global project_id
-        global rest_api_token
-
-        signalwire_space = args.hostname
-        project_id = args.project_id
-        rest_api_token = args.token
+        print ("\nNow working in project, " + project_id + ", in the " + signalwire_space + " SignalWire space")
 
     def space_show(self, args):
         '''show the working space and project configuration'''
+        signalwire_space, project_id, rest_api_token = get_environment()
         if args.token:
             output = "SignalWire Space: " + signalwire_space + "\nProject ID: " + project_id + "\nToken: " + rest_api_token + "\n"
         else:
@@ -667,7 +792,7 @@ class MyPrompt(cmd2.Cmd):
 
     # Create the top level parser for projects: project
     base_project_parser = cmd2.Cmd2ArgumentParser()
-    base_project_subparsers = base_project_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    base_project_subparsers = base_project_parser.add_subparsers(title='PROJECT',help='project help')
 
     # Create the project list subcommand
     project_parser_list = base_project_subparsers.add_parser('list', help='List LaML Bins for a Projects')
@@ -698,19 +823,31 @@ class MyPrompt(cmd2.Cmd):
         else:
             query_params=""
 
-        list_space_projects(query_params=query_params)
+        output, status_code = project_func(query_params=query_params)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            accounts_json = output_json["accounts"]
+            json_nice_print (accounts_json)
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                status_code = str(status_code)
+                print ( status_code + ": " + output + "\n" )
 
     def project_create(self, args):
         '''create subcommand of project'''
-        print('Create a project')
+        print('Create a project -- Coming Soon')
 
     def project_update(self, args):
         '''create subcommand of project'''
-        print('Create a project')
+        print('Create a project -- Coming Soon')
 
     def project_delete(self, args):
         '''create subcommand of project'''
-        print('Delete/Remove a project')
+        print('Delete/Remove a project -- Coming Soon')
 
     # Set default handlers for each sub command
     project_parser_list.set_defaults(func=project_list)
@@ -731,7 +868,7 @@ class MyPrompt(cmd2.Cmd):
 ## LaML APPLICATIONS ##
     # Create the top level parser for domain application: laml_app
     base_laml_app_parser = cmd2.Cmd2ArgumentParser()
-    base_laml_app_subparsers = base_laml_app_parser.add_subparsers(title='subcommands',help='subcommand help')
+    base_laml_app_subparsers = base_laml_app_parser.add_subparsers(title='LaML APP',help='laml_app help')
 
     # create the domain application list subcommand
     laml_app_parser_list = base_laml_app_subparsers.add_parser('list', help='List LaML Applications for the Project')
@@ -785,13 +922,23 @@ class MyPrompt(cmd2.Cmd):
         else:
             query_params=""
 
-        # When retrieving just an ID, there is no data json object
-        output = json.loads( laml_app_func(query_params) )
-        if args.id:
-            json_nice_print(output)
+        output, status_code = laml_app_func(query_params)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            if args.id:
+                json_nice_print(output_json)   # When retrieving just an ID, there is no data json object
+            else:
+                json_applications = output_json["applications"]
+                json_nice_print(json_applications)
         else:
-            output_applications = output["applications"]
-            json_nice_print(output_applications)
+            is_json = validate_json_compatibility(output)
+            if is_json:
+                 print_error_json(output)
+            else:
+                 status_code = str(status_code)
+                 print ( status_code + ": " + output + "\n" )
+
 
     def laml_app_create(self, args):
         '''create subcommand of laml_app'''
@@ -842,8 +989,18 @@ class MyPrompt(cmd2.Cmd):
 
         payload = FriendlyName + MessageStatusCallback + SmsFallbackMethod + SmsFallbackUrl + SmsMethod + SmsStatusCallback + SmsUrl + StatusCallback + StatusCallbackMethod + VoiceCallerIdLookup + VoiceFallbackMethod + VoiceFallbackUrl + VoiceMethod + VoiceUrl
 
-        output = laml_app_func(req_type="POST", payload=payload)
-        print ("LaML Application Created\n")
+        output, status_code = laml_app_func(req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            sid = str(output_json["sid"])
+            print ("LaML App, " + sid + " has been created successfully\n")
+        else:
+            is_json = valididate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print("Error: " + output + "\n")
 
     def laml_app_update(self, args):
         '''update subcommand of laml_app'''
@@ -890,14 +1047,23 @@ class MyPrompt(cmd2.Cmd):
         if args.voice_fallback_url:
             VoiceFallbackUrl = "&VoiceFallbackUrl=" + urllib.parse.quote(args.voice_fallback_url)
         if args.voice_method:
-            VoiceMethod = "&VoiceMethod=" + urllib.parse.quote(args.voice_fallback_url)
+            VoiceMethod = "&VoiceMethod=" + urllib.parse.quote(args.voice_method)
         if args.voice_url:
             VoiceUrl = "&VoiceUrl=" + urllib.parse.quote(args.voice_url)
 
         payload = FriendlyName + MessageStatusCallback + SmsFallbackMethod + SmsFallbackUrl + SmsMethod + SmsStatusCallback + SmsUrl + StatusCallback + StatusCallbackMethod + VoiceCallerIdLookup + VoiceFallbackMethod + VoiceFallbackUrl + VoiceMethod + VoiceUrl
 
-        output = laml_app_func(query_params, req_type="POST", payload=payload)
-        print ("LaML Application Updated\n")
+        output, status_code = laml_app_func(query_params, req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            print ("LaML App, " + sid + " has been updated successfully\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print ("Error: " + output + "\n")
 
     def laml_app_delete(self, args):
         sid = args.id
@@ -905,8 +1071,17 @@ class MyPrompt(cmd2.Cmd):
         if sid is not None:
             confirm = input("Remove LaML Application " + sid + "?  This cannot be undone! (y/n): ")
             if (confirm.lower() == "y" or confirm.lower() == "yes"):
-                output = laml_app_func(query_params, req_type="DELETE")
-                print ("LaML App Removed")
+                output, status_code = laml_app_func(query_params, req_type="DELETE")
+                valid = validate_http(status_code)
+                if valid:
+                    print("Success! LaML App " + sid + " Removed\n")
+                else:
+                    is_json = validate_json(output)
+                    if is_json:
+                        print_error_json_compatibility(output)
+                    else:
+                        status_code = str(status_code)
+                        print ( status_code + ": " + output + "\n" )
             else:
                 print ("OK. Cancelling.")
         else:
@@ -945,7 +1120,7 @@ class MyPrompt(cmd2.Cmd):
     domain_application_parser_create.add_argument('--identifier', help='Identifier of the domain.  Must be unique accross the project.', required=True)
     domain_application_parser_create.add_argument('--ip-auth-enabled',  help='Whether the domain application will enforce IP authentication (Boolean)', choices=['true','false'] )
     domain_application_parser_create.add_argument('--ip-auth', nargs='+',  help='A List of whitelisted / allowed IPs when --ip-auth-enabled is true ' )
-    domain_application_parser_create.add_argument('--call-handler', help='How the domain Application handles calls', choices=['relay_context','laml_webhooks','laml_application','video_room'] )
+    domain_application_parser_create.add_argument('--call-handler', help='How the domain Application handles calls', choices=['relay_context','laml_webhooks','laml_application','video_room'], required=True )
     domain_application_parser_create.add_argument('--call-request-url', help='The LaML URL to access when a call is received.  This is only used with laml_webhooks call handler')
     domain_application_parser_create.add_argument('--call-request-method', help='The HTTP method to use with call_request_url', choices=["POST", "GET"], default="POST")
     domain_application_parser_create.add_argument('--call-fallback-url', help='The LaML URL to access when call_request_url fails')
@@ -1009,18 +1184,20 @@ class MyPrompt(cmd2.Cmd):
             query_params=""
 
         # When retrieving just an ID, there is no data json object
-        output = json.loads( domain_application_func(query_params) )
-        if args.id:
-            json_nice_print (output)
-        else:
-            output_data = output["data"]
-            json_nice_print (output_data)
+        output, status_code = domain_application_func(query_params)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            if args.id:
+                json_nice_print (output_json)
+            else:
+                data_json = output_json["data"]
+                json_nice_print (data_json)
 
     def domain_application_create(self, args):
         '''create subcommand of domain_application'''
         # Make the Name look nice
         if args.name:
-            print(args.name)
             args.name = ' '.join(args.name)
         domain_application_dictionary = {
            "name": args.name,
@@ -1048,8 +1225,19 @@ class MyPrompt(cmd2.Cmd):
                 create_domain_application_dictionary[x] = y
 
         payload = json.dumps(create_domain_application_dictionary)
-        output = domain_application_func(req_type="POST", payload=payload)
-        print("Domain Application Created")
+        output, status_code = domain_application_func(req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            # Grab the SID of the new domain app and output for user
+            output_json = json.loads(output)
+            endpoint_id = output_json["id"]
+            print("Domain Application created with ID: " + endpoint_id)
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print(status_code + ": " + output + "\n")
 
     def domain_application_update(self, args):
         '''create subcommand of domain_application'''
@@ -1085,8 +1273,16 @@ class MyPrompt(cmd2.Cmd):
                 update_domain_application_dictionary[x] = y
 
         payload = json.dumps(update_domain_application_dictionary)
-        output = domain_application_func(query_params, req_type="PUT", payload=payload)
-        print("Domain Application Updated")
+        output, status_code = domain_application_func(query_params, req_type="PUT", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            print("Domain Application, " + sid + " has been udpated.\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print(status_code + ": " + outpout + "\n")
 
     def domain_application_delete(self, args):
         '''delete subcommand of domain_application'''
@@ -1095,7 +1291,16 @@ class MyPrompt(cmd2.Cmd):
         if sid is not None:
             confirm = input("Remove Domain Application " + sid + "? This cannot be undone! (y/n): " )
             if (confirm == "Y" or confirm == "y"):
-                domain_application_func(query_params, req_type="DELETE")
+                output, status_code = domain_application_func(query_params, req_type="DELETE")
+                valid = validate_http(status_code)
+                if valid:
+                    print("Success! Domain Application " + sid + " Removed\n")
+                else:
+                    is_json = validate_json(output)
+                    if is_json:
+                        print_error_json(output)
+                    else:
+                        print (status_code + ": " + output + "\n")
             else:
                 print ("Aborting.")
         else:
@@ -1156,9 +1361,22 @@ class MyPrompt(cmd2.Cmd):
         else:
             query_params=""
 
-        output = json.loads( number_group_func( query_params ) )
-        output_data = output["data"]
-        json_nice_print (output_data)
+        output, status_code = number_group_func( query_params )
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            # if only ID is used, there is no data object.
+            if args.id:
+                json_nice_print (output_json)
+            else:
+                data_json = output_json["data"]
+                json_nice_print (data_json)
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print ("Error: " + output + "\n")
 
     def number_group_create(self, args):
         '''create subcommand of number_group'''
@@ -1168,9 +1386,19 @@ class MyPrompt(cmd2.Cmd):
         }
 
         payload = json.dumps(number_group_dictionary)
-        output = number_group_func(req_type="POST", payload=payload)
-        #print (output)
-        print("Number Group Created")
+        output, status_code = number_group_func(req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            print (output_json)
+            endpoint_id = output_json["id"]
+            print("Number group created with ID: " + endpoint_id + "\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print (status_code + ": " + output + "\n")
 
     def number_group_update(self, args):
         '''update subcommand of number_group'''
@@ -1187,9 +1415,17 @@ class MyPrompt(cmd2.Cmd):
               update_number_group_dictionary[x] = y
 
         payload = json.dumps(update_number_group_dictionary)
-        output = number_group_func(query_params, req_type="PUT", payload=payload)
-        #print (output)
-        print("Number Group has been updated")
+        output, status_code = number_group_func(query_params, req_type="PUT", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            # TODO: Output the sip endpoint after updated.  Maybe?
+            print("Success! Number group " + sid + " Updated\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                print (status_code + ": " + output + "\n" )
 
     def number_group_delete(self, args):
         '''delete subcommand of number_group'''
@@ -1198,7 +1434,17 @@ class MyPrompt(cmd2.Cmd):
         if sid is not None:
             confirm = input("Remove Number Group " + sid + "? This cannot be undone! (y/n): " )
             if (confirm == "Y" or confirm == "y"):
-                output = number_group_func(query_params, req_type="DELETE")
+                output, status_code = number_group_func(query_params, req_type="DELETE")
+                valid = validate_http(status_code)
+                if valid:
+                    print("Success! Number Group " + sid + " Removed\n")
+                else:
+                    is_json = validate_json(output)
+                    if is_json:
+                        print_error_json(output)
+                    else:
+                        status_code = str(status_code)
+                        print ( status_code + ": " + output + "\n" )
             else:
                 print ("OK. Cancelling")
         else:
@@ -1226,9 +1472,6 @@ class MyPrompt(cmd2.Cmd):
 
 
 
-
-
-
 ## SEND TEXT MESSAGE
     sms_parser = cmd2.Cmd2ArgumentParser()
     sms_parser.add_argument('-f', '--from-num', type=str,  help='Send text FROM number -- Must be a signalwire number registered to campaign', required=True)
@@ -1237,6 +1480,8 @@ class MyPrompt(cmd2.Cmd):
     @cmd2.with_argparser(sms_parser)
     def do_send_text(self, args: argparse.Namespace):
         '''Send an SMS Text Message'''
+        # TODO: Move this into the functions file
+        signalwire_space, project_id, rest_api_token = get_environment()
         from_no = args.from_num
         to_no = args.to_num
         text_body = " ".join(args.text_body)
