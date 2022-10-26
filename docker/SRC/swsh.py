@@ -131,7 +131,7 @@ class MyPrompt(cmd2.Cmd):
             # Grab the New ID and print for the user
             output_json = json.loads(output)
             endpoint_id = output_json["id"]
-            print("SIP Endpoint created with ID: " + sid + "\n")
+            print("SIP Endpoint created with ID: " + endpoint_id + "\n")
         else:
             is_json = validate_json(output)
             if is_json:
