@@ -10,6 +10,8 @@ Docker Desktop
  - Windows: https://docs.docker.com/desktop/install/windows-install/
  - Linux:   https://docs.docker.com/desktop/install/linux-install/
 
+ `NOTE: Docker account required for docker compose`
+
 NGROK account AND token (for tunnel into the WireStarter container, optional)
  - https://ngrok.com
  
