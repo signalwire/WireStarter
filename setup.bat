@@ -25,6 +25,7 @@ echo NGROK_TOKEN=%ngrok_token%>> .env
 echo VISUAL=%visual_editor%>> .env
 echo LOCALTONET_API_TOKEN=%localtonet_api_token%>> .env
 echo LOCALTONET_AUTH_TOKEN=%localtonet_auth_token%>> .env
+echo WORKDIR=/tmp>> .env
 
 REM CD docker
 docker network create --attachable wirestarter --subnet 172.50.0.1/24
