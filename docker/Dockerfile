@@ -87,6 +87,7 @@ RUN ln -s /workdir/public/ /var/www/html/public
 COPY misc/sw.ans /.sw.ans
 COPY misc/bash.rc /root/.bashrc
 COPY bin/setupnvm /usr/bin
+COPY bin/setupgolang /usr/bin
 
 # Copy patch for Cmd2 and patch the file
 # This allows persistant history behavior by default -SH
