@@ -54,9 +54,6 @@ RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && e
 RUN export LOCALTONETARCH=`uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/x64/g'` && wget https://www.localtonet.com/download/localtonet-linux-${LOCALTONETARCH}.zip && unzip localtonet-linux-${LOCALTONETARCH}.zip && mv localtonet /usr/bin/ && \
     rm -f localtonet-linux-${LOCALTONETARCH}.zip && chmod 755 /usr/bin/localtonet
 
-# Install NVM 
-RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
-
 # Enable Python -- Apache
 # This may need to just be creating the symlink since the image doesn't run
 RUN a2enmod cgid
@@ -89,6 +86,7 @@ RUN ln -s /workdir/public/ /var/www/html/public
 # Misc
 COPY misc/sw.ans /.sw.ans
 COPY misc/bash.rc /root/.bashrc
+COPY bin/setupnvm /usr/bin
 
 # Copy patch for Cmd2 and patch the file
 # This allows persistant history behavior by default -SH
