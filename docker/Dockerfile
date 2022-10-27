@@ -88,6 +88,7 @@ RUN ln -s /workdir/public/ /var/www/html/public
 
 # Misc
 COPY misc/sw.ans /.sw.ans
+COPY misc/bash.rc /root/.bashrc
 
 # Copy patch for Cmd2 and patch the file
 # This allows persistant history behavior by default -SH
@@ -99,7 +100,6 @@ RUN rm -f /tmp/do_history.patch
 RUN apt clean
 
 # Start the user in swsh
-RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
 RUN ln -s /usr/lib/cgi-bin/swsh.py /usr/bin/swsh
 
 # Copy file to redirect to documentation
