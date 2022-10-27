@@ -5,15 +5,6 @@
 
 FROM debian:buster-slim
 
-ENV NGROK_TOKEN=${NGROK_TOKEN}
-ENV SIGNALWIRE_SPACE=${SIGNALWIRE_SPACE}
-ENV PROJECT_ID=${PROJECT_ID}
-ENV REST_API_TOKEN=${REST_API_TOKEN}
-ENV VISUAL=${VISUAL}
-ENV LOCALTONET_API_TOKEN=${LOCALTONET_API_TOKEN}
-ENV LOCALTONET_AUTH_TOKEN=${LOCALTONET_AUTH_TOKEN}
-ENV WORKDIR=${WORKDIR}
-
 # Install the basic package
 RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip
 
@@ -76,7 +67,7 @@ RUN mkdir -p /workdir/public
 RUN ln -s /workdir/public/ /var/www/html/public
 
 # Misc
-COPY misc/sw.ans /.sw.ans
+COPY misc/signalwire.ans /.sw.ans
 COPY misc/bash.rc /root/.bashrc
 COPY bin/setupnvm /usr/bin
 COPY bin/setupgolang /usr/bin
