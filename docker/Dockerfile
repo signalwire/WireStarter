@@ -102,6 +102,9 @@ RUN apt clean
 RUN echo "python3 /usr/lib/cgi-bin/swsh.py" >> /root/.bashrc
 RUN ln -s /usr/lib/cgi-bin/swsh.py /usr/bin/swsh
 
+# Copy file to redirect to documentation
+COPY www/index.html /var/www/html/index.html
+
 WORKDIR /workdir
 
 # Fix ports
