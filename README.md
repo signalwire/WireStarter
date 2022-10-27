@@ -40,7 +40,12 @@ Prerequisites
 2. Clone repo
 3. Top menu click Repository > Open in Command Prompt
 4. Start docker Desktop
-5. setup.ps1
+5. .\setup.ps1
+
+Note: If `.\setup.ps1` give an error and won't run, more steps are needed.
+
+- `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+- [More information on ExecutionPolicy](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.2#powershell-execution-policies)
 
 ### On Mac OSX or Linux:
  1.  git pull
