@@ -40,7 +40,7 @@ Prerequisites
 2. Clone repo
 3. Top menu click Repository > Open in Command Prompt
 4. Start docker Desktop
-5. setup.bat
+5. setup.ps1
 
 ### On Mac OSX or Linux:
  1.  git pull
