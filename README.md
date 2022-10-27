@@ -35,6 +35,7 @@ Prerequisites
 * Docker Desktop: https://docs.docker.com/desktop/install/windows-install/
 * Github Desktop: https://desktop.github.com/
 * NGROK account AND token: https://ngrok.com/
+* [Create a localtonet account for API and AUTH tokens](https://localtonet.com/Identity/Account/Register?returnUrl=%2F)
   
 1. Open Github Desktop
 2. Clone repo
