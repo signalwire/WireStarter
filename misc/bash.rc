@@ -8,6 +8,7 @@ fi
 
 if [ -f "/opt/go/bin/go" ]; then
     export PATH=/opt/go/bin:${PATH}
+    export GOPATH=/opt/go
 fi
 
 python3 /usr/lib/cgi-bin/swsh.py
