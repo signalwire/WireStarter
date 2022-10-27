@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Install golang into workdir so it persists updates to WireStarter
+export ARCH=`uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/x64/g'`
+wget https://go.dev/dl/go1.19.2.linux-${ARCH}.tar.gz
+tar -zxf go1.19.2.linux-${ARCH}.tar.gz -C /opt
+rm -f go1.19.2.linux-${ARCH}.tar.gz
+echo "'exec bash' to update your environment!"

@@ -12,6 +12,7 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "${WORKDIR}:/workdir"
+      - "opt:/opt"
     ports:
       - 9080:9080/tcp
     stdin_open: true
@@ -31,6 +32,9 @@ services:
     networks:
       wirestarter:
         ipv4_address: 172.50.0.100
+
+volumes:
+  opt:
 
 networks:
   wirestarter:

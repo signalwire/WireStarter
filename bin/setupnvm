@@ -1,6 +1,5 @@
 #!/bin/bash
 
 # Install NVM into workdir so it persists updates to WireStarter
-mkdir -p /workdir/opt
-curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | HOME=/workdir/opt bash
-
+curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | HOME=/opt bash
+echo "'exec bash' to update your environment!"
