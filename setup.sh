@@ -11,6 +11,9 @@ if [ ! -f ".env" ]; then
    read -p "What is your Work Dir: " workdir;
    read -p "Editor (nano, vim, emacs): " visual;
 
+   # Remove domain, if attached to signalwire space
+   sig_space=$( echo "${sig_space}" | cut -d \. -f1 )
+
    URL="https://${sig_space}.signalwire.com/api/laml/2010-04-01/Accounts -u ${proj_id}:${api_token}"
    response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $URL )
    if [[ $response_code  -eq 200 ]]; then
@@ -31,5 +34,9 @@ if [ ! -f ".env" ]; then
       echo  "Setup failed please try again"
    fi
 else
+   # This can be changed once .env file validation is happening
+   # Search for .signalwire.com and remove if exists
+   sed -i~ 's/\.signalwire.com//g' .env
+
    echo "Setup .env file already exists"
 fi
