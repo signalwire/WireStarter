@@ -105,6 +105,23 @@ def domain_application_func( query_params = "", req_type="GET", headers={}, payl
     response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload )
     return (response.text, response.status_code)
 
+########################################
+############## SEND A CALL #############
+########################################
+def call_func( query_params = "", req_type="GET", headers={}, payload={} ):
+    # Uses compatibility API
+    signalwire_space, project_id, rest_api_token = get_environment()
+    destination = "Accounts/" + project_id + "/Calls" + query_params
+    url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
+    if req_type == "POST":
+        http_basic_auth = str(encode_auth(project_id, rest_api_token))
+        headers = {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'Authorization': 'Basic %s' % http_basic_auth
+        }
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, headers=headers, payload=payload, url=url )
+    return (response.text, response.status_code)
 
 ########################################
 def get_environment():
@@ -198,5 +215,6 @@ def http_request(signalwire_space, project_id, rest_api_token, destination, req_
     #print ("DEBUG fqdn: " + fqdn)
     #print ("DEBUG payload: " + payload)
     #print ("DEBUG headers: " + headers)
+    #print (headers)
     response = requests.request(req_type, fqdn, headers=headers, data=payload)
     return (response)

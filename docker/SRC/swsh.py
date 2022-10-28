@@ -13,6 +13,7 @@ import urllib.parse
 #from twilio.twiml.messaging_response import Message, MessagingResponse
 from signalwire.rest import Client as signalwire_client
 
+## TODO: Add a clear command
 
 ###########################################################################
 class MyPrompt(cmd2.Cmd):
@@ -62,6 +63,11 @@ class MyPrompt(cmd2.Cmd):
 
     do_quit = do_exit
     help_quit = help_exit
+
+    def do_clear(self, inp):
+        '''Clear the Screen'''
+        os.system("clear")
+
 
 ## SIP ENDPOINT COMMAND ##
     # Create the top level parser for sip endpoints: sip_endpoint
@@ -620,7 +626,7 @@ class MyPrompt(cmd2.Cmd):
             # IF something DOES change in the XML, then push to the API call.
             laml_sha1_orig = os.popen( "sha1sum /tmp/.foo_laml.xml.orig" ).read()  # the sha1sum of the original template
             os.system( "cp /tmp/.foo_laml.xml.orig /tmp/foo_laml.xml")
-            os.system( "${VISUAL} /tmp/foo_laml.xml" )
+            os.system( "vim /tmp/foo_laml.xml" )
             laml_sha1_new = os.popen( "sha1sum /tmp/foo_laml.xml").read()          # sha1sum after any changes
             if laml_sha1_orig != laml_sha1_new:
                 with open('/tmp/foo_laml.xml') as f:
@@ -670,7 +676,7 @@ class MyPrompt(cmd2.Cmd):
                 with open(filename, 'w')  as f:
                     print(output_laml_bin_contents, file=f)
                 sha1_hash_orig = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
-                os.system( "${VISUAL} %s" % filename )
+                os.system( "vim %s" % filename )
                 sha1_hash_new = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
 
                 if sha1_hash_orig != sha1_hash_new:
@@ -1474,14 +1480,62 @@ class MyPrompt(cmd2.Cmd):
         else:
             self.do_help('number_group')
 
+## CALLS ##
+    call_parser_make = cmd2.Cmd2ArgumentParser()
+    call_parser_make.add_argument('-f', '--from-num', type=str, help='Calling Party Number -- Must be a Signalwire Number', required=True)
+    call_parser_make.add_argument('-t', '--to-num', type=str, help='Receiving Party Numner', required=True)
+    call_parser_make.add_argument('-u', '--url', type=str, help='URL of Dialplan Bin')
 
+    call_parser_get = cmd2.Cmd2ArgumentParser()
+    call_parser_get.add_argument('-i', '--id', type=str, help='Retrieve call logs for the SignalWire ID', required=True)
+    
+    @cmd2.with_argparser(call_parser_make)
+    def do_send_call(self, args: argparse.Namespace):
+        '''Send an outbound call'''
+        from_no = "From=" + urllib.parse.quote(args.from_num)
+        to_no = "&To=" + urllib.parse.quote(args.to_num)
+        # TODO: validate whether or not there is a URL there.  There may be other situtations where URL is not necessary.
+        url = "&Url=" + urllib.parse.quote(args.url)
 
+        payload = from_no + to_no + url
+        output, status_code = call_func(req_type='POST', payload=payload)
+        valid = validate_http(status_code)
+        if valid: 
+            output_json = json.loads(output)
+            json_nice_print(output_json)
+            print ("\nCall sent successfully")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                json_error_json_(output)
+            else:
+                status_code = str(status_code)
+                print ( status_code + ": " + output + "\n" )
 
+## RETRIEVE A CALL ##
+# Will be helpful for debugging calls 
+    @cmd2.with_argparser(call_parser_get)
+    def do_get_call(self, args:argparse.Namespace):
+        '''retrieve logs of a call'''
+        sid = args.id
+        query_params = "/" + sid
 
+        output, status_code = call_func(query_params)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            json_nice_print(output_json)
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                json_error_json(output)
+            else:
+                print ( status_code + ": " + output + "\n" )
 
+       
+                
 
-
-## SEND TEXT MESSAGE
+## SEND TEXT MESSAGE ##
     sms_parser = cmd2.Cmd2ArgumentParser()
     sms_parser.add_argument('-f', '--from-num', type=str,  help='Send text FROM number -- Must be a signalwire number registered to campaign', required=True)
     sms_parser.add_argument('-t', '--to-num', type=str, help='Send sms text message TO number', required=True)
