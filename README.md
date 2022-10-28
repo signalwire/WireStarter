@@ -18,10 +18,6 @@ NGROK account AND token (for tunnel into the WireStarter container, optional)
 Localtonet account
  - https://localtonet.com (needs tunnel auth token and api token, optional)
 
-## BUILDING on MacOS and Linux ##
-* make up
-* make enter or docker exec -ti wirestarter bash
-
 ## INSTALLATION ##
 
  ### On Windows:
@@ -47,6 +43,7 @@ Note: If `.\setup.ps1` give an error and won't run, more steps are needed.
 ### On Mac OSX or Linux:
  1.  git pull
  2.  make up
+ 3.  make enter or docker exec -ti wirestarter bash
 
 That's it!  The container will build in the background and then start by itself placing the user in the SWiSH 
 shell.
