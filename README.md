@@ -18,13 +18,9 @@ NGROK account AND token (for tunnel into the WireStarter container, optional)
 Localtonet account
  - https://localtonet.com (needs tunnel auth token and api token, optional)
 
-## BUILDING ##
-* cp env.example .env
-* edit .env and fill out details
-* ./docker-dev build
-* ./docker-dev up -d
-* docker ps
-* docker exec -ti <id> bash
+## BUILDING on MacOS and Linux ##
+* make up
+* make enter or docker exec -ti wirestarter bash
 
 ## INSTALLATION ##
 
