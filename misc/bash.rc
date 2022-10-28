@@ -10,6 +10,9 @@ if [ -f "/opt/go/bin/go" ]; then
     export PATH=/opt/go/bin:${PATH}
     export GOPATH=/opt/go
 fi
+if [ -z $VISUAL ]; then
+    export VISUAL=vim
+fi
 
 python3 /usr/lib/cgi-bin/swsh.py
 
