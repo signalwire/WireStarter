@@ -1487,7 +1487,8 @@ class MyPrompt(cmd2.Cmd):
     call_parser_make.add_argument('-u', '--url', type=str, help='URL of Dialplan Bin')
 
     call_parser_get = cmd2.Cmd2ArgumentParser()
-    call_parser_get.add_argument('-i', '--id', type=str, help='Retrieve call logs for the SignalWire ID', required=True)
+    call_parser_get.add_argument('-i', '--id', type=str, help='Retrieve call logs for the SignalWire ID')
+    call_parser_get.add_argument('--all-active', action='store_true', help='Return all currently active calls for thep project')
     
     @cmd2.with_argparser(call_parser_make)
     def do_send_call(self, args: argparse.Namespace):
@@ -1513,24 +1514,41 @@ class MyPrompt(cmd2.Cmd):
                 print ( status_code + ": " + output + "\n" )
 
 ## RETRIEVE A CALL ##
-# Will be helpful for debugging calls 
+    # Will be helpful for debugging calls
     @cmd2.with_argparser(call_parser_get)
     def do_get_call(self, args:argparse.Namespace):
         '''retrieve logs of a call'''
-        sid = args.id
-        query_params = "/" + sid
+        query_params = ""
+        if args.id:
+            sid = args.id
+            query_params = "/" + sid
 
         output, status_code = call_func(query_params)
         valid = validate_http(status_code)
         if valid:
             output_json = json.loads(output)
-            json_nice_print(output_json)
+            # Output all currently active calls
+            # TODO: move this into a function that can service other types of requests like this.
+            if args.all_active: 
+                all_active_json = output_json["calls"]
+                active_calls_list = []
+                for i in range(0, len(all_active_json)):
+                    if all_active_json[i]["status"] == 'in-progress':
+                        active_calls_list.append(all_active_json[i])
+  
+                if len(active_calls_list) == 0:
+                    print("No Active Calls!\n")
+                else:
+                    json_nice_print(active_calls_list)
+            else:
+                json_nice_print(output_json)
         else:
             is_json = validate_json(output)
             if is_json:
                 json_error_json(output)
             else:
                 print ( status_code + ": " + output + "\n" )
+
 
        
                 
