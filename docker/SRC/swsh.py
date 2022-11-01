@@ -68,6 +68,15 @@ class MyPrompt(cmd2.Cmd):
         '''Clear the Screen'''
         os.system("clear")
 
+    def do_ngrok_tunnel(self, inp):
+        '''Show and Attach to ngrok Tunnel Screen'''
+        tunnel_url = os.popen('cat /root/ngrok.url').read()
+        print("NGROK Tunnel URL = https://" + tunnel_url + "\n")
+        print("The NGROK console runs in SCREEN.  Press ctrl+a ctrl+d to disconnect. ")
+        selection = input("Would you like to connect to the NGROK console? (y/n): ")
+        if selection.lower() == "y" or selection.lower == "yes":
+            os.system("screen -r ngrok")
+            os.system("clear")
 
 ## SIP ENDPOINT COMMAND ##
     # Create the top level parser for sip endpoints: sip_endpoint
@@ -76,13 +85,14 @@ class MyPrompt(cmd2.Cmd):
 
     # create the sip_endpoint list subcommand
     sip_endpoint_parser_list = base_sip_endpoint_subparsers.add_parser('list', help='List SIP Endpoints')
+    sip_endpoint_parser_list.add_argument('-i', '--id', help='List SIP Endpoint by unique SignalWire ID')
 
     # create the sip_endpoint update subcommand
     sip_endpoint_parser_update = base_sip_endpoint_subparsers.add_parser('update', help='Update a SIP Endpoint')
     sip_endpoint_parser_update.add_argument('-u', '--username', help='update username of the sip endpoint')
     sip_endpoint_parser_update.add_argument('-p', '--password', help='update password of the sip endpoint')
     sip_endpoint_parser_update.add_argument('-s', '--send-as',  help='default caller id for sip endpoint (Must belong to the Project!)')
-    sip_endpoint_parser_update.add_argument('-c', '--caller-id',  help='Friendly Caller ID Name (SIP to SIP only)' )
+    sip_endpoint_parser_update.add_argument('-c', '--caller-id', nargs='+', help='Friendly Caller ID Name (SIP to SIP only)' )
     sip_endpoint_parser_update.add_argument('-i', '--id', help='Unique id of the SIP Endpoint to be deleted', required=True)
     sip_endpoint_parser_update.add_argument('-e', '--encryption', type=str, help='Default Codecs', choices=['default', 'required', 'optional'])
     sip_endpoint_parser_update.add_argument('--codecs', type=str, nargs='+', help='Default Codecs', choices=['OPUS', 'G722', 'PCMU', 'PCMA', 'VP8', 'H264'])
@@ -93,7 +103,7 @@ class MyPrompt(cmd2.Cmd):
     sip_endpoint_parser_create.add_argument('-u', '--username', help='username of the sip endpoint', required=True)
     sip_endpoint_parser_create.add_argument('-p', '--password', help='password of the sip endpoint', required=True)
     sip_endpoint_parser_create.add_argument('-s', '--send-as',  help='default caller id for sip endpoint (Must belong to the Project!)', required=True )
-    sip_endpoint_parser_create.add_argument('-n', '--caller-id',  help='Friendly Caller ID Name (SIP to SIP only)', required=True )
+    sip_endpoint_parser_create.add_argument('-n', '--caller-id', nargs='+', help='Friendly Caller ID Name (SIP to SIP only)', required=True )
     sip_endpoint_parser_create.add_argument('-e', '--encryption', type=str, help='Default Codecs', choices=['default', 'required', 'optional'])
     sip_endpoint_parser_create.add_argument('--codecs', type=str, nargs='+', help='Default Codecs', choices=['OPUS', 'G722', 'PCMU', 'PCMA', 'VP8', 'H264'])
     sip_endpoint_parser_create.add_argument('--ciphers', type=str, nargs='+',  help='Default Ciphers', choices=['AEAD_AES_256_GCM_8','AES_256_CM_HMAC_SHA1_80','AES_CM_128_HMAC_SHA1_80','AES_256_CM_HMAC_SHA1_32','AES_CM_128_HMAC_SHA1_32'])
@@ -108,12 +118,20 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_endpoint
     def sip_endpoint_list(self, args):
         '''list subcommand of sip_endpoint'''
-        output, status_code =  sip_endpoint_func()
+        query_params = ""
+        if args.id:
+            sid = args.id
+            query_params="/" + sid
+
+        output, status_code =  sip_endpoint_func(query_params)
         valid = validate_http(status_code)
         if valid:
             output_data = json.loads(output)
-            data_json = output_data["data"]
-            json_nice_print(data_json)
+            if args.id:
+                json_nice_print(output_data)
+            else:
+                data_json = output_data["data"]
+                json_nice_print(data_json)
         else:
             is_json = validate_json(output)
             if is_json:
@@ -127,7 +145,7 @@ class MyPrompt(cmd2.Cmd):
         sip_endpoint_dictionary = {
           "username": args.username,
           "password": args.password,
-          "caller_id": args.caller_id,
+          "caller_id": ' '.join(args.caller_id),
           "send_as": args.send_as,
           "codecs": args.codecs,
           "ciphers": args.ciphers,
@@ -161,7 +179,7 @@ class MyPrompt(cmd2.Cmd):
         sip_endpoint_dictionary = {
           "username": args.username,
           "password": args.password,
-          "caller_id": args.caller_id,
+          "caller_id": ' '.join(args.caller_id),
           "send_as": args.send_as,
           "codecs": args.codecs,
           "ciphers": args.ciphers,
@@ -312,7 +330,7 @@ class MyPrompt(cmd2.Cmd):
     # create the phone_number update subcommand
     phone_number_parser_update = base_phone_number_subparsers.add_parser('update', help='Update a Phone Number')
     phone_number_parser_update.add_argument('-i', '--id', help='ID of the SignalWire Phone Number', required=True)
-    phone_number_parser_update.add_argument('-n', '--name', help='Update the Friendly Name of a Phone Number')
+    phone_number_parser_update.add_argument('-n', '--name', nargs='+', help='Update the Friendly Name of a Phone Number')
     phone_number_parser_update.add_argument('--call-handler', help='Type of handlers to use when processing calls to the Number', choices=["relay_context", "laml_webhooks", "laml_application", "dialogflow", "relay_connector", "relay_sip_endpoint", "relay_verto_endpoint", "video_room"])
     phone_number_parser_update.add_argument('--call-receive-mode', help='How to receive the incoming call: Voice or Fax', choices=["voice", "fax"], default="voice")
     phone_number_parser_update.add_argument('--call-request-url', help='URL to make a request when using the laml_webhooks call handler')
@@ -432,7 +450,7 @@ class MyPrompt(cmd2.Cmd):
         sid = args.id
         query_params = "/" + sid
         phone_number_dictionary = {
-          "name": args.name,
+          "name": ' '.join(args.name),
           "call_handler": args.call_handler,
           "call_receive_mode": args.call_receive_mode,
           "call_request_url": args.call_request_url,
@@ -1485,6 +1503,7 @@ class MyPrompt(cmd2.Cmd):
     call_parser_make.add_argument('-f', '--from-num', type=str, help='Calling Party Number -- Must be a Signalwire Number', required=True)
     call_parser_make.add_argument('-t', '--to-num', type=str, help='Receiving Party Numner', required=True)
     call_parser_make.add_argument('-u', '--url', type=str, help='URL of Dialplan Bin')
+    call_parser_make.add_argument('--laml-bin-id', help='SignalWire ID of a LaML Bin')
 
     call_parser_get = cmd2.Cmd2ArgumentParser()
     call_parser_get.add_argument('-i', '--id', type=str, help='Retrieve call logs for the SignalWire ID')
@@ -1496,19 +1515,35 @@ class MyPrompt(cmd2.Cmd):
         from_no = "From=" + urllib.parse.quote(args.from_num)
         to_no = "&To=" + urllib.parse.quote(args.to_num)
         # TODO: validate whether or not there is a URL there.  There may be other situtations where URL is not necessary.
-        url = "&Url=" + urllib.parse.quote(args.url)
-
+        if args.laml_bin_id:
+            # Get the URL from the ID
+            sid = args.laml_bin_id
+            query_params = "/" + sid
+            output, status_code = laml_bin_func(query_params)
+            valid = validate_http(status_code)
+            if valid:
+                output_json = json.loads(output)
+                url = "&Url=" + urllib.parse.quote(output_json["request_url"])
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    status_code = str(status_code)
+                    print ( status_code + ": " + output + "\n" )
+        elif args.url:
+            url = "&Url=" + urllib.parse.quote(args.url)
+        # TODO: Validate that a validly formatted url is entered before sending to the API
         payload = from_no + to_no + url
         output, status_code = call_func(req_type='POST', payload=payload)
         valid = validate_http(status_code)
         if valid: 
             output_json = json.loads(output)
-            json_nice_print(output_json)
             print ("\nCall sent successfully")
         else:
             is_json = validate_json(output)
             if is_json:
-                json_error_json_(output)
+                print_error_json(output)
             else:
                 status_code = str(status_code)
                 print ( status_code + ": " + output + "\n" )
@@ -1545,13 +1580,9 @@ class MyPrompt(cmd2.Cmd):
         else:
             is_json = validate_json(output)
             if is_json:
-                json_error_json(output)
+                print_error_json(output)
             else:
                 print ( status_code + ": " + output + "\n" )
-
-
-       
-                
 
 ## SEND TEXT MESSAGE ##
     sms_parser = cmd2.Cmd2ArgumentParser()
