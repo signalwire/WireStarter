@@ -11,9 +11,10 @@ services:
      REST_API_TOKEN: ${REST_API_TOKEN}
      NGROK_TOKEN: ${NGROK_TOKEN}
      SIGNALWIRE_SPACE: ${SIGNALWIRE_SPACE}
-     VISUAL: ${VISUAL}
      LOCALTONET_API_TOKEN: ${LOCALTONET_API_TOKEN}
      LOCALTONET_AUTH_TOKEN: ${LOCALTONET_AUTH_TOKEN}
+     WORKDIR: ${WORKDIR:-workdir}
+     VISUAL: ${VISUAL:-vim}
     container_name: wirestarter
     command: ["/start_services.sh"]
     env_file: ../.env

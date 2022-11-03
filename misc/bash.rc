@@ -1,12 +1,15 @@
 export PROMPT_COMMAND='echo -en "\033[m\033[38;5;2m"$(( `sed -n "s/MemFree:[\t ]\+\([0-9]\+\) kB/\1/p" /proc/meminfo`/1024))"\033[38;5;22m/"$((`sed -n "s/MemTotal:[\t ]\+\([0-9]\+\) kB/\1/Ip" /proc/meminfo`/1024 ))MB"\t\033[m\033[38;5;55m$(< /proc/loadavg)\033[m"'
 export PS1='\[\e[m\n\e[32m\][$$:$PPID\j:\!\[\e[32m\]]\[\e[0;36m\] \T \d \[\e[1;30m\][\[\e[1;34m\]\u@\H\[\e[1;30m\]:\[\e[0;37m\]${SSH_TTY} \[\e[0;32m\]+${SHLVL}\[\e[1;30m\]] \[\e[1;37m\]\w\[\e[0;37m\] \n($SHLVL:\!)\$ '
 
+if [ -f "${WORKDIR}/.env" ]; then
+    for line in `cat ${WORKDIR}/.env`; do export $line; done;
+fi
 
 SW_TEST_URL="https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts -u ${PROJECT_ID}:${REST_API_TOKEN}"
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
 if [[ $response_code  -eq 200 ]]; then
-    echo "NOTICE: SignalWire Credentials work ✅"
+    echo "INFO: SignalWire Credentials work ✅"
 elif [[ $response_code -eq 404 ]]; then
     echo "ERROR: SignalWire Space NOT FOUND 🧐"
     # INSERT DETAILS TO FIX THIS OR TRY TO FIX IT AUTOMATICALLY
@@ -20,7 +23,7 @@ else
     # INSERT DETAILS TO FIX THIS OR TRY TO FIX IT AUTOMATICALLY
     exit;
 fi
-    
+
 export NVM_DIR="/opt/.nvm"
 
 if [ -f "$NVM_DIR/nvm.sh" ]; then
