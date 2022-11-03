@@ -180,10 +180,13 @@ class MyPrompt(cmd2.Cmd):
         '''update subcommand of sip_endpoint'''
         sid = args.id
         query_params = "/" + sid
+        if args.caller_id:
+            # Can only join multiple words if part of the update.  Fix that here. I guess.
+            args.caller_id = ' '.join(args.caller_id)
         sip_endpoint_dictionary = {
           "username": args.username,
           "password": args.password,
-          "caller_id": ' '.join(args.caller_id),
+          "caller_id": args.caller_id,
           "send_as": args.send_as,
           "codecs": args.codecs,
           "ciphers": args.ciphers,
