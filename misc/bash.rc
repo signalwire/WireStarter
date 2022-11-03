@@ -14,5 +14,7 @@ if [ -z $VISUAL ]; then
     export VISUAL=vim
 fi
 
-python3 /usr/lib/cgi-bin/swsh.py
+if [ ! -z $SIGNALWIRE_SPACE ] && [ ! -z $PROJECT_ID ] && [ ! -z $REST_API_TOKEN ]; then
+    python3 /usr/lib/cgi-bin/swsh.py
+fi
 
