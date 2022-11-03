@@ -28,28 +28,32 @@ if [ ! -z $LOCALTONET_AUTH_TOKEN ]; then
     fi
 fi
 
-export NGROK_URL=`cat /root/ngrok.url`;
-export LOCALTONET_URL=`cat /root/localtonet.url`;
+# Loop so we can update the urls if they change while running.
+while true
+do
+    export NGROK_URL=`cat /root/ngrok.url`;
+    export LOCALTONET_URL=`cat /root/localtonet.url`;
 
-clear
-echo -e "\n\n";
-cat /.sw.ans
-echo -e "\n\n";
-echo -e "Welcome to WireStarter!";
-echo -e "\n"
+    clear
+    echo -e "\n\n";
+    cat /.sw.ans
+    echo -e "\n\n";
+    echo -e "Welcome to WireStarter!";
+    echo -e "\n"
 
-if [ ! -z $NGROK_URL ]; then
-    echo -e "NGROK Tunnel: https://$NGROK_URL";
-    echo -e "/workdir/public -> https://$NGROK_URL/public\n";
-fi
-if [ ! -z $LOCALTONET_URL ]; then
-    echo "LocalToNet Tunnel: https://$LOCALTONET_URL";
-    echo -e "/workdir/public -> https://$LOCALTONET_URL/public\n";
-fi
-if [ ! -z $WORKDIR ]; then
-    echo -e "Persistent host directory is /workdir -> $WORKDIR\n";
-fi
-
-echo -e "\n-- Thank you!\nsupport@signalwire.com\n\n";
-
-sleep infinity
+    if [ ! -z $NGROK_URL ]; then
+	echo -e "NGROK Tunnel: https://$NGROK_URL";
+	echo -e "/workdir/public -> https://$NGROK_URL/public\n";
+    fi
+    if [ ! -z $LOCALTONET_URL ]; then
+	echo "LocalToNet Tunnel: https://$LOCALTONET_URL";
+	echo -e "/workdir/public -> https://$LOCALTONET_URL/public\n";
+    fi
+    if [ ! -z $WORKDIR ]; then
+	echo -e "Persistent host directory is /workdir -> $WORKDIR\n";
+    fi
+    
+    echo -e "\n-- Thank you!\nsupport@signalwire.com\n\n";
+    
+    sleep 300
+done
