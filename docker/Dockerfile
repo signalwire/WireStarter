@@ -41,9 +41,6 @@ RUN export LOCALTONETARCH=`uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/x6
 # This may need to just be creating the symlink since the image doesn't run
 RUN a2enmod cgid
 
-# Configure Ngrok
-RUN if [ ! -z "${NGROK_TOKEN}" ]; then ngrok config add-authtoken $NGROK_TOKEN; fi
-
 # Install Docker examples
 COPY examples /root/examples
 

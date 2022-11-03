@@ -6,6 +6,7 @@
 
 # Start Ngrok in a screen
 if [ ! -z $NGROK_TOKEN ]; then
+    /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN
     /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok --log=/root/ngrok.log http 9080
     sleep 3  # wait for the tunnel to start #
     NGROK_URL=$( grep url /root/ngrok.log | cut -d= -f 8 | sed 's/https:\/\///g' | tail -1 )
