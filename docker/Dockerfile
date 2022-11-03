@@ -13,7 +13,7 @@ RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-r
 RUN apt update && apt install -y nano vim emacs-nox
 
 # Install Python
-RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools
+RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools pygments
 
 # Install golang
 #RUN apt update && apt install -y golang 
@@ -72,8 +72,15 @@ COPY bin/setupgolang /usr/bin
 COPY ../misc/do_history.patch /tmp/do_history.patch
 RUN /usr/bin/patch /usr/local/lib/python3.7/dist-packages/cmd2/cmd2.py  < /tmp/do_history.patch
 
+# Copy Patch to allow 'nicer' coloring on JSON output 
+# Creats a new formatter called SwishFormatter that can be used to customize any coloring
+COPY ../misc/swishcolor.py /usr/local/lib/python3.7/dist-packages/pygments/swishcolor.py
+COPY ..misc/pygment_mapping.patch /tmp/pygment_mapping.patch
+RUN /usr/bin/patch /usr/local/lib/python3.7/dist-packages/pygments/_mapping.py < /tmp/pygment_mapping.patch
+
 # Clean up
 RUN rm -f /tmp/do_history.patch
+RUN rm -f /tmp/pygment_mapping.patch
 RUN apt clean
 
 # Start the user in swsh

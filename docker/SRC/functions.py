@@ -3,6 +3,7 @@ import base64
 import requests
 import os,sys
 import json
+from pygments import highlight, lexers, formatters
 ####
 
 ########################################
@@ -134,8 +135,10 @@ def json_nice_print(j):
     if len(j) == 0:
         print("No Results Found!")
     else:
-        json_formatted_response = json.dumps(j, indent=2)
-        print(json_formatted_response)
+        json_formatted_response = json.dumps(j, indent=4)
+        #print(json_formatted_response)
+        colorful_json = highlight(json_formatted_response, lexers.JsonLexer(), formatters.SwishFormatter())
+        print (colorful_json)
 
 def encode_auth(project_id, rest_api_token):
     auth = str(project_id + ":" + rest_api_token)
