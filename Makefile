@@ -19,3 +19,9 @@ enter: up
 	@docker exec -it wirestarter /bin/bash
 
 restart: down up
+
+tag:
+	docker tag signalwire/wirestarter:latest briankwest/wirestarter:latest
+
+push:
+	docker push briankwest/wirestarter:latest
