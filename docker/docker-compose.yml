@@ -6,8 +6,16 @@ services:
 
   wirestarter:
     image: signalwire/wirestarter
+    environment:
+     PROJECT_ID: ${PROJECT_ID}
+     REST_API_TOKEN: ${REST_API_TOKEN}
+     NGROK_TOKEN: ${NGROK_TOKEN}
+     SIGNALWIRE_SPACE: ${SIGNALWIRE_SPACE}
+     VISUAL: ${VISUAL}
+     LOCALTONET_API_TOKEN: ${LOCALTONET_API_TOKEN}
+     LOCALTONET_AUTH_TOKEN: ${LOCALTONET_AUTH_TOKEN}
     container_name: wirestarter
-    command: ["/root/start_services.sh"]
+    command: ["/start_services.sh"]
     env_file: ../.env
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
@@ -20,14 +28,6 @@ services:
     build:
       context: ../
       dockerfile: docker/Dockerfile
-      args:
-        PROJECT_ID: ${PROJECT_ID}
-        REST_API_TOKEN: ${REST_API_TOKEN}
-        NGROK_TOKEN: ${NGROK_TOKEN}
-        SIGNALWIRE_SPACE: ${SIGNALWIRE_SPACE}
-        VISUAL: ${VISUAL}
-        LOCALTONET_API_TOKEN: ${LOCALTONET_API_TOKEN}
-        LOCALTONET_AUTH_TOKEN: ${LOCALTONET_AUTH_TOKEN}
     privileged: true
     networks:
       wirestarter:

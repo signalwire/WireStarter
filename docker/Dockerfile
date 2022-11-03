@@ -1,3 +1,4 @@
+# MAINTAINER: support@signalwire.com
 #TODO:
 # - Install other SDKs 
 # - Variablize the space name and API Key
@@ -42,7 +43,7 @@ RUN export LOCALTONETARCH=`uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/x6
 RUN a2enmod cgid
 
 # Install Docker examples
-COPY examples /root/examples
+COPY examples /opt/examples
 
 # Copy files to /opt/signalwire
 RUN pwd
@@ -53,9 +54,6 @@ RUN chmod +x -R /usr/lib/cgi-bin/
 # copy script to start services
 COPY docker/start_services.sh /start_services.sh
 RUN chmod +x /start_services.sh
-
-# Copy in VARS 
-COPY .env /usr/lib/cgi-bin/.env
 
 # Make workdir
 RUN mkdir -p /workdir/public
