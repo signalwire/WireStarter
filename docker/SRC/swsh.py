@@ -644,7 +644,7 @@ class MyPrompt(cmd2.Cmd):
             # IF something DOES change in the XML, then push to the API call.
             laml_sha1_orig = os.popen( "sha1sum /tmp/.foo_laml.xml.orig" ).read()  # the sha1sum of the original template
             os.system( "cp /tmp/.foo_laml.xml.orig /tmp/foo_laml.xml")
-            os.system( "vim /tmp/foo_laml.xml" )
+            os.system( "${VISUAL} /tmp/foo_laml.xml" )
             laml_sha1_new = os.popen( "sha1sum /tmp/foo_laml.xml").read()          # sha1sum after any changes
             if laml_sha1_orig != laml_sha1_new:
                 with open('/tmp/foo_laml.xml') as f:
@@ -694,7 +694,7 @@ class MyPrompt(cmd2.Cmd):
                 with open(filename, 'w')  as f:
                     print(output_laml_bin_contents, file=f)
                 sha1_hash_orig = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
-                os.system( "vim %s" % filename )
+                os.system( "${VISUAL} %s" % filename )
                 sha1_hash_new = os.popen( "sha1sum %s | awk '{print $1}'" % filename ).read()
 
                 if sha1_hash_orig != sha1_hash_new:
