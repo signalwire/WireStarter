@@ -5,6 +5,15 @@ if [ -f "${WORKDIR}/.env" ]; then
     for line in `cat ${WORKDIR}/.env`; do export $line; done;
 fi
 
+# Common typos when using emacs, so things just work.
+if [ $VISUAL == "emacs" ]; then
+    alias e='emacs'
+    alias eamcs='emacs'
+    alias emcas='emacs'
+    alias meacs='emacs'
+    alias mecas='emacs'
+fi
+
 SW_TEST_URL="https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts -u ${PROJECT_ID}:${REST_API_TOKEN}"
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
