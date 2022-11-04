@@ -71,12 +71,16 @@ class MyPrompt(cmd2.Cmd):
     def do_ngrok_tunnel(self, inp):
         '''Show and Attach to ngrok Tunnel Screen'''
         tunnel_url = os.popen("curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'").read()
-        print("NGROK Tunnel URL = " + tunnel_url + "\n")
-        print("The NGROK console runs in SCREEN.  Press ctrl+a ctrl+d to disconnect. ")
-        selection = input("Would you like to connect to the NGROK console? (y/n): ")
-        if selection.lower() == "y" or selection.lower == "yes":
-            os.system("screen -r ngrok")
-            os.system("clear")
+        if tunnel_url == "":
+            # The Tunnel isn't active
+            print('There are no active NGROK tunnels established.\n')
+        else:
+            print("NGROK Tunnel URL = " + tunnel_url + "\n")
+            print("The NGROK console runs in SCREEN.  Press ctrl+a ctrl+d to disconnect. ")
+            selection = input("Would you like to connect to the NGROK console? (y/n): ")
+            if selection.lower() == "y" or selection.lower == "yes":
+                os.system("screen -r ngrok")
+                os.system("clear")
 
 ## SIP ENDPOINT COMMAND ##
     # Create the top level parser for sip endpoints: sip_endpoint
@@ -176,10 +180,13 @@ class MyPrompt(cmd2.Cmd):
         '''update subcommand of sip_endpoint'''
         sid = args.id
         query_params = "/" + sid
+        if args.caller_id:
+            # Can only join multiple words if part of the update.  Fix that here. I guess.
+            args.caller_id = ' '.join(args.caller_id)
         sip_endpoint_dictionary = {
           "username": args.username,
           "password": args.password,
-          "caller_id": ' '.join(args.caller_id),
+          "caller_id": args.caller_id,
           "send_as": args.send_as,
           "codecs": args.codecs,
           "ciphers": args.ciphers,
