@@ -74,9 +74,9 @@ RUN /usr/bin/patch /usr/local/lib/python3.7/dist-packages/cmd2/cmd2.py  < /tmp/d
 
 # Copy Patch to allow 'nicer' coloring on JSON output 
 # Creats a new formatter called SwishFormatter that can be used to customize any coloring
-COPY ../misc/swishcolor.py /usr/local/lib/python3.7/dist-packages/pygments/swishcolor.py
-COPY ..misc/pygment_mapping.patch /tmp/pygment_mapping.patch
-RUN /usr/bin/patch /usr/local/lib/python3.7/dist-packages/pygments/_mapping.py < /tmp/pygment_mapping.patch
+COPY ../misc/swishcolor.py /usr/local/lib/python3.7/dist-packages/pygments/formatters/swishcolor.py
+COPY ../misc/pygment_mapping.patch /tmp/pygment_mapping.patch
+RUN /usr/bin/patch /usr/local/lib/python3.7/dist-packages/pygments/formatters/_mapping.py < /tmp/pygment_mapping.patch
 
 # Clean up
 RUN rm -f /tmp/do_history.patch

@@ -1,4 +1,3 @@
-(1:165)# cat swish.py
 """
     pygments.formatters.swishcolor
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
