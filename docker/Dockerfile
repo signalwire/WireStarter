@@ -69,13 +69,13 @@ COPY bin/setupgolang /usr/bin
 
 # Copy patch for Cmd2 and patch the file
 # This allows persistant history behavior by default -SH
-COPY ../misc/do_history.patch /tmp/do_history.patch
+COPY misc/do_history.patch /tmp/do_history.patch
 RUN /usr/bin/patch /usr/local/lib/python3.9/dist-packages/cmd2/cmd2.py  < /tmp/do_history.patch
 
 # Copy Patch to allow 'nicer' coloring on JSON output 
 # Creats a new formatter called SwishFormatter that can be used to customize any coloring
-COPY ../misc/swishcolor.py /usr/local/lib/python3.9/dist-packages/pygments/formatters/swishcolor.py
-COPY ../misc/pygment_mapping.patch /tmp/pygment_mapping.patch
+COPY misc/swishcolor.py /usr/local/lib/python3.9/dist-packages/pygments/formatters/swishcolor.py
+COPY misc/pygment_mapping.patch /tmp/pygment_mapping.patch
 RUN /usr/bin/patch /usr/local/lib/python3.9/dist-packages/pygments/formatters/_mapping.py < /tmp/pygment_mapping.patch
 
 # Clean up
