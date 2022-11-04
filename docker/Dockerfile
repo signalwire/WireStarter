@@ -4,7 +4,7 @@
 # - Variablize the space name and API Key
 # - Research how to take API key and made Basic Auth Header
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 # Install the basic package
 RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip
@@ -13,7 +13,7 @@ RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-r
 RUN apt update && apt install -y nano vim emacs-nox
 
 # Install Python
-RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools
+RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools typing-extensions
 
 # Install golang
 #RUN apt update && apt install -y golang 
@@ -70,7 +70,7 @@ COPY bin/setupgolang /usr/bin
 # Copy patch for Cmd2 and patch the file
 # This allows persistant history behavior by default -SH
 COPY ../misc/do_history.patch /tmp/do_history.patch
-RUN /usr/bin/patch /usr/local/lib/python3.7/dist-packages/cmd2/cmd2.py  < /tmp/do_history.patch
+#RUN /usr/bin/patch /usr/local/lib/python3.9/dist-packages/cmd2/cmd2.py  < /tmp/do_history.patch
 
 # Clean up
 RUN rm -f /tmp/do_history.patch
