@@ -2,7 +2,6 @@
 
 # Enable and Start Apache
 /usr/sbin/apache2ctl start > /dev/null 2>&1
-#apache2ctl -D FOREGROUND
 
 # Start Ngrok in a screen
 if [ ! -z $NGROK_TOKEN ]; then
@@ -22,12 +21,10 @@ while true
 do
     if [ ! -z $NGROK_TOKEN ]; then
 	export NGROK_URL=$( curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' )
-	echo $NGROK_URL > /root/ngrok.url
-    fi
-    if [ ! -z $NGROK_URL ]; then
-	# Run python script to update the numbers
-	# Pass in ngrok_url as an arg
-	python3 /usr/lib/cgi-bin/update_laml_bins.py $NGROK_URL
+	if [ ! -z $NGROK_URL ]; then
+	    # update the numbers that were previously mapped to an ngrok URL previously.
+	    python3 /usr/lib/cgi-bin/update_laml_bins.py $NGROK_URL
+	fi
     fi
     if [ ! -z $LOCALTONET_API_TOKEN ]; then
 	export LOCALTONET_URL=$( curl -s -o -  -X GET https://localtonet.com/api/GetTunnelsByAuthToken/$LOCALTONET_AUTH_TOKEN -H 'accept: */*' -H "Authorization: Bearer $LOCALTONET_API_TOKEN" | jq -r '.result[].url' | head -1 )
