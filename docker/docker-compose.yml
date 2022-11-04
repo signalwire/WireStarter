@@ -1,5 +1,4 @@
-
-# This file extends docker-compose.yml
+# WireStarter - maintained by support@signalwire.com
 version: "3.7"
 
 services:
