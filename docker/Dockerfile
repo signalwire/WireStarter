@@ -43,9 +43,8 @@ RUN export LOCALTONETARCH=`uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/x6
 RUN a2enmod cgid
 
 # Install Docker examples
-COPY examples /opt/examples
+COPY examples /root/examples
 
-# Copy files to /opt/signalwire
 RUN pwd
 COPY docker/SRC /usr/lib/cgi-bin
 COPY docker/SRC/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
@@ -64,8 +63,7 @@ RUN ln -s /workdir/public/ /var/www/html/public
 # Misc
 COPY misc/signalwire.ans /.sw.ans
 COPY misc/bash.rc /root/.bashrc
-COPY bin/setupnvm /usr/bin
-COPY bin/setupgolang /usr/bin
+COPY bin/ /usr/bin
 
 # Copy patch for Cmd2 and patch the file
 # This allows persistant history behavior by default -SH
