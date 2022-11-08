@@ -456,8 +456,11 @@ class MyPrompt(cmd2.Cmd):
         # NOTE: I found that if the number DOES NOT have a name, the API won't allow it to be udpated and will require a name.  After that, it is no longer needed.
         sid = args.id
         query_params = "/" + sid
+        if args.name:
+            # Can only join if argument exists.  Doing that here.
+            args.name = ' '.join(args.name)
         phone_number_dictionary = {
-          "name": ' '.join(args.name),
+          "name": args.name,
           "call_handler": args.call_handler,
           "call_receive_mode": args.call_receive_mode,
           "call_request_url": args.call_request_url,
