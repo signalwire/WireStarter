@@ -5,6 +5,10 @@ if [ -f "${WORKDIR}/.env" ]; then
     for line in `cat ${WORKDIR}/.env`; do export $line; done;
 fi
 
+if [ -f "${WORKDIR}/.bashrc" ]; then
+   . "${WORKDIR}/.bashrc"
+fi
+
 # Common typos when using emacs, so things just work.
 if [ $VISUAL == "emacs" ]; then
     alias e='emacs'
