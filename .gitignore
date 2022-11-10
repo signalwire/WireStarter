@@ -1,3 +1,5 @@
 .env
 *~
 \#*\#
+examples/fax-ruby-sinatra/config/env.yml
+examples/fax-ruby-sinatra/files
