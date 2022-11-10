@@ -1,0 +1,35 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    envyable (1.2.0)
+      thor (>= 0.18.1, < 2.0)
+    mustermann (2.0.2)
+      ruby2_keywords (~> 0.0.1)
+    nio4r (2.5.8)
+    puma (6.0.0)
+      nio4r (~> 2.0)
+    rack (2.2.4)
+    rack-protection (2.2.2)
+      rack
+    ruby2_keywords (0.0.5)
+    shotgun (0.9.2)
+      rack (>= 1.0)
+    sinatra (2.2.2)
+      mustermann (~> 2.0)
+      rack (~> 2.2)
+      rack-protection (= 2.2.2)
+      tilt (~> 2.0)
+    thor (1.2.1)
+    tilt (2.0.11)
+
+PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  envyable (~> 1.2)
+  puma (~> 6.0)
+  shotgun (~> 0.9.2)
+  sinatra (~> 2.0)
+
+BUNDLED WITH
+   2.2.3
