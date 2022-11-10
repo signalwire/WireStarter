@@ -29,11 +29,11 @@ Prerequisites
 * NGROK account AND token: https://ngrok.com/
 * [Create a localtonet account for API and AUTH tokens](https://localtonet.com/Identity/Account/Register?returnUrl=%2F)
   
-1. Open Github Desktop
-2. Clone repo
-3. Top menu click Repository > Open in Command Prompt
-4. Start docker Desktop
-5. .\setup.ps1
+1. Start docker Desktop
+2. Open Github Desktop
+3. Clone repo
+4. Top menu in Github Desktop click Repository > Open in Command Prompt
+5. powershell .\setup.ps1
 
 Note: If `.\setup.ps1` give an error and won't run, more steps are needed.
 
