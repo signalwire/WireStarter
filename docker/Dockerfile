@@ -7,7 +7,7 @@
 FROM debian:bullseye-slim
 
 # Install the basic package
-RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip
+RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox
@@ -77,6 +77,8 @@ COPY misc/pygment_mapping.patch /tmp/pygment_mapping.patch
 RUN /usr/bin/patch /usr/local/lib/python3.9/dist-packages/pygments/formatters/_mapping.py < /tmp/pygment_mapping.patch
 
 # Clean up
+RUN /usr/bin/dos2unix /root/.bashrc         # Fixes DOS formatting when using Windows
+RUN /usr/bin/dos2unix /start_services.sh    # Fixes DOS formatting when using Windows
 RUN rm -f /tmp/do_history.patch
 RUN rm -f /tmp/pygment_mapping.patch
 RUN apt clean
