@@ -33,7 +33,9 @@ Prerequisites
 2. Open Github Desktop
 3. Clone repo
 4. Top menu in Github Desktop click Repository > Open in Command Prompt
-5. powershell .\setup.ps1
+5. Install Git if prompted.
+6. powershell Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+7. powershell .\setup.ps1
 
 Note: If `.\setup.ps1` give an error and won't run, more steps are needed.
 
