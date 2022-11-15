@@ -308,6 +308,7 @@ class MyPrompt(cmd2.Cmd):
 
     # create the sip_profile list subcommand
     sip_profile_parser_list = base_sip_profile_subparsers.add_parser('list', help='List SIP Profiles')
+    sip_profile_parser_list.add_argument('-j', '--json', action='store_true', help='List SIP Profiles in JSON')
 
     # create the sip_profile update subcommand
     sip_profile_parser_update = base_sip_profile_subparsers.add_parser('update', help='Update a SIP profile')
@@ -323,8 +324,21 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = sip_profile_func()
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            json_nice_print(output_json)
+            output =  json.loads(output)
+            if args.json:
+                json_nice_print(output)
+            else:
+                # There is only one sip profile
+                k_num = str("1)")
+
+                print("  Domain:\t\t\t" + output["domain"])
+                print("  Domain Identefier:\t\t" + output["domain_identifier"])
+                print("  Default Codecs:\t\t" + str(' '.join(output["default_codecs"])))
+                print("  Default Encryption Ciphers:\t" + str(' '.join(output["default_ciphers"])))
+                print("  Default Encryption Enabled:\t" + output["default_encryption"])
+                print("  Default Caller Number:\t" + output["default_send_as"])
+                print("")
+
         else:
             is_json = validate_json(output)
             if is_json:
