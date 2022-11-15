@@ -658,6 +658,7 @@ class MyPrompt(cmd2.Cmd):
     laml_bin_parser_list = base_laml_bin_subparsers.add_parser('list', help='List LaML Bins for a Projects')
     laml_bin_parser_list.add_argument('-n', '--name', type=str, nargs='+', help='List Single LaML Bin by name')
     laml_bin_parser_list.add_argument('-i', '--id', help='List Single LaML Bin by SignalWire ID')
+    laml_bin_parser_list.add_argument('-j', '--json', action='store_true', help='List LaML Bins in JSON format')
 
     # create the laml_bin update subcommand
     laml_bin_parser_create = base_laml_bin_subparsers.add_parser('create', help='Create a LaML Bins')
@@ -697,12 +698,42 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = laml_bin_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            if args.id:
-                output_laml_bin = output_json
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print(output)
+            
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t" + output["sid"])
+                print("  LaML Bin Name:\t" + output["name"])
+                print("  Request URL:\t\t" + output["request_url"])
+                print("  Date Created:\t\t" + output["date_created"])
+                print("  Date Updated:\t\t" + output["date_updated"])
+                print("  Date Last Accessed\t" + output["date_last_accessed"])
+                print("  Number of Requests:\t" + str(output["num_requests"]))
+                print("  Contents:\n\n  " + output["contents"])
+                print("")
+
+            elif args.json:
+                json_nice_print(output["laml_bins"])
+
             else:
-                output_laml_bin = output_json["laml_bins"]
-            json_nice_print(output_laml_bin)
+                for k, v in enumerate(output["laml_bins"]):
+                    k_num = str(k + 1)
+                
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t" + output["laml_bins"][k]["sid"])
+                    print("  LaML Bin Name:\t" + output["laml_bins"][k]["name"])
+                    print("  Request URL:\t\t" + output["laml_bins"][k]["request_url"])
+                    print("  Date Created:\t\t" + output["laml_bins"][k]["date_created"])
+                    print("  Date Updated:\t\t" + output["laml_bins"][k]["date_updated"])
+                    print("  Date Last Accessed\t" + output["laml_bins"][k]["date_last_accessed"])
+                    print("  Number of Requests:\t" + str(output["laml_bins"][k]["num_requests"]))
+                    print("  Contents:\n\n  " + output["laml_bins"][k]["contents"])
+                    print("")
+
         else:
             is_json = validate_json(output)
             if is_json:
