@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from typing_extensions import Required
 import cmd2
 import os
 import argparse
@@ -68,6 +67,20 @@ class MyPrompt(cmd2.Cmd):
         '''Clear the Screen'''
         os.system("clear")
 
+    def do_echo(self, inp):
+        '''echo something'''
+        inp = inp.split()
+        if inp[0].startswith("$"):
+            key = inp[0].strip("$")
+            shell_var = get_shell_env(key)
+            print (shell_var)
+        else:
+            print (inp)
+    
+    def do_env(self, args):
+        '''Return the SWiSH Environment Variables'''
+        get_shell_env_all()
+
     def do_ngrok_tunnel(self, inp):
         '''Show and Attach to ngrok Tunnel Screen'''
         tunnel_url = os.popen("curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'").read()
@@ -90,6 +103,7 @@ class MyPrompt(cmd2.Cmd):
     # create the sip_endpoint list subcommand
     sip_endpoint_parser_list = base_sip_endpoint_subparsers.add_parser('list', help='List SIP Endpoints')
     sip_endpoint_parser_list.add_argument('-i', '--id', help='List SIP Endpoint by unique SignalWire ID')
+    sip_endpoint_parser_list.add_argument('-j', '--json', action='store_true', help='Output SIP Endpoint(s) in JSON format')
 
     # create the sip_endpoint update subcommand
     sip_endpoint_parser_update = base_sip_endpoint_subparsers.add_parser('update', help='Update a SIP Endpoint')
@@ -122,6 +136,14 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_endpoint
     def sip_endpoint_list(self, args):
         '''list subcommand of sip_endpoint'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+                
         query_params = ""
         if args.id:
             sid = args.id
@@ -130,12 +152,41 @@ class MyPrompt(cmd2.Cmd):
         output, status_code =  sip_endpoint_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_data = json.loads(output)
-            if args.id:
-                json_nice_print(output_data)
+            # Format the output depending on user args
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print(output)
+
+            elif args.id:
+                k_val = str("1")
+
+                print(k_val + ")")
+                print("  SignalWire ID:\t" + output["id"])
+                print("  Username:\t\t" + output["username"])
+                print("  Caller Name:\t\t" + output["caller_id"])
+                print("  Caller Number:\t" + output["send_as"]) 
+                print("  Codecs:\t\t" + str(', '.join(output["codecs"])))
+                print("  Encryption Ciphers:\t" + str(', '.join(output["ciphers"])))
+                print("  Encrytion Enabled:\t" + output["encryption"])
+                print("")
+
+            elif args.json:
+                json_nice_print(output["data"])
+
             else:
-                data_json = output_data["data"]
-                json_nice_print(data_json)
+                for k, v in enumerate(output["data"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print(" SignalWire ID:\t" + output["data"][k]["id"])
+                    print(" Username:\t\t" + output["data"][k]["username"])
+                    print(" Caller ID Name:\t" + output["data"][k]["caller_id"])
+                    print(" Caller ID Number:\t" + output["data"][k]["send_as"]) 
+                    print(" Codecs:\t\t" + str(', '.join(output["data"][k]["codecs"])))
+                    print(" Encryption Ciphers:\t" + str(', '.join(output["data"][k]["ciphers"])))
+                    print(" Encrytion Enabled:\t" + output["data"][k]["encryption"])
+                    print("")
+   
         else:
             is_json = validate_json(output)
             if is_json:

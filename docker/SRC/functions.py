@@ -6,6 +6,8 @@ import json
 from pygments import highlight, lexers, formatters
 ####
 
+env_var_dict = {}
+
 ########################################
 ########### SPACE  FUNCTIONS ###########
 ########################################
@@ -130,6 +132,26 @@ def get_environment():
     project_id = os.getenv('PROJECT_ID')
     rest_api_token = os.getenv('REST_API_TOKEN')
     return (signalwire_space, project_id, rest_api_token)
+
+def set_shell_env(var):
+    global env_var_dict
+    env_var_split = var.split("=")
+    key = env_var_split[0]
+    val = env_var_split[1]
+    
+    env_var_dict[key] = val
+
+def get_shell_env(var):
+    key = var
+    return (env_var_dict[key])
+
+def get_shell_env_all():
+    if env_var_dict == "{}":
+        print ("")
+    else:
+        for k, v in env_var_dict.items():
+            print (k + "=" + v)
+
 
 def json_nice_print(j):
     if len(j) == 0:
