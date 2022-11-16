@@ -1508,6 +1508,7 @@ class MyPrompt(cmd2.Cmd):
     number_group_parser_list = base_number_group_subparsers.add_parser('list', help='List Number Groups for the Project')
     number_group_parser_list.add_argument('-n', '--name', nargs='+', help='Return all Number Groups containing this value')
     number_group_parser_list.add_argument('-i', '--id',help='Return a Number Group with the given ID')
+    number_group_parser_list.add_argument('-j', '--json', action='store_true', help='List Number Groups in JSON Format')
 
     # create the number groups create command
     number_group_parser_create = base_number_group_subparsers.add_parser('create', help='Create for the Project')
@@ -1541,13 +1542,34 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = number_group_func( query_params )
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            # if only ID is used, there is no data object.
-            if args.id:
-                json_nice_print (output_json)
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print (output)
+            
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t" + output["id"])
+                print("  Name:\t\t\t" + output["name"])
+                print("  Phone Number Count:\t" + str(output["phone_number_count"]))
+                print("  Sticky Sender:\t" + str(output["sticky_sender"]))
+                print("")
+
+            elif args.json:
+                json_nice_print (output["data"])
+
             else:
-                data_json = output_json["data"]
-                json_nice_print (data_json)
+                for k, v in enumerate(output["data"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t" + output["data"][k]["id"])
+                    print("  Name:\t\t\t" + output["data"][k]["name"])
+                    print("  Phone Number Count:\t" + str(output["data"][k]["phone_number_count"]))
+                    print("  Sticky Sender:\t" + str(output["data"][k]["sticky_sender"]))
+                    print("")
+    
         else:
             is_json = validate_json(output)
             if is_json:
@@ -1595,7 +1617,6 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = number_group_func(query_params, req_type="PUT", payload=payload)
         valid = validate_http(status_code)
         if valid:
-            # TODO: Output the sip endpoint after updated.  Maybe?
             print("Success! Number group " + sid + " Updated\n")
         else:
             is_json = validate_json(output)
