@@ -1290,6 +1290,7 @@ class MyPrompt(cmd2.Cmd):
     domain_application_parser_list.add_argument('-d', '--domain', type=str, nargs='+', help='Return all values for given domain of Domain App')
     domain_application_parser_list.add_argument('-n', '--name', type=str, nargs='+', help='Return all values for the given name of Domain App')
     domain_application_parser_list.add_argument('-i', '--id', help='SignalWire ID of the Domain Application')
+    domain_application_parser_list.add_argument('-j', '--json', action='store_true', help='List Domain Applications in JSON Format')
 
     # create the domain application create command
     domain_application_parser_create = base_domain_application_subparsers.add_parser('create', help='List Domain Applications for the Project')
@@ -1364,12 +1365,72 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = domain_application_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            if args.id:
-                json_nice_print (output_json)
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print (output)
+
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t\t" + str(output["id"]))
+                print("  Name:\t\t\t\t" + str(output["name"]))
+                print("  Domain:\t\t\t" + str(output["domain"]))
+                print("  Identifier:\t\t\t" + str(output["identifier"]))
+                print("  IP Auth Enabled:\t\t" + str(output["ip_auth_enabled"]))
+                print("  IP Auth:\t\t\t" + str(', '.join(output["ip_auth"])))
+                print("  Call Handler:\t\t\t" + str(output["call_handler"]))
+                print("  Call Request URL:\t\t" + str(output["call_request_url"]))
+                print("  Call Request Method:\t\t" + str(output["call_request_method"]))
+                print("  Call Fallback URL:\t\t" + str(output["call_fallback_url"]))
+                print("  Call Fallback Method:\t\t" + str(output["call_fallback_method"]))
+                print("  Call Status Callback URL:\t" + str(output["call_status_callback_url"]))
+                print("  Call Status Callback Method:\t" + str(output["call_status_callback_method"]))
+                print("  Call Relay Context:\t\t" + str(output["call_relay_context"]))
+                print("  Call LaML Application ID:\t" + str(output["call_laml_application_id"]))
+                print("  Encryption:\t\t\t" + str(output["encryption"]))
+                print("  Codecs:\t\t\t" + str(', '.join(output["codecs"])))
+                print("  Encryption Ciphers:\t\t" + str(', '.join(output["ciphers"])))
+                print("")
+
+            elif args.json:
+                json_nice_print (output["data"])
+
             else:
-                data_json = output_json["data"]
-                json_nice_print (data_json)
+                for k, v in enumerate(output["data"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t\t" + str(output["data"][k]["id"]))
+                    print("  Name:\t\t\t\t" + str(output["data"][k]["name"]))
+                    print("  Domain:\t\t\t" + str(output["data"][k]["domain"]))
+                    print("  Identifier:\t\t\t" + str(output["data"][k]["identifier"]))
+                    print("  IP Auth Enabled:\t\t" + str(output["data"][k]["ip_auth_enabled"]))
+                    print("  IP Auth:\t\t\t" + str(', '.join(output["data"][k]["ip_auth"])))
+                    print("  Call Handler:\t\t\t" + str(output["data"][k]["call_handler"]))
+                    print("  Call Request URL:\t\t" + str(output["data"][k]["call_request_url"]))
+                    print("  Call Request Method:\t\t" + str(output["data"][k]["call_request_method"]))
+                    print("  Call Fallback URL:\t\t\t" + str(output["data"][k]["call_fallback_url"]))
+                    print("  Call Fallback Method:\t\t" + str(output["data"][k]["call_fallback_method"]))
+                    print("  Call Status Callback URL:\t\t" + str(output["data"][k]["call_status_callback_url"]))
+                    print("  Call Status Callback Method:\t" + str(output["data"][k]["call_status_callback_method"]))
+                    print("  Call Relay Context:\t\t" + str(output["data"][k]["call_relay_context"]))
+                    print("  Call LaML Application ID:\t" + str(output["data"][k]["call_laml_application_id"]))
+                    print("  Encryption:\t\t\t" + str(output["data"][k]["encryption"]))
+                    print("  Codecs:\t\t\t" + str(', '.join(output["data"][k]["codecs"])))
+                    print("  Encryption Ciphers:\t\t" + str(', '.join(output["data"][k]["ciphers"])))
+                    print("")
+            
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    print (status_code + ": " + output + "\n" )
 
     def domain_application_create(self, args):
         '''create subcommand of domain_application'''
