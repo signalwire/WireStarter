@@ -936,7 +936,8 @@ class MyPrompt(cmd2.Cmd):
     # Create the project list subcommand
     project_parser_list = base_project_subparsers.add_parser('list', help='List LaML Bins for a Projects')
     project_parser_list.add_argument('-f', '--friendly-name', type=str, nargs='+', help='List Single Project by Friendly Name')
-    project_parser_list.add_argument('-s', '--sid', type=str, help='List SignalWire Space or Subspace with given SID')
+    project_parser_list.add_argument('-s', '--id', type=str, help='List SignalWire Space or Subspace with given SID')
+    project_parser_list.add_argument('-j', '--json', action='store_true', help='List Signalwire Spaces in JSON format')
 
     # Create the project update subcommand
     project_parser_update = base_project_subparsers.add_parser('update', help='Update a project')
@@ -956,8 +957,8 @@ class MyPrompt(cmd2.Cmd):
             elif len(args.friendly_name) > 1:
                 friendly_name = "%20".join(args.friendly_name)
             query_params ="?FriendlyName=%s" % friendly_name
-        elif args.sid:
-             sid = args.sid
+        elif args.id:
+             sid = args.id
              query_params = "/%s" % sid
         else:
             query_params=""
@@ -965,9 +966,46 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = project_func(query_params=query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            accounts_json = output_json["accounts"]
-            json_nice_print (accounts_json)
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print (output)
+            
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t" + output["sid"])
+                print("  Friendly Name:\t" + output["friendly_name"])
+                print("  Status:\t\t" + output["status"])
+                print("  Auth Token:\t\t" + output["auth_token"])
+                print("  Date Created:\t\t" + output["date_created"])
+                print("  Date Updated:\t\t" + output["date_updated"])
+                print("  Type:\t\t\t" + output["type"])
+                print("  Owner Account ID:\t" + output["owner_account_sid"])
+                print("  URI:\t\t\t" + output["uri"])
+                print("  Subproject:\t\t" + str(output['subproject']))
+                print("")
+            
+            elif args.json:
+                json_nice_print(output["accounts"])
+            
+            else:
+                for k, v in enumerate(output["accounts"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t" + output["accounts"][k]["sid"])
+                    print("  Friendly Name:\t" + output["accounts"][k]["friendly_name"])
+                    print("  Status:\t\t" + output["accounts"][k]["status"])
+                    print("  Auth Token:\t\t" + output["accounts"][k]["auth_token"])
+                    print("  Date Created:\t\t" + output["accounts"][k]["date_created"])
+                    print("  Date Updated:\t\t" + output["accounts"][k]["date_updated"])
+                    print("  Type:\t\t\t" + output["accounts"][k]["type"])
+                    print("  Owner Account ID:\t" + output["accounts"][k]["owner_account_sid"])
+                    print("  URI:\t\t\t" + output["accounts"][k]["uri"])
+                    print("  Subproject:\t\t" + str(output["accounts"][k]['subproject']))
+                    print("")
+
         else:
             is_json = validate_json(output)
             if is_json:
