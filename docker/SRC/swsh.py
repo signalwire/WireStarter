@@ -328,9 +328,9 @@ class MyPrompt(cmd2.Cmd):
             if args.json:
                 json_nice_print(output)
             else:
-                # There is only one sip profile
-                k_num = str("1)")
+                k_num = str("1")  # There is only one sip profile.  May make sense someday to make this a loop.
 
+                print(k_num + ")")
                 print("  Domain:\t\t\t" + output["domain"])
                 print("  Domain Identefier:\t\t" + output["domain_identifier"])
                 print("  Default Codecs:\t\t" + str(' '.join(output["default_codecs"])))
