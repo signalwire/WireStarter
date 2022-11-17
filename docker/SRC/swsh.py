@@ -1050,6 +1050,7 @@ class MyPrompt(cmd2.Cmd):
     # create the domain application list subcommand
     laml_app_parser_list = base_laml_app_subparsers.add_parser('list', help='List LaML Applications for the Project')
     laml_app_parser_list.add_argument('-i', '--id', help='SignalWire ID of the LamL Application')
+    laml_app_parser_list.add_argument('-j', '--json', action='store_true', help='List LaML Application in JSON Format')
 
     # create the domain application create command
     laml_app_parser_create = base_laml_app_subparsers.add_parser('create', help='List Domain Applications for the Project')
@@ -1102,12 +1103,62 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = laml_app_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            if args.id:
-                json_nice_print(output_json)   # When retrieving just an ID, there is no data json object
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print(output)
+
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWireID:\t\t\t" + str(output["sid"]))
+                print("  Name:\t\t\t\t" + str(output["friendly_name"]))
+                print("  Date Created:\t\t\t" + str(output["date_created"]))
+                print("  Date Updated:\t\t\t" + str(output["date_updated"]))
+                print("  Voice URL:\t\t\t" + str(output["voice_url"]))
+                print("  Voice Method:\t\t\t" + str(output["voice_method"]))
+                print("  Voice Fallback URL:\t\t" + str(output["voice_fallback_url"]))
+                print("  Voice Fallback Method:\t" + str(output["voice_fallback_method"]))
+                print("  Status Callback:\t\t" + str(output["status_callback"]))
+                print("  Status Callback Method:\t" + str(output["status_callback_method"]))
+                print("  Voice Caller ID Lookup:\t" + str(output["voice_caller_id_lookup"]))
+                print("  SMS URL:\t\t\t" + str(output["sms_url"]))
+                print("  SMS Method:\t\t\t" + str(output["sms_method"]))
+                print("  SMS Fallback URL:\t\t" + str(output["sms_fallback_url"]))
+                print("  SMS Fallback Method:\t\t" + str(output["sms_fallback_method"]))
+                print("  SMS Status Callback:\t\t" + str(output["sms_status_callback"]))
+                print("  SMS Status Callback Method:\t" + str(output["sms_status_callback_method"]))
+                print("  Message Status Callback:\t\t\t" + str(output["message_status_callback"]))
+                print("")
+            
+            elif args.json:
+                json_nice_print(output["applications"])
+
             else:
-                json_applications = output_json["applications"]
-                json_nice_print(json_applications)
+                for k, v in enumerate(output["applications"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWireID:\t\t\t" + str(output["applications"][k]["sid"]))
+                    print("  Name:\t\t\t\t" + str(output["applications"][k]["friendly_name"]))
+                    print("  Date Created:\t\t\t" + str(output["applications"][k]["date_created"]))
+                    print("  Date Updated:\t\t\t" + str(output["applications"][k]["date_updated"]))
+                    print("  Voice URL:\t\t\t" + str(output["applications"][k]["voice_url"]))
+                    print("  Voice Method:\t\t\t" + str(output["applications"][k]["voice_method"]))
+                    print("  Voice Fallback URL:\t\t" + str(output["applications"][k]["voice_fallback_url"]))
+                    print("  Voice Fallback Method:\t" + str(output["applications"][k]["voice_fallback_method"]))
+                    print("  Status Callback:\t\t" + str(output["applications"][k]["status_callback"]))
+                    print("  Status Callback Method:\t" + str(output["applications"][k]["status_callback_method"]))
+                    print("  Voice Caller ID Lookup:\t" + str(output["applications"][k]["voice_caller_id_lookup"]))
+                    print("  SMS URL:\t\t\t" + str(output["applications"][k]["sms_url"]))
+                    print("  SMS Method:\t\t\t" + str(output["applications"][k]["sms_method"]))
+                    print("  SMS Fallback URL:\t\t" + str(output["applications"][k]["sms_fallback_url"]))
+                    print("  SMS Fallback Method:\t\t" + str(output["applications"][k]["sms_fallback_method"]))
+                    print("  SMS Status Callback:\t\t" + str(output["applications"][k]["sms_status_callback"]))
+                    print("  SMS Status Callback Method:\t" + str(output["applications"][k]["sms_status_callback_method"]))
+                    print("  Message Status Callback:\t\t\t" + str(output["applications"][k]["message_status_callback"]))
+                    print("")
+                
         else:
             is_json = validate_json_compatibility(output)
             if is_json:
