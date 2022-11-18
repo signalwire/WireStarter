@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from typing_extensions import Required
 import cmd2
 import os
 import argparse
@@ -68,6 +67,20 @@ class MyPrompt(cmd2.Cmd):
         '''Clear the Screen'''
         os.system("clear")
 
+    def do_echo(self, inp):
+        '''echo something'''
+        inp = inp.split()
+        if inp[0].startswith("$"):
+            key = inp[0].strip("$")
+            shell_var = get_shell_env(key)
+            print (shell_var)
+        else:
+            print (' '.join(inp))
+    
+    def do_env(self, args):
+        '''Return the SWiSH Environment Variables'''
+        get_shell_env_all()
+
     def do_ngrok_tunnel(self, inp):
         '''Show and Attach to ngrok Tunnel Screen'''
         tunnel_url = os.popen("curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'").read()
@@ -90,6 +103,7 @@ class MyPrompt(cmd2.Cmd):
     # create the sip_endpoint list subcommand
     sip_endpoint_parser_list = base_sip_endpoint_subparsers.add_parser('list', help='List SIP Endpoints')
     sip_endpoint_parser_list.add_argument('-i', '--id', help='List SIP Endpoint by unique SignalWire ID')
+    sip_endpoint_parser_list.add_argument('-j', '--json', action='store_true', help='Output SIP Endpoint(s) in JSON format')
 
     # create the sip_endpoint update subcommand
     sip_endpoint_parser_update = base_sip_endpoint_subparsers.add_parser('update', help='Update a SIP Endpoint')
@@ -122,6 +136,14 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_endpoint
     def sip_endpoint_list(self, args):
         '''list subcommand of sip_endpoint'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+                
         query_params = ""
         if args.id:
             sid = args.id
@@ -130,12 +152,41 @@ class MyPrompt(cmd2.Cmd):
         output, status_code =  sip_endpoint_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_data = json.loads(output)
-            if args.id:
-                json_nice_print(output_data)
+            # Format the output depending on user args
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print(output)
+
+            elif args.id:
+                k_val = str("1")
+
+                print(k_val + ")")
+                print("  SignalWire ID:\t" + output["id"])
+                print("  Username:\t\t" + output["username"])
+                print("  Caller Name:\t\t" + output["caller_id"])
+                print("  Caller Number:\t" + output["send_as"]) 
+                print("  Codecs:\t\t" + str(', '.join(output["codecs"])))
+                print("  Encryption Ciphers:\t" + str(', '.join(output["ciphers"])))
+                print("  Encrytion Enabled:\t" + output["encryption"])
+                print("")
+
+            elif args.json:
+                json_nice_print(output["data"])
+
             else:
-                data_json = output_data["data"]
-                json_nice_print(data_json)
+                for k, v in enumerate(output["data"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print(" SignalWire ID:\t" + output["data"][k]["id"])
+                    print(" Username:\t\t" + output["data"][k]["username"])
+                    print(" Caller ID Name:\t" + output["data"][k]["caller_id"])
+                    print(" Caller ID Number:\t" + output["data"][k]["send_as"]) 
+                    print(" Codecs:\t\t" + str(', '.join(output["data"][k]["codecs"])))
+                    print(" Encryption Ciphers:\t" + str(', '.join(output["data"][k]["ciphers"])))
+                    print(" Encrytion Enabled:\t" + output["data"][k]["encryption"])
+                    print("")
+   
         else:
             is_json = validate_json(output)
             if is_json:
@@ -257,6 +308,7 @@ class MyPrompt(cmd2.Cmd):
 
     # create the sip_profile list subcommand
     sip_profile_parser_list = base_sip_profile_subparsers.add_parser('list', help='List SIP Profiles')
+    sip_profile_parser_list.add_argument('-j', '--json', action='store_true', help='List SIP Profiles in JSON')
 
     # create the sip_profile update subcommand
     sip_profile_parser_update = base_sip_profile_subparsers.add_parser('update', help='Update a SIP profile')
@@ -272,8 +324,21 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = sip_profile_func()
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            json_nice_print(output_json)
+            output =  json.loads(output)
+            if args.json:
+                json_nice_print(output)
+            else:
+                k_num = str("1")  # There is only one sip profile.  May make sense someday to make this a loop.
+
+                print(k_num + ")")
+                print("  Domain:\t\t\t" + output["domain"])
+                print("  Domain Identefier:\t\t" + output["domain_identifier"])
+                print("  Default Codecs:\t\t" + str(' '.join(output["default_codecs"])))
+                print("  Default Encryption Ciphers:\t" + str(' '.join(output["default_ciphers"])))
+                print("  Default Encryption Enabled:\t" + output["default_encryption"])
+                print("  Default Caller Number:\t" + output["default_send_as"])
+                print("")
+
         else:
             is_json = validate_json(output)
             if is_json:
@@ -593,6 +658,7 @@ class MyPrompt(cmd2.Cmd):
     laml_bin_parser_list = base_laml_bin_subparsers.add_parser('list', help='List LaML Bins for a Projects')
     laml_bin_parser_list.add_argument('-n', '--name', type=str, nargs='+', help='List Single LaML Bin by name')
     laml_bin_parser_list.add_argument('-i', '--id', help='List Single LaML Bin by SignalWire ID')
+    laml_bin_parser_list.add_argument('-j', '--json', action='store_true', help='List LaML Bins in JSON format')
 
     # create the laml_bin update subcommand
     laml_bin_parser_create = base_laml_bin_subparsers.add_parser('create', help='Create a LaML Bins')
@@ -632,12 +698,42 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = laml_bin_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            if args.id:
-                output_laml_bin = output_json
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print(output)
+            
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t" + output["sid"])
+                print("  LaML Bin Name:\t" + output["name"])
+                print("  Request URL:\t\t" + output["request_url"])
+                print("  Date Created:\t\t" + output["date_created"])
+                print("  Date Updated:\t\t" + output["date_updated"])
+                print("  Date Last Accessed\t" + output["date_last_accessed"])
+                print("  Number of Requests:\t" + str(output["num_requests"]))
+                print("  Contents:\n\n  " + output["contents"])
+                print("")
+
+            elif args.json:
+                json_nice_print(output["laml_bins"])
+
             else:
-                output_laml_bin = output_json["laml_bins"]
-            json_nice_print(output_laml_bin)
+                for k, v in enumerate(output["laml_bins"]):
+                    k_num = str(k + 1)
+                
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t" + output["laml_bins"][k]["sid"])
+                    print("  LaML Bin Name:\t" + output["laml_bins"][k]["name"])
+                    print("  Request URL:\t\t" + output["laml_bins"][k]["request_url"])
+                    print("  Date Created:\t\t" + output["laml_bins"][k]["date_created"])
+                    print("  Date Updated:\t\t" + output["laml_bins"][k]["date_updated"])
+                    print("  Date Last Accessed\t" + output["laml_bins"][k]["date_last_accessed"])
+                    print("  Number of Requests:\t" + str(output["laml_bins"][k]["num_requests"]))
+                    print("  Contents:\n\n  " + output["laml_bins"][k]["contents"])
+                    print("")
+
         else:
             is_json = validate_json(output)
             if is_json:
@@ -840,7 +936,8 @@ class MyPrompt(cmd2.Cmd):
     # Create the project list subcommand
     project_parser_list = base_project_subparsers.add_parser('list', help='List LaML Bins for a Projects')
     project_parser_list.add_argument('-f', '--friendly-name', type=str, nargs='+', help='List Single Project by Friendly Name')
-    project_parser_list.add_argument('-s', '--sid', type=str, help='List SignalWire Space or Subspace with given SID')
+    project_parser_list.add_argument('-s', '--id', type=str, help='List SignalWire Space or Subspace with given SID')
+    project_parser_list.add_argument('-j', '--json', action='store_true', help='List Signalwire Spaces in JSON format')
 
     # Create the project update subcommand
     project_parser_update = base_project_subparsers.add_parser('update', help='Update a project')
@@ -860,8 +957,8 @@ class MyPrompt(cmd2.Cmd):
             elif len(args.friendly_name) > 1:
                 friendly_name = "%20".join(args.friendly_name)
             query_params ="?FriendlyName=%s" % friendly_name
-        elif args.sid:
-             sid = args.sid
+        elif args.id:
+             sid = args.id
              query_params = "/%s" % sid
         else:
             query_params=""
@@ -869,9 +966,46 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = project_func(query_params=query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            accounts_json = output_json["accounts"]
-            json_nice_print (accounts_json)
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print (output)
+            
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t" + output["sid"])
+                print("  Friendly Name:\t" + output["friendly_name"])
+                print("  Status:\t\t" + output["status"])
+                print("  Auth Token:\t\t" + output["auth_token"])
+                print("  Date Created:\t\t" + output["date_created"])
+                print("  Date Updated:\t\t" + output["date_updated"])
+                print("  Type:\t\t\t" + output["type"])
+                print("  Owner Account ID:\t" + output["owner_account_sid"])
+                print("  URI:\t\t\t" + output["uri"])
+                print("  Subproject:\t\t" + str(output['subproject']))
+                print("")
+            
+            elif args.json:
+                json_nice_print(output["accounts"])
+            
+            else:
+                for k, v in enumerate(output["accounts"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t" + output["accounts"][k]["sid"])
+                    print("  Friendly Name:\t" + output["accounts"][k]["friendly_name"])
+                    print("  Status:\t\t" + output["accounts"][k]["status"])
+                    print("  Auth Token:\t\t" + output["accounts"][k]["auth_token"])
+                    print("  Date Created:\t\t" + output["accounts"][k]["date_created"])
+                    print("  Date Updated:\t\t" + output["accounts"][k]["date_updated"])
+                    print("  Type:\t\t\t" + output["accounts"][k]["type"])
+                    print("  Owner Account ID:\t" + output["accounts"][k]["owner_account_sid"])
+                    print("  URI:\t\t\t" + output["accounts"][k]["uri"])
+                    print("  Subproject:\t\t" + str(output["accounts"][k]['subproject']))
+                    print("")
+
         else:
             is_json = validate_json(output)
             if is_json:
@@ -916,6 +1050,7 @@ class MyPrompt(cmd2.Cmd):
     # create the domain application list subcommand
     laml_app_parser_list = base_laml_app_subparsers.add_parser('list', help='List LaML Applications for the Project')
     laml_app_parser_list.add_argument('-i', '--id', help='SignalWire ID of the LamL Application')
+    laml_app_parser_list.add_argument('-j', '--json', action='store_true', help='List LaML Application in JSON Format')
 
     # create the domain application create command
     laml_app_parser_create = base_laml_app_subparsers.add_parser('create', help='List Domain Applications for the Project')
@@ -968,12 +1103,62 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = laml_app_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            if args.id:
-                json_nice_print(output_json)   # When retrieving just an ID, there is no data json object
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print(output)
+
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWireID:\t\t\t" + str(output["sid"]))
+                print("  Name:\t\t\t\t" + str(output["friendly_name"]))
+                print("  Date Created:\t\t\t" + str(output["date_created"]))
+                print("  Date Updated:\t\t\t" + str(output["date_updated"]))
+                print("  Voice URL:\t\t\t" + str(output["voice_url"]))
+                print("  Voice Method:\t\t\t" + str(output["voice_method"]))
+                print("  Voice Fallback URL:\t\t" + str(output["voice_fallback_url"]))
+                print("  Voice Fallback Method:\t" + str(output["voice_fallback_method"]))
+                print("  Status Callback:\t\t" + str(output["status_callback"]))
+                print("  Status Callback Method:\t" + str(output["status_callback_method"]))
+                print("  Voice Caller ID Lookup:\t" + str(output["voice_caller_id_lookup"]))
+                print("  SMS URL:\t\t\t" + str(output["sms_url"]))
+                print("  SMS Method:\t\t\t" + str(output["sms_method"]))
+                print("  SMS Fallback URL:\t\t" + str(output["sms_fallback_url"]))
+                print("  SMS Fallback Method:\t\t" + str(output["sms_fallback_method"]))
+                print("  SMS Status Callback:\t\t" + str(output["sms_status_callback"]))
+                print("  SMS Status Callback Method:\t" + str(output["sms_status_callback_method"]))
+                print("  Message Status Callback:\t\t\t" + str(output["message_status_callback"]))
+                print("")
+            
+            elif args.json:
+                json_nice_print(output["applications"])
+
             else:
-                json_applications = output_json["applications"]
-                json_nice_print(json_applications)
+                for k, v in enumerate(output["applications"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWireID:\t\t\t" + str(output["applications"][k]["sid"]))
+                    print("  Name:\t\t\t\t" + str(output["applications"][k]["friendly_name"]))
+                    print("  Date Created:\t\t\t" + str(output["applications"][k]["date_created"]))
+                    print("  Date Updated:\t\t\t" + str(output["applications"][k]["date_updated"]))
+                    print("  Voice URL:\t\t\t" + str(output["applications"][k]["voice_url"]))
+                    print("  Voice Method:\t\t\t" + str(output["applications"][k]["voice_method"]))
+                    print("  Voice Fallback URL:\t\t" + str(output["applications"][k]["voice_fallback_url"]))
+                    print("  Voice Fallback Method:\t" + str(output["applications"][k]["voice_fallback_method"]))
+                    print("  Status Callback:\t\t" + str(output["applications"][k]["status_callback"]))
+                    print("  Status Callback Method:\t" + str(output["applications"][k]["status_callback_method"]))
+                    print("  Voice Caller ID Lookup:\t" + str(output["applications"][k]["voice_caller_id_lookup"]))
+                    print("  SMS URL:\t\t\t" + str(output["applications"][k]["sms_url"]))
+                    print("  SMS Method:\t\t\t" + str(output["applications"][k]["sms_method"]))
+                    print("  SMS Fallback URL:\t\t" + str(output["applications"][k]["sms_fallback_url"]))
+                    print("  SMS Fallback Method:\t\t" + str(output["applications"][k]["sms_fallback_method"]))
+                    print("  SMS Status Callback:\t\t" + str(output["applications"][k]["sms_status_callback"]))
+                    print("  SMS Status Callback Method:\t" + str(output["applications"][k]["sms_status_callback_method"]))
+                    print("  Message Status Callback:\t\t\t" + str(output["applications"][k]["message_status_callback"]))
+                    print("")
+                
         else:
             is_json = validate_json_compatibility(output)
             if is_json:
@@ -1156,6 +1341,7 @@ class MyPrompt(cmd2.Cmd):
     domain_application_parser_list.add_argument('-d', '--domain', type=str, nargs='+', help='Return all values for given domain of Domain App')
     domain_application_parser_list.add_argument('-n', '--name', type=str, nargs='+', help='Return all values for the given name of Domain App')
     domain_application_parser_list.add_argument('-i', '--id', help='SignalWire ID of the Domain Application')
+    domain_application_parser_list.add_argument('-j', '--json', action='store_true', help='List Domain Applications in JSON Format')
 
     # create the domain application create command
     domain_application_parser_create = base_domain_application_subparsers.add_parser('create', help='List Domain Applications for the Project')
@@ -1230,12 +1416,72 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = domain_application_func(query_params)
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            if args.id:
-                json_nice_print (output_json)
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print (output)
+
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t\t" + str(output["id"]))
+                print("  Name:\t\t\t\t" + str(output["name"]))
+                print("  Domain:\t\t\t" + str(output["domain"]))
+                print("  Identifier:\t\t\t" + str(output["identifier"]))
+                print("  IP Auth Enabled:\t\t" + str(output["ip_auth_enabled"]))
+                print("  IP Auth:\t\t\t" + str(', '.join(output["ip_auth"])))
+                print("  Call Handler:\t\t\t" + str(output["call_handler"]))
+                print("  Call Request URL:\t\t" + str(output["call_request_url"]))
+                print("  Call Request Method:\t\t" + str(output["call_request_method"]))
+                print("  Call Fallback URL:\t\t" + str(output["call_fallback_url"]))
+                print("  Call Fallback Method:\t\t" + str(output["call_fallback_method"]))
+                print("  Call Status Callback URL:\t" + str(output["call_status_callback_url"]))
+                print("  Call Status Callback Method:\t" + str(output["call_status_callback_method"]))
+                print("  Call Relay Context:\t\t" + str(output["call_relay_context"]))
+                print("  Call LaML Application ID:\t" + str(output["call_laml_application_id"]))
+                print("  Encryption:\t\t\t" + str(output["encryption"]))
+                print("  Codecs:\t\t\t" + str(', '.join(output["codecs"])))
+                print("  Encryption Ciphers:\t\t" + str(', '.join(output["ciphers"])))
+                print("")
+
+            elif args.json:
+                json_nice_print (output["data"])
+
             else:
-                data_json = output_json["data"]
-                json_nice_print (data_json)
+                for k, v in enumerate(output["data"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t\t" + str(output["data"][k]["id"]))
+                    print("  Name:\t\t\t\t" + str(output["data"][k]["name"]))
+                    print("  Domain:\t\t\t" + str(output["data"][k]["domain"]))
+                    print("  Identifier:\t\t\t" + str(output["data"][k]["identifier"]))
+                    print("  IP Auth Enabled:\t\t" + str(output["data"][k]["ip_auth_enabled"]))
+                    print("  IP Auth:\t\t\t" + str(', '.join(output["data"][k]["ip_auth"])))
+                    print("  Call Handler:\t\t\t" + str(output["data"][k]["call_handler"]))
+                    print("  Call Request URL:\t\t" + str(output["data"][k]["call_request_url"]))
+                    print("  Call Request Method:\t\t" + str(output["data"][k]["call_request_method"]))
+                    print("  Call Fallback URL:\t\t\t" + str(output["data"][k]["call_fallback_url"]))
+                    print("  Call Fallback Method:\t\t" + str(output["data"][k]["call_fallback_method"]))
+                    print("  Call Status Callback URL:\t\t" + str(output["data"][k]["call_status_callback_url"]))
+                    print("  Call Status Callback Method:\t" + str(output["data"][k]["call_status_callback_method"]))
+                    print("  Call Relay Context:\t\t" + str(output["data"][k]["call_relay_context"]))
+                    print("  Call LaML Application ID:\t" + str(output["data"][k]["call_laml_application_id"]))
+                    print("  Encryption:\t\t\t" + str(output["data"][k]["encryption"]))
+                    print("  Codecs:\t\t\t" + str(', '.join(output["data"][k]["codecs"])))
+                    print("  Encryption Ciphers:\t\t" + str(', '.join(output["data"][k]["ciphers"])))
+                    print("")
+            
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json(output)
+            else:
+                is_json = validate_json(output)
+                if is_json:
+                    print_error_json(output)
+                else:
+                    print (status_code + ": " + output + "\n" )
 
     def domain_application_create(self, args):
         '''create subcommand of domain_application'''
@@ -1374,6 +1620,7 @@ class MyPrompt(cmd2.Cmd):
     number_group_parser_list = base_number_group_subparsers.add_parser('list', help='List Number Groups for the Project')
     number_group_parser_list.add_argument('-n', '--name', nargs='+', help='Return all Number Groups containing this value')
     number_group_parser_list.add_argument('-i', '--id',help='Return a Number Group with the given ID')
+    number_group_parser_list.add_argument('-j', '--json', action='store_true', help='List Number Groups in JSON Format')
 
     # create the number groups create command
     number_group_parser_create = base_number_group_subparsers.add_parser('create', help='Create for the Project')
@@ -1407,13 +1654,34 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = number_group_func( query_params )
         valid = validate_http(status_code)
         if valid:
-            output_json = json.loads(output)
-            # if only ID is used, there is no data object.
-            if args.id:
-                json_nice_print (output_json)
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print (output)
+            
+            elif args.id:
+                k_num = str("1")
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t" + output["id"])
+                print("  Name:\t\t\t" + output["name"])
+                print("  Phone Number Count:\t" + str(output["phone_number_count"]))
+                print("  Sticky Sender:\t" + str(output["sticky_sender"]))
+                print("")
+
+            elif args.json:
+                json_nice_print (output["data"])
+
             else:
-                data_json = output_json["data"]
-                json_nice_print (data_json)
+                for k, v in enumerate(output["data"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t" + output["data"][k]["id"])
+                    print("  Name:\t\t\t" + output["data"][k]["name"])
+                    print("  Phone Number Count:\t" + str(output["data"][k]["phone_number_count"]))
+                    print("  Sticky Sender:\t" + str(output["data"][k]["sticky_sender"]))
+                    print("")
+    
         else:
             is_json = validate_json(output)
             if is_json:
@@ -1461,7 +1729,6 @@ class MyPrompt(cmd2.Cmd):
         output, status_code = number_group_func(query_params, req_type="PUT", payload=payload)
         valid = validate_http(status_code)
         if valid:
-            # TODO: Output the sip endpoint after updated.  Maybe?
             print("Success! Number group " + sid + " Updated\n")
         else:
             is_json = validate_json(output)

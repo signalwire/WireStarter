@@ -28,6 +28,8 @@ services:
     build:
       context: ../
       dockerfile: docker/Dockerfile
+      args:
+        python_version: "python3.9"
     privileged: true
     networks:
       wirestarter:
