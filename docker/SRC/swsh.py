@@ -75,7 +75,7 @@ class MyPrompt(cmd2.Cmd):
             shell_var = get_shell_env(key)
             print (shell_var)
         else:
-            print (inp)
+            print (' '.join(inp))
     
     def do_env(self, args):
         '''Return the SWiSH Environment Variables'''
