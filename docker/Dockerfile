@@ -6,6 +6,8 @@
 
 FROM debian:bullseye-slim
 
+ARG python_version
+
 # Install the basic package
 RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix
 
@@ -70,14 +72,14 @@ COPY bin/ /usr/bin
 # Allows for adding env vars into the shell 
 # At some point, rather than patch, we may just want to copy in our own version of the module, if it becomes too messy.
 # -Shane.
-COPY misc/cmd2.patch /tmp/cmd.patch
-RUN /usr/bin/patch /usr/local/lib/${PYTHON_VER}/dist-packages/cmd2/cmd2.py  < /tmp/cmd2.patch
+COPY misc/cmd2.patch /tmp/cmd2.patch
+RUN /usr/bin/patch /usr/local/lib/${python_version}/dist-packages/cmd2/cmd2.py  < /tmp/cmd2.patch
 
 # Copy Patch to allow 'nicer' coloring on JSON output 
 # Creats a new formatter called SwishFormatter that can be used to customize any coloring
-COPY misc/swishcolor.py /usr/local/lib/${PYTHON_VER}/dist-packages/pygments/formatters/swishcolor.py
+COPY misc/swishcolor.py /usr/local/lib/${python_version}/dist-packages/pygments/formatters/swishcolor.py
 COPY misc/pygment_mapping.patch /tmp/pygment_mapping.patch
-RUN /usr/bin/patch /usr/local/lib/${PYTHON_VER}/dist-packages/pygments/formatters/_mapping.py < /tmp/pygment_mapping.patch
+RUN /usr/bin/patch /usr/local/lib/${python_version}/dist-packages/pygments/formatters/_mapping.py < /tmp/pygment_mapping.patch
 
 # Clean up
 RUN /usr/bin/dos2unix /root/.bashrc         # Fixes DOS formatting when using Windows
