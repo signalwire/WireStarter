@@ -397,11 +397,12 @@ class MyPrompt(cmd2.Cmd):
     phone_number_parser_list.add_argument('-j', '--json', action='store_true', help='List Phone Numbers for project in JSON Format')
     phone_number_parser_list.add_argument('-n', '--name', help='Find a phone number by object Name')
     phone_number_parser_list.add_argument('-i', '--id', help='Find a phone number by SignalWire ID')
-    phone_number_parser_list.add_argument('-b', '--number', help='Return a phone number by number in E164 format')
+    phone_number_parser_list.add_argument('-N', '--number', help='Return a phone number by number in E164 format')
 
     # create the phone_number update subcommand
     phone_number_parser_update = base_phone_number_subparsers.add_parser('update', help='Update a Phone Number')
-    phone_number_parser_update.add_argument('-i', '--id', help='ID of the SignalWire Phone Number', required=True)
+    phone_number_parser_update.add_argument('-i', '--id', help='ID of the SignalWire Phone Number')
+    phone_number_parser_update.add_argument('-N', '--number', help='The phone number being updated')
     phone_number_parser_update.add_argument('-n', '--name', nargs='+', help='Update the Friendly Name of a Phone Number')
     phone_number_parser_update.add_argument('--call-handler', help='Type of handlers to use when processing calls to the Number', choices=["relay_context", "laml_webhooks", "laml_application", "dialogflow", "relay_connector", "relay_sip_endpoint", "relay_verto_endpoint", "video_room"])
     phone_number_parser_update.add_argument('--call-receive-mode', help='How to receive the incoming call: Voice or Fax', choices=["voice", "fax"], default="voice")
@@ -519,7 +520,22 @@ class MyPrompt(cmd2.Cmd):
     def phone_number_update(self, args):
         '''Update subcommand of phone_number'''
         # NOTE: I found that if the number DOES NOT have a name, the API won't allow it to be udpated and will require a name.  After that, it is no longer needed.
-        sid = args.id
+        # An ID or Number are required.
+        if args.id:
+            sid = args.id
+        elif args.number:
+            # Lookup the number in the API and get the SID.
+            query_params = "?filter_number=" + urllib.parse.quote(args.number)
+            output, status_code = phone_number_func(query_params=query_params)
+            valid = validate_http(status_code)
+            if not valid:
+                print("An error has occured.  Please check number and retry\n")
+            else:
+                output = json.loads(output)
+                sid = (output["data"][0]["id"])
+        else:
+            print("A valid SignalWire ID or Phone Number is required.\n")
+
         query_params = "/" + sid
         if args.name:
             # Can only join if argument exists.  Doing that here.
