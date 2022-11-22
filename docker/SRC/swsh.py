@@ -111,7 +111,7 @@ class MyPrompt(cmd2.Cmd):
     sip_endpoint_parser_update.add_argument('-p', '--password', help='update password of the sip endpoint')
     sip_endpoint_parser_update.add_argument('-s', '--send-as',  help='default caller id for sip endpoint (Must belong to the Project!)')
     sip_endpoint_parser_update.add_argument('-c', '--caller-id', nargs='+', help='Friendly Caller ID Name (SIP to SIP only)' )
-    sip_endpoint_parser_update.add_argument('-i', '--id', help='Unique id of the SIP Endpoint to be deleted', required=True)
+    sip_endpoint_parser_update.add_argument('-i', '--id', help='Unique id of the SIP Endpoint to be deleted')
     sip_endpoint_parser_update.add_argument('-e', '--encryption', type=str, help='Default Codecs', choices=['default', 'required', 'optional'])
     sip_endpoint_parser_update.add_argument('--codecs', type=str, nargs='+', help='Default Codecs', choices=['OPUS', 'G722', 'PCMU', 'PCMA', 'VP8', 'H264'])
     sip_endpoint_parser_update.add_argument('--ciphers', type=str, nargs='+',  help='Default Ciphers', choices=['AEAD_AES_256_GCM_8','AES_256_CM_HMAC_SHA1_80','AES_CM_128_HMAC_SHA1_80','AES_256_CM_HMAC_SHA1_32','AES_CM_128_HMAC_SHA1_32'])
@@ -160,6 +160,15 @@ class MyPrompt(cmd2.Cmd):
             elif args.id:
                 k_val = str("1")
 
+                for k, v in output.items():
+                    key = k.upper()
+                    if isinstance(v, list):
+                        value = str(', '.join(v))
+                    else:
+                        value = str(v)
+
+                    set_shell_env(key + "=" + value)
+
                 print(k_val + ")")
                 print("  SignalWire ID:\t" + str(output["id"]))
                 print("  Username:\t\t" + str(output["username"]))
@@ -196,6 +205,14 @@ class MyPrompt(cmd2.Cmd):
 
     def sip_endpoint_create(self, args):
         '''create subcommand of sip_endpoint'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         query_params = ""
         sip_endpoint_dictionary = {
           "username": args.username,
@@ -229,6 +246,14 @@ class MyPrompt(cmd2.Cmd):
 
     def sip_endpoint_update(self, args):
         '''update subcommand of sip_endpoint'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         if args.caller_id:
@@ -264,6 +289,14 @@ class MyPrompt(cmd2.Cmd):
 
     def sip_endpoint_delete(self, args):
         '''delete subcommand of sip_endpoint'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         if sid is not None:
@@ -321,6 +354,14 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for sip_profile
     def sip_profile_list(self, args):
         '''list subcommand of sip_profile'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         output, status_code = sip_profile_func()
         valid = validate_http(status_code)
         if valid:
@@ -348,6 +389,14 @@ class MyPrompt(cmd2.Cmd):
 
     def sip_profile_update(self, args):
         '''update subcommand of sip_profile'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sip_profile_dictionary = {
           "domain_identifier": args.domain_identifier,
           "default_send_asas": args.send_as,
@@ -443,6 +492,14 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for phone numbers
     def phone_number_list(self, args):
         '''list subcommand of phone_number'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         if args.json:
             output, status_code = phone_number_func()
             valid = validate_http(status_code)
@@ -519,6 +576,14 @@ class MyPrompt(cmd2.Cmd):
 
     def phone_number_update(self, args):
         '''Update subcommand of phone_number'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         # NOTE: I found that if the number DOES NOT have a name, the API won't allow it to be udpated and will require a name.  After that, it is no longer needed.
         # An ID or Number are required.
         if args.id:
@@ -592,6 +657,14 @@ class MyPrompt(cmd2.Cmd):
 
     def phone_number_release(self, args):
         '''Release subcommand of phone_number'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         # TODO: allow the number to be used for release as well
         # We can get the id from the number and then release.
         sid = args.id
@@ -620,6 +693,14 @@ class MyPrompt(cmd2.Cmd):
 
     def phone_number_lookup(self, args):
         '''lookup subcommand of phone_number'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         # TODO: Refactor this command using new(er) functions
         # Verify its a 10 digit US number in e.164 format.
         number = args.number
@@ -698,6 +779,14 @@ class MyPrompt(cmd2.Cmd):
     ## subcommand functions for laml bins
     def laml_bin_list(self, args):
         '''list subcommand of laml_bin'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         query_params = ""
         if args.name:
             if len(args.name) == 1:
@@ -759,6 +848,14 @@ class MyPrompt(cmd2.Cmd):
 
     def laml_bin_create(self, args):
         '''create subcommand of laml_bin'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         # Arg lists Needs to be converted into strings before they can be url encoded.
         if args.contents is None:
             # NOTE: There may be a better way to check whether or not the file was changed, than using system calls to sha1sum.
@@ -802,6 +899,14 @@ class MyPrompt(cmd2.Cmd):
 
     def laml_bin_update(self, args):
         '''create subcommand of laml_bin'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         if args.contents is None:
@@ -860,6 +965,14 @@ class MyPrompt(cmd2.Cmd):
 
     def laml_bin_delete(self, args):
         '''create subcommand of laml_bin'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = '/' + sid
         confirm = str(input("Are you sure you want to proceed removing this LaML Bin?  This cannot be undone (Y/n): "))
@@ -967,6 +1080,14 @@ class MyPrompt(cmd2.Cmd):
     # Subcommand functions for project
     def project_list(self, args):
         '''list subcommand of project'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         if args.friendly_name:
             if len(args.friendly_name) == 1:
                 friendly_name = args.friendly_name[0]
@@ -1110,6 +1231,14 @@ class MyPrompt(cmd2.Cmd):
 
     def laml_app_list(self, args):
         '''list subcommand of laml_app'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         if args.id:
             sid = args.id
             query_params = "/" + sid
@@ -1186,6 +1315,14 @@ class MyPrompt(cmd2.Cmd):
 
     def laml_app_create(self, args):
         '''create subcommand of laml_app'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         FriendlyName = ""
         MessageStatusCallback = ""
         SmsFallbackMethod = ""
@@ -1248,6 +1385,14 @@ class MyPrompt(cmd2.Cmd):
 
     def laml_app_update(self, args):
         '''update subcommand of laml_app'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         FriendlyName = ""
@@ -1409,6 +1554,14 @@ class MyPrompt(cmd2.Cmd):
 
     def domain_application_list(self, args):
         '''list subcommand of domain_application'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         if args.domain:
             if len(args.domain) == 1:
                 domain = args.domain[0]
@@ -1501,6 +1654,14 @@ class MyPrompt(cmd2.Cmd):
 
     def domain_application_create(self, args):
         '''create subcommand of domain_application'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         # Make the Name look nice
         if args.name:
             args.name = ' '.join(args.name)
@@ -1546,6 +1707,14 @@ class MyPrompt(cmd2.Cmd):
 
     def domain_application_update(self, args):
         '''create subcommand of domain_application'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         # Make the Name look nice
@@ -1591,6 +1760,14 @@ class MyPrompt(cmd2.Cmd):
 
     def domain_application_delete(self, args):
         '''delete subcommand of domain_application'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         if sid is not None:
@@ -1655,6 +1832,14 @@ class MyPrompt(cmd2.Cmd):
 
     def number_group_list(self, args):
         '''list subcommand of number_group'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         if args.name:
             if len(args.name) == 1:
                 name = args.name[0]
@@ -1707,6 +1892,14 @@ class MyPrompt(cmd2.Cmd):
 
     def number_group_create(self, args):
         '''create subcommand of number_group'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         number_group_dictionary = {
           "name": args.name,
           "sticky_sender": args.sticky_sender
@@ -1729,6 +1922,14 @@ class MyPrompt(cmd2.Cmd):
 
     def number_group_update(self, args):
         '''update subcommand of number_group'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         number_group_dictionary = {
@@ -1755,6 +1956,14 @@ class MyPrompt(cmd2.Cmd):
 
     def number_group_delete(self, args):
         '''delete subcommand of number_group'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
         sid = args.id
         query_params = "/" + sid
         if sid is not None:
