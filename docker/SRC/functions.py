@@ -143,14 +143,22 @@ def set_shell_env(var):
 
 def get_shell_env(var):
     key = var
-    return (env_var_dict[key])
+    if key:
+        val = env_var_dict[key]
+        if val:
+            return (env_var_dict[key])
+        else:
+            print ("")
+    else:
+        print("")
 
 def get_shell_env_all():
-    if env_var_dict == "{}":
-        print ("")
+    if len(env_var_dict.items()) == 0:
+        return
     else:
         for k, v in env_var_dict.items():
-            print (k + "=" + v)
+            print(k + "=" + v)
+        print("")
 
 
 def json_nice_print(j):
