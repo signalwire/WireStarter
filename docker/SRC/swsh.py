@@ -1064,18 +1064,23 @@ class MyPrompt(cmd2.Cmd):
 
     # Create the project list subcommand
     project_parser_list = base_project_subparsers.add_parser('list', help='List LaML Bins for a Projects')
-    project_parser_list.add_argument('-f', '--friendly-name', type=str, nargs='+', help='List Single Project by Friendly Name')
-    project_parser_list.add_argument('-s', '--id', type=str, help='List SignalWire Space or Subspace with given SID')
+    project_parser_list.add_argument('-n', '--name', type=str, nargs='+', help='List Single Project by Friendly Name')
+    project_parser_list.add_argument('-i', '--id', type=str, help='List SignalWire Space or Subspace with given SID')
     project_parser_list.add_argument('-j', '--json', action='store_true', help='List Signalwire Spaces in JSON format')
 
+    # Create the project create subcommand
+    project_parser_create = base_project_subparsers.add_parser('create', help='Create a subproject')
+    project_parser_create.add_argument('-n', '--name', type=str, nargs="+", help='Create a subjproject under the current project', required=True)
+    
     # Create the project update subcommand
     project_parser_update = base_project_subparsers.add_parser('update', help='Update a project')
-
-    # Create the project update subcommand
-    project_parser_create = base_project_subparsers.add_parser('create', help='Create a subproject')
+    project_parser_update.add_argument('-n', '--name', type=str, nargs="+", help='Update the name of a subproject')
+    project_parser_update.add_argument('-i', '--id', help='SignalWire ID of the subproject')
 
     # Create the project delete subcommand
-    project_parser_delete = base_project_subparsers.add_parser('delete', help='Delete/Remove a subproject')
+    # DELETE IS NOT SUPPORTED BY THE API
+    #project_parser_delete = base_project_subparsers.add_parser('delete', help='Delete/Remove a subproject')
+    #project_parser_delete.add_argument('-i', '--id', type=str, help='Remove Sub Project with SignalWire ID')
 
     # Subcommand functions for project
     def project_list(self, args):
@@ -1088,15 +1093,15 @@ class MyPrompt(cmd2.Cmd):
                 new_arg=get_shell_env(var)
                 setattr(args, arg, new_arg)
 
-        if args.friendly_name:
-            if len(args.friendly_name) == 1:
-                friendly_name = args.friendly_name[0]
-            elif len(args.friendly_name) > 1:
-                friendly_name = "%20".join(args.friendly_name)
+        if args.name:
+            if len(args.name) == 1:
+                friendly_name = args.name[0]
+            elif len(args.name) > 1:
+                friendly_name = "%20".join(args.name)
             query_params ="?FriendlyName=%s" % friendly_name
         elif args.id:
              sid = args.id
-             query_params = "/%s" % sid
+             query_params = "/" + sid
         else:
             query_params=""
 
@@ -1153,15 +1158,67 @@ class MyPrompt(cmd2.Cmd):
 
     def project_create(self, args):
         '''create subcommand of project'''
-        print('Create a project -- Coming Soon')
+        if args.name:
+            name = ' '.join(args.name)
+            name_url_encode = urllib.parse.quote(name)
+
+        payload = "FriendlyName=" + name_url_encode
+
+        output, status_code = project_func(req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            sid = str(output_json["sid"])
+            print ("Sub-Project " + sid + " has been created successfully\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print("Error: " + output + "\n")
 
     def project_update(self, args):
         '''create subcommand of project'''
-        print('Create a project -- Coming Soon')
+        sid = args.id
+        query_params = "/" + sid
 
-    def project_delete(self, args):
-        '''create subcommand of project'''
-        print('Delete/Remove a project -- Coming Soon')
+        # The only param is name.
+        if args.name:
+            name = ' '.join(args.name)
+            name_url_encode = urllib.parse.quote(name)
+
+        payload = "FriendlyName=" + name_url_encode
+
+        output, status_code = project_func(query_params, req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            print ("Sub-Project " + sid + " has been updated successfully\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print("Error: " + output + "\n")
+
+    # NOTE: DELETE is not supported by the API    
+    #def project_delete(self, args):
+    #    '''create subcommand of project'''
+    #    sid = args.id
+    #    query_params = "/" + sid
+    #    confirm = str(input("Are you sure you want to proceed removing this subproject?  This cannot be undone (Y/n): "))
+    #    if confirm.lower() == "yes" or confirm.lower() == 'y':
+    #        output, status_code = laml_bin_func(query_params, "DELETE")
+    #        valid = validate_http(status_code)
+    #        if valid:
+    #            print("Success! Sub Project " + sid + " has been removed\n")
+    #        else:
+    #            is_json = validate_json(output)
+    #            if is_json:
+    #                print_error_json_compatibility(output)
+    #            else:
+    #                status_code = str(status_code)
+    #                print(status_code + ": " + output + "\n")
 
     # Set default handlers for each sub command
     project_parser_list.set_defaults(func=project_list)
