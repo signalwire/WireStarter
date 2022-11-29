@@ -6,7 +6,7 @@
 
 FROM debian:bullseye-slim
 
-ARG python_version
+ARG python_version=python3.9
 
 # Install the basic package
 RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix
