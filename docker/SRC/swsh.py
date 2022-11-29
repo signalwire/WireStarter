@@ -1224,7 +1224,7 @@ class MyPrompt(cmd2.Cmd):
     project_parser_list.set_defaults(func=project_list)
     project_parser_create.set_defaults(func=project_create)
     project_parser_update.set_defaults(func=project_update)
-    project_parser_delete.set_defaults(func=project_delete)
+    #project_parser_delete.set_defaults(func=project_delete)
 
     @cmd2.with_argparser(base_project_parser)
     def do_project(self, args: argparse.Namespace):
