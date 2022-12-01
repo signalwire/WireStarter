@@ -29,21 +29,27 @@ def post_phone_numbers(response_json):
       message_match = re.search(r'ngrok.io', message_url)
       old_call_ngrok_url = str(call_url[0:36])
       old_message_ngrok_url = str(message_url[0:36])
-      
+
       new_call_url = ""
       new_message_url = ""
 
       if call_match:
           new_call_url = call_url.replace(old_call_ngrok_url,new_ngrok_url)
+      else:
+          # Nothing changed, keep things the same
+          new_call_url = call_url
 
       if message_match:
           new_message_url = message_url.replace(old_message_ngrok_url,new_ngrok_url)
+      else:
+          # Nothing changed, keep things the same
+          new_message_url = message_url
 
-          payload = json.dumps({
-              "call_request_url": new_call_url,
-              "message_request_url": new_message_url,
-          })
-      
+      payload = json.dumps({
+          "call_request_url": new_call_url,
+          "message_request_url": new_message_url,
+      })
+
       query_params = "/" + number_uuid
 
       output, status_code = phone_number_func(query_params=query_params, req_type="PUT", payload=payload)
