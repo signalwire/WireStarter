@@ -2057,6 +2057,226 @@ class MyPrompt(cmd2.Cmd):
         else:
             self.do_help('number_group')
 
+## FIFO QUEUES ##
+# Create the top level parser for queues: fifo_queue
+    base_fifo_queue_parser = cmd2.Cmd2ArgumentParser()
+    base_fifo_queue_subparsers = base_fifo_queue_parser.add_subparsers(title='FIFO QUEUES',help='fifo_queue help')
+
+    # create the fifo_queue list subcommand
+    fifo_queue_parser_list = base_fifo_queue_subparsers.add_parser('list', help='List FIFO Queues for a Project')
+    fifo_queue_parser_list.add_argument('-i', '--id', help='List a Single FIFO Queue by SignalWire ID')
+    fifo_queue_parser_list.add_argument('-j', '--json', action='store_true', help='Output FIFO Queue(s) in JSON format')
+
+    # create the fifo_queue update subcommand
+    fifo_queue_parser_create = base_fifo_queue_subparsers.add_parser('create', help='Create a FIFO Queue')
+    fifo_queue_parser_create.add_argument('-n', '--name', nargs='+', help='Identifiable name of the LaML Bin', required=True)
+    fifo_queue_parser_create.add_argument('-m', '--maxsize', help='The maximum number of calls that are allowed to wait in a queue.  Default is 5.',default='5')
+
+    # create the fifo_queue update subcommand
+    fifo_queue_parser_update = base_fifo_queue_subparsers.add_parser('update', help='Update a FIFO Queue')
+    fifo_queue_parser_update.add_argument('-i', '--id', help='SignalWire ID of the FIFO Queue')
+    fifo_queue_parser_update.add_argument('-n', '--name', nargs='+', help='Identifiable name of the FIFO Queue', required=True)
+    fifo_queue_parser_update.add_argument('-m', '--maxsize', help='The maximum number of calls that are allowed to wait in a queue.')
+
+    # create the fifo_queue delete subcommand
+    fifo_queue_parser_delete = base_fifo_queue_subparsers.add_parser('delete', help='Delete/Remove a FIFO Queue')
+    fifo_queue_parser_delete.add_argument('-i', '--id', help='SignalWire ID of the FIFO Queue to be deleted')
+
+    def fifo_queue_list(self, args):
+        '''list subcommand of fifo_queue '''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
+        query_params = "/Queues"
+        if args.id:
+            sid = args.id
+            query_params = query_params + "/" + sid
+
+        output, status_code = fifo_queue_func(query_params)
+        valid = validate_http(status_code)
+        if valid:
+            # Format the output depending on user args
+            output = json.loads(output)
+            if args.id and args.json:
+                json_nice_print(output)
+
+            elif args.id:
+                k_num = str("1")
+
+                # Add Values to the ENV
+                for k, v in output.items():
+                    key = k.upper()
+                    if isinstance(v, list):
+                        value = str(', '.join(v))
+                    else:
+                        value = str(v)
+
+                    set_shell_env(key + "=" + value)
+
+                print(k_num + ")")
+                print("  SignalWire ID:\t" + str(output["sid"]))
+                print("  Name:\t\t\t" +  str(output["friendly_name"]))
+                print("  Date Created:\t\t" +  str(output["date_created"]))
+                print("  Date Updated:\t\t" + str(output["date_updated"]))
+                print("  Max Size:\t\t" + str(output["max_size"]))
+                print("  Current Size:\t\t" + str(output["current_size"]))
+                print("  Average Wait Time:\t" + str(output["average_wait_time"]))
+                print("")
+
+            elif args.json:
+                json_nice_print(output["queues"])
+
+            else:
+                for k, v in enumerate(output["queues"]):
+                    k_num = str(k + 1)
+
+                    print(k_num + ")")
+                    print("  SignalWire ID:\t" + str(output["queues"][k]["sid"]))
+                    print("  Name:\t\t\t" +  str(output["queues"][k]["friendly_name"]))
+                    print("  Date Created:\t\t" +  str(output["queues"][k]["date_created"]))
+                    print("  Date Updated:\t\t" + str(output["queues"][k]["date_updated"]))
+                    print("  Max Size:\t\t" + str(output["queues"][k]["max_size"]))
+                    print("  Current Size:\t\t" + str(output["queues"][k]["current_size"]))
+                    print("  Average Wait Time:\t" + str(output["queues"][k]["average_wait_time"]))
+                    print("")
+
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print("Error: " + output + "\n")
+
+    def fifo_queue_create(self, args):
+        '''list subcommand of fifo_queue '''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
+        query_params="/Queues"
+
+        if args.name:
+            name = ' '.join(args.name)
+            name_url_encode = urllib.parse.quote(name)
+            FriendlyName = "FriendlyName=" + name_url_encode
+
+        if args.maxsize:
+            maxsize = args.maxsize
+            maxsize_url_encode = urllib.parse.quote(maxsize)
+            MaxSize = "MaxSize=" + maxsize_url_encode
+
+        payload = FriendlyName + "&" + MaxSize
+        output, status_code = fifo_queue_func(query_params, req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            sid = str(output_json["sid"])
+            print ("FIFO Queue " + sid + " has been created successfully\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print("Error: " + output + "\n")
+
+    def fifo_queue_update(self, args):
+        '''list subcommand of fifo_queue '''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
+        query_params = "/Queues"
+
+        if args.id:
+            sid = args.id
+            query_params = query_params + "/" + sid
+
+        if args.name:
+            name = ' '.join(args.name)
+            name_url_encode = urllib.parse.quote(name)
+            FriendlyName = "FriendlyName=" + name_url_encode
+        else:
+            FriendlyName = ""
+
+        if args.maxsize:
+            maxsize = args.maxsize
+            maxsize_url_encode = urllib.parse.quote(maxsize)
+            MaxSize = "MaxSize=" + maxsize_url_encode
+        else:
+            MaxSize = ""
+
+        payload = FriendlyName + "&" + MaxSize
+        output, status_code = fifo_queue_func(query_params, req_type="POST", payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            print ("FIFO Queue " + sid + " has been updated successfully\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print("Error: " + output + "\n")
+
+    def fifo_queue_delete(self, args):
+        '''delete subcommand of fifo_queue'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
+        sid = args.id
+        query_params = "/Queues/" + sid
+        if sid is not None:
+            confirm = input("Remove FIFO Queue " + sid + "?  This cannot be undone! (Y/n): ")
+            if confirm.lower() == "yes" or confirm.lower() == "y":
+                output, status_code = fifo_queue_func(query_params, "DELETE")
+                valid = validate_http(status_code)
+                if valid:
+                    print("Success! FIFO Queue " + sid + " has been removed\n")
+                else:
+                    is_json = validate_json(output)
+                    if is_json:
+                        print_error_json_compatibility(output)
+                    else:
+                        status_code = str(status_code)
+                        print(status_code + ": " + output + "\n")
+            else:
+                print("OK.  Cancelling...\n")
+        else:
+            print ("ERROR: Please enter a valid SignalWire ID\n")
+
+    # Set default handlers for each sub command
+    fifo_queue_parser_list.set_defaults(func=fifo_queue_list)
+    fifo_queue_parser_create.set_defaults(func=fifo_queue_create)
+    fifo_queue_parser_update.set_defaults(func=fifo_queue_update)
+    fifo_queue_parser_delete.set_defaults(func=fifo_queue_delete)
+
+    @cmd2.with_argparser(base_fifo_queue_parser)
+    def do_fifo_queue(self, args: argparse.Namespace):
+        '''List, Create, Update, and Remove Queues'''
+        func = getattr(args, 'func', None)
+        if func is not None:
+            func(self, args)
+        else:
+            self.do_help('fifo_queue')
+
 ## CALLS ##
     call_parser_make = cmd2.Cmd2ArgumentParser()
     call_parser_make.add_argument('-f', '--from-num', type=str, help='Calling Party Number -- Must be a Signalwire Number', required=True)
