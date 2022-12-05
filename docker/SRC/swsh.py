@@ -16,29 +16,46 @@ from signalwire.rest import Client as signalwire_client
 ###########################################################################
 class MyPrompt(cmd2.Cmd):
 
-    def __init__(self):
-        super().__init__(
+    global noninteractive_flag
+    noninteractive_flag = 0
+    if len(sys.argv) > 0:
+        # Sets up non-interactive mode
+        # when passing arguments into cmd2, it requires 'quit' as the last command to exit
+        # Appending quit here to make it more user friendly
+
+        # Looking for sys.argv also allows us to expand to pass in additional switches at a later time
+        if sys.argv[1] == '-x':
+            sys.argv.remove('-x')   # Remove the -x switch
+            sys.argv.append('quit') # Append quit to the end
+            noninteractive_flag = 1
+        else:
+            print ("That is not a valid option")
+            # TODO: write out a help menu if/when there are more commands
+            sys.exit()
+
+    else:
+        def __init__(self):
+            super().__init__(
             completekey='tab',
             persistent_history_file='~/.swsh_history'
-        )
+            )
 
-        self.hidden_commands.append('macro')
-        self.hidden_commands.append('alias')
-        self.hidden_commands.append('set')
-        self.hidden_commands.append('exit')
+            self.hidden_commands.append('macro')
+            self.hidden_commands.append('alias')
+            self.hidden_commands.append('set')
+            self.hidden_commands.append('exit')
 
-        del cmd2.Cmd.do_shell
-        del cmd2.Cmd.do_shortcuts
-        del cmd2.Cmd.do_run_script
-        del cmd2.Cmd.do_run_pyscript
-        del cmd2.Cmd.do_edit    # this may be something to add back in later to allow users to edit files.
-        #del cmd2.Cmd.do_set    # Eventually I'd like to remove this, but for now leaving on, because it can toggle debug mode on.
-        del cmd2.Cmd.do_ipy
-        del cmd2.Cmd.do_py
+            del cmd2.Cmd.do_shell
+            del cmd2.Cmd.do_shortcuts
+            del cmd2.Cmd.do_run_script
+            del cmd2.Cmd.do_run_pyscript
+            del cmd2.Cmd.do_edit    # this may be something to add back in later to allow users to edit files.
+            #del cmd2.Cmd.do_set    # Eventually I'd like to remove this, but for now leaving on, because it can toggle debug mode on.
+            del cmd2.Cmd.do_ipy
+            del cmd2.Cmd.do_py
 
-
-    prompt = 'swsh> '
-    intro = '''
+        prompt = 'swsh> '
+        intro = '''
 ####################################################################
 #                                                                  #
 #       _______.____    __    ____  __       _______. __    __     #
@@ -53,8 +70,12 @@ class MyPrompt(cmd2.Cmd):
 '''
 
     def do_exit(self, inp):
-        print("Thanks for using SignalWire")
-        return True
+        # Thank user on exit, unless noninteractive_flag is true
+        if noninteractive_flag == 1:
+            return True
+        else:
+            print("Thanks for using SignalWire")
+            return True
 
     def help_exit(self):
         print('exit the application. Shorthand: Ctrl-D.')
