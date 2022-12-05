@@ -12,7 +12,6 @@ import urllib.parse
 #from twilio.twiml.messaging_response import Message, MessagingResponse
 from signalwire.rest import Client as signalwire_client
 
-## TODO: Add a clear command
 
 ###########################################################################
 class MyPrompt(cmd2.Cmd):
