@@ -1067,15 +1067,17 @@ Cross platform command line utility and shell for administering a Space or Space
     # Subcommand functions for space
     def space_cd(self, args):
         '''change directory subcommand of space'''
-        os.environ['SIGNALWIRE_SPACE'] = args.hostname
-        os.environ['PROJECT_ID'] = args.project_id
-        os.environ['REST_API_TOKEN'] = args.token
+        valid_creds = validate_signalwire_creds(args.hostname, args.project_id, args.token)
+        
+        if valid_creds:
+            os.environ['SIGNALWIRE_SPACE'] = args.hostname
+            os.environ['PROJECT_ID'] = args.project_id
+            os.environ['REST_API_TOKEN'] = args.token
 
-        # TODO: Add validation to verify the space and creds added are actually valid.
-        # Would also be nice to password validate somehow to make sure only an authorized user for the space has access (Although I guess that is what an API token is designed to do)
-        signalwire_space, project_id, rest_api_token = get_environment()
-
-        print ("\nNow working in project, " + project_id + ", in the " + signalwire_space + " SignalWire space")
+            signalwire_space, project_id, rest_api_token = get_environment()
+            print ("\nNow working in project, " + project_id + ", in the " + signalwire_space + " SignalWire space")
+        else:
+            print ("Those are not valid SignalWire Creds!\n")
 
     def space_show(self, args):
         '''show the working space and project configuration'''
