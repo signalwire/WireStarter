@@ -18,7 +18,7 @@ class MyPrompt(cmd2.Cmd):
 
     global noninteractive_flag
     noninteractive_flag = 0
-    if len(sys.argv) > 0:
+    if len(sys.argv) > 1:
         # Sets up non-interactive mode
         # when passing arguments into cmd2, it requires 'quit' as the last command to exit
         # Appending quit here to make it more user friendly
