@@ -158,6 +158,18 @@ def get_environment():
     rest_api_token = os.getenv('REST_API_TOKEN')
     return (signalwire_space, project_id, rest_api_token)
 
+def validate_signalwire_creds(signalwire_space, project_id, rest_api_token):
+    req_type = "GET"
+    destination = "Accounts"
+    url = "https://%s.signalwire.com/api/laml/2010-04-01/" % signalwire_space
+
+    response = http_request( signalwire_space, project_id, rest_api_token, destination, req_type, url=url )
+    if response.status_code == 200:
+        # The creds are legit
+        return True
+    else:
+        return False
+
 def set_shell_env(var):
     global env_var_dict
     env_var_split = var.split("=")
@@ -184,7 +196,6 @@ def get_shell_env_all():
         for k, v in env_var_dict.items():
             print(k + "=" + v)
         print("")
-
 
 def json_nice_print(j):
     if len(j) == 0:

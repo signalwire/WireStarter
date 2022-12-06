@@ -12,34 +12,65 @@ import urllib.parse
 #from twilio.twiml.messaging_response import Message, MessagingResponse
 from signalwire.rest import Client as signalwire_client
 
-## TODO: Add a clear command
 
 ###########################################################################
 class MyPrompt(cmd2.Cmd):
 
-    def __init__(self):
-        super().__init__(
+    global noninteractive_flag
+    global swish_version
+
+    noninteractive_flag = 0
+    swish_version = "1.0"
+
+
+    if len(sys.argv) > 1:
+        # Sets up non-interactive mode
+        # when passing arguments into cmd2, it requires 'quit' as the last command to exit
+        # Appending quit here to make it more user friendly
+
+        # Looking for sys.argv also allows us to expand to pass in additional switches at a later time
+        if sys.argv[1] == '-x':
+            sys.argv.remove('-x')   # Remove the -x switch
+            sys.argv.append('quit') # Append quit to the end
+            noninteractive_flag = 1
+        elif sys.argv[1] == '-v' or sys.argv[1].lower() == '--version':
+            print ("Version: " + swish_version)
+            sys.exit()
+        else:
+            print ('''SWiSH Help Menu:
+================
+SignalWire interactive SHell
+Cross platform command line utility and shell for administering a Space or Spaces in Signalwire
+
+-h | --help       view this help menu
+-v | --version    SWiSH version
+-x |              run commands in non-interactive mode
+''')
+            sys.exit()
+
+    else:
+        def __init__(self):
+            super().__init__(
             completekey='tab',
             persistent_history_file='~/.swsh_history'
-        )
+            )
 
-        self.hidden_commands.append('macro')
-        self.hidden_commands.append('alias')
-        self.hidden_commands.append('set')
-        self.hidden_commands.append('exit')
+            self.hidden_commands.append('macro')
+            self.hidden_commands.append('alias')
+            self.hidden_commands.append('set')
+            self.hidden_commands.append('exit')
 
-        del cmd2.Cmd.do_shell
-        del cmd2.Cmd.do_shortcuts
-        del cmd2.Cmd.do_run_script
-        del cmd2.Cmd.do_run_pyscript
-        del cmd2.Cmd.do_edit    # this may be something to add back in later to allow users to edit files.
-        #del cmd2.Cmd.do_set    # Eventually I'd like to remove this, but for now leaving on, because it can toggle debug mode on.
-        del cmd2.Cmd.do_ipy
-        del cmd2.Cmd.do_py
+            del cmd2.Cmd.do_shell
+            del cmd2.Cmd.do_shortcuts
+            del cmd2.Cmd.do_run_script
+            del cmd2.Cmd.do_run_pyscript
+            del cmd2.Cmd.do_edit    # this may be something to add back in later to allow users to edit files.
+            #del cmd2.Cmd.do_set    # Eventually I'd like to remove this, but for now leaving on, because it can toggle debug mode on.
+            del cmd2.Cmd.do_ipy
+            del cmd2.Cmd.do_py
 
-
-    prompt = 'swsh> '
-    intro = '''
+        prompt = 'swsh> '
+        intro = '''
 ####################################################################
 #                                                                  #
 #       _______.____    __    ____  __       _______. __    __     #
@@ -54,8 +85,12 @@ class MyPrompt(cmd2.Cmd):
 '''
 
     def do_exit(self, inp):
-        print("Thanks for using SignalWire")
-        return True
+        # Thank user on exit, unless noninteractive_flag is true
+        if noninteractive_flag == 1:
+            return True
+        else:
+            print("Thanks for using SignalWire")
+            return True
 
     def help_exit(self):
         print('exit the application. Shorthand: Ctrl-D.')
@@ -444,7 +479,7 @@ class MyPrompt(cmd2.Cmd):
     # create the phone_number list subcommand
     phone_number_parser_list = base_phone_number_subparsers.add_parser('list', help='List Phone Numbers for a Projects')
     phone_number_parser_list.add_argument('-j', '--json', action='store_true', help='List Phone Numbers for project in JSON Format')
-    phone_number_parser_list.add_argument('-n', '--name', help='Find a phone number by object Name')
+    phone_number_parser_list.add_argument('-n', '--name', nargs='+', help='Find a phone number by object Name')
     phone_number_parser_list.add_argument('-i', '--id', help='Find a phone number by SignalWire ID')
     phone_number_parser_list.add_argument('-N', '--number', help='Return a phone number by number in E164 format')
 
@@ -479,6 +514,7 @@ class MyPrompt(cmd2.Cmd):
     # create the phone_number release subcommand
     phone_number_parser_release = base_phone_number_subparsers.add_parser('release', help='release/Remove a Phone Number')
     phone_number_parser_release.add_argument('-i', '--id', help='The SignalWire ID of the number that is being Released (removed)')
+    phone_number_parser_release.add_argument('-n', '--number', help='Number to be released (removed)')
 
     # create the phone_number lookup sub
     phone_number_parser_lookup = base_phone_number_subparsers.add_parser('lookup', help='Lookup a Phone Number (in E.164 format)')
@@ -528,15 +564,10 @@ class MyPrompt(cmd2.Cmd):
                 else:
                     print (status_code + ": " + output + "\n" )
         elif args.name or args.number:
-            # TODO: Currently only supporting a single name value AKA "name" as oppsed to "name test".  Try to make this support more (may not actually be supported by API)
-            # Keeping code into allow it to be mutiple values just in case.
-            #if len(args.name) == 1:
-            #    name = args.name[0]
-            #elif len(args.name) > 1:
-            #    name = "%20".join(args.name)
             query_params = "?"
             if args.name:
-                name = urllib.parse.quote(args.name)
+                name = ' '.join(args.name)
+                name = urllib.parse.quote(name)
                 query_params = query_params + "filter_name=%s&" % name
             if args.number:
                 number = urllib.parse.quote(args.number)
@@ -665,14 +696,25 @@ class MyPrompt(cmd2.Cmd):
                 new_arg=get_shell_env(var)
                 setattr(args, arg, new_arg)
 
-        # TODO: allow the number to be used for release as well
-        # We can get the id from the number and then release.
-        sid = args.id
+        if args.id:
+            sid = args.id
+        elif args.number:
+            # Lookup the number in the API and get the SID.
+            query_params = "?filter_number=" + urllib.parse.quote(args.number)
+            output, status_code = phone_number_func(query_params=query_params)
+            valid = validate_http(status_code)
+            if not valid:
+                print("An error has occured.  Please check number and retry\n")
+            else:
+                output = json.loads(output)
+                sid = (output["data"][0]["id"])
+        else:
+            print("A valid SignalWire ID or Phone Number is required.\n")
+
         query_params = "/" + sid
         confirm = str(input("Are you sure you want to proceed removing id " + sid + "?  This cannot be undone! (Y/n): " ))
         # Need validation here.  There are times when the number is too new to be released.  Would be nice to be able to relay that.
         if confirm.lower() == "yes" or confirm.lower() == "y":
-            print("we are here")
             output, status_code = phone_number_func(query_params, "DELETE")
             valid = validate_http(status_code)
             if valid:
@@ -1025,15 +1067,17 @@ class MyPrompt(cmd2.Cmd):
     # Subcommand functions for space
     def space_cd(self, args):
         '''change directory subcommand of space'''
-        os.environ['SIGNALWIRE_SPACE'] = args.hostname
-        os.environ['PROJECT_ID'] = args.project_id
-        os.environ['REST_API_TOKEN'] = args.token
+        valid_creds = validate_signalwire_creds(args.hostname, args.project_id, args.token)
 
-        # TODO: Add validation to verify the space and creds added are actually valid.
-        # Would also be nice to password validate somehow to make sure only an authorized user for the space has access (Although I guess that is what an API token is designed to do)
-        signalwire_space, project_id, rest_api_token = get_environment()
+        if valid_creds:
+            os.environ['SIGNALWIRE_SPACE'] = args.hostname
+            os.environ['PROJECT_ID'] = args.project_id
+            os.environ['REST_API_TOKEN'] = args.token
 
-        print ("\nNow working in project, " + project_id + ", in the " + signalwire_space + " SignalWire space")
+            signalwire_space, project_id, rest_api_token = get_environment()
+            print ("\nNow working in project, " + project_id + ", in the " + signalwire_space + " SignalWire space")
+        else:
+            print ("Those are not valid SignalWire Creds!\n")
 
     def space_show(self, args):
         '''show the working space and project configuration'''
@@ -1552,7 +1596,7 @@ class MyPrompt(cmd2.Cmd):
 ## DOMAIN APPLICATIONS ##
     # Create the top level parser for domain application: domain_application
     base_domain_application_parser = cmd2.Cmd2ArgumentParser()
-    base_domain_application_subparsers = base_domain_application_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    base_domain_application_subparsers = base_domain_application_parser.add_subparsers(title='DOMAIN APPLICATION',help='domain_application help')
 
     # create the domain application list subcommand
     domain_application_parser_list = base_domain_application_subparsers.add_parser('list', help='List Domain Applications for the Project')
@@ -1862,9 +1906,9 @@ class MyPrompt(cmd2.Cmd):
 
 
 ## NUMBER GROUPS ##
-    # Create the top level parser for number groups: number_groups
+    # Create the top level parser for number groups: number_group
     base_number_group_parser = cmd2.Cmd2ArgumentParser()
-    base_number_group_subparsers = base_number_group_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    base_number_group_subparsers = base_number_group_parser.add_subparsers(title='NUMBER GROUP',help='number_group help')
 
     # create the number groups list subcommand
     number_group_parser_list = base_number_group_subparsers.add_parser('list', help='List Number Groups for the Project')
