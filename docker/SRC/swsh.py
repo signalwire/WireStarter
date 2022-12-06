@@ -17,7 +17,12 @@ from signalwire.rest import Client as signalwire_client
 class MyPrompt(cmd2.Cmd):
 
     global noninteractive_flag
+    global swish_version
+
     noninteractive_flag = 0
+    swish_version = "1.0"
+
+
     if len(sys.argv) > 1:
         # Sets up non-interactive mode
         # when passing arguments into cmd2, it requires 'quit' as the last command to exit
@@ -28,9 +33,19 @@ class MyPrompt(cmd2.Cmd):
             sys.argv.remove('-x')   # Remove the -x switch
             sys.argv.append('quit') # Append quit to the end
             noninteractive_flag = 1
+        elif sys.argv[1] == '-v' or sys.argv[1].lower() == '--version':
+            print ("Version: " + swish_version)
+            sys.exit()
         else:
-            print ("That is not a valid option")
-            # TODO: write out a help menu if/when there are more commands
+            print ('''SWiSH Help Menu:
+================
+SignalWire interactive SHell
+Cross platform command line utility and shell for administering a Space or Spaces in Signalwire
+
+-h | --help       view this help menu
+-v | --version    SWiSH version
+-x |              run commands in non-interactive mode
+''')
             sys.exit()
 
     else:
