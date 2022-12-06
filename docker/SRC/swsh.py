@@ -479,7 +479,7 @@ Cross platform command line utility and shell for administering a Space or Space
     # create the phone_number list subcommand
     phone_number_parser_list = base_phone_number_subparsers.add_parser('list', help='List Phone Numbers for a Projects')
     phone_number_parser_list.add_argument('-j', '--json', action='store_true', help='List Phone Numbers for project in JSON Format')
-    phone_number_parser_list.add_argument('-n', '--name', help='Find a phone number by object Name')
+    phone_number_parser_list.add_argument('-n', '--name', nargs='+', help='Find a phone number by object Name')
     phone_number_parser_list.add_argument('-i', '--id', help='Find a phone number by SignalWire ID')
     phone_number_parser_list.add_argument('-N', '--number', help='Return a phone number by number in E164 format')
 
@@ -563,15 +563,10 @@ Cross platform command line utility and shell for administering a Space or Space
                 else:
                     print (status_code + ": " + output + "\n" )
         elif args.name or args.number:
-            # TODO: Currently only supporting a single name value AKA "name" as oppsed to "name test".  Try to make this support more (may not actually be supported by API)
-            # Keeping code into allow it to be mutiple values just in case.
-            #if len(args.name) == 1:
-            #    name = args.name[0]
-            #elif len(args.name) > 1:
-            #    name = "%20".join(args.name)
             query_params = "?"
             if args.name:
-                name = urllib.parse.quote(args.name)
+                name = ' '.join(args.name)
+                name = urllib.parse.quote(name)
                 query_params = query_params + "filter_name=%s&" % name
             if args.number:
                 number = urllib.parse.quote(args.number)
