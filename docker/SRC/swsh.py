@@ -514,6 +514,7 @@ Cross platform command line utility and shell for administering a Space or Space
     # create the phone_number release subcommand
     phone_number_parser_release = base_phone_number_subparsers.add_parser('release', help='release/Remove a Phone Number')
     phone_number_parser_release.add_argument('-i', '--id', help='The SignalWire ID of the number that is being Released (removed)')
+    phone_number_parser_release.add_argument('-n', '--number', help='Number to be released (removed)')
 
     # create the phone_number lookup sub
     phone_number_parser_lookup = base_phone_number_subparsers.add_parser('lookup', help='Lookup a Phone Number (in E.164 format)')
@@ -695,14 +696,25 @@ Cross platform command line utility and shell for administering a Space or Space
                 new_arg=get_shell_env(var)
                 setattr(args, arg, new_arg)
 
-        # TODO: allow the number to be used for release as well
-        # We can get the id from the number and then release.
-        sid = args.id
+        if args.id:
+            sid = args.id
+        elif args.number:
+            # Lookup the number in the API and get the SID.
+            query_params = "?filter_number=" + urllib.parse.quote(args.number)
+            output, status_code = phone_number_func(query_params=query_params)
+            valid = validate_http(status_code)
+            if not valid:
+                print("An error has occured.  Please check number and retry\n")
+            else:
+                output = json.loads(output)
+                sid = (output["data"][0]["id"])
+        else:
+            print("A valid SignalWire ID or Phone Number is required.\n")
+
         query_params = "/" + sid
         confirm = str(input("Are you sure you want to proceed removing id " + sid + "?  This cannot be undone! (Y/n): " ))
         # Need validation here.  There are times when the number is too new to be released.  Would be nice to be able to relay that.
         if confirm.lower() == "yes" or confirm.lower() == "y":
-            print("we are here")
             output, status_code = phone_number_func(query_params, "DELETE")
             valid = validate_http(status_code)
             if valid:
