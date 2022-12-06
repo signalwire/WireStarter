@@ -1906,9 +1906,9 @@ Cross platform command line utility and shell for administering a Space or Space
 
 
 ## NUMBER GROUPS ##
-    # Create the top level parser for number groups: number_groups
+    # Create the top level parser for number groups: number_group
     base_number_group_parser = cmd2.Cmd2ArgumentParser()
-    base_number_group_subparsers = base_number_group_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    base_number_group_subparsers = base_number_group_parser.add_subparsers(title='NUMBER GROUP',help='number_group help')
 
     # create the number groups list subcommand
     number_group_parser_list = base_number_group_subparsers.add_parser('list', help='List Number Groups for the Project')
