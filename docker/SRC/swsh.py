@@ -1068,7 +1068,7 @@ Cross platform command line utility and shell for administering a Space or Space
     def space_cd(self, args):
         '''change directory subcommand of space'''
         valid_creds = validate_signalwire_creds(args.hostname, args.project_id, args.token)
-        
+
         if valid_creds:
             os.environ['SIGNALWIRE_SPACE'] = args.hostname
             os.environ['PROJECT_ID'] = args.project_id
@@ -1596,7 +1596,7 @@ Cross platform command line utility and shell for administering a Space or Space
 ## DOMAIN APPLICATIONS ##
     # Create the top level parser for domain application: domain_application
     base_domain_application_parser = cmd2.Cmd2ArgumentParser()
-    base_domain_application_subparsers = base_domain_application_parser.add_subparsers(title='subcommands',help='subcommand help') # TODO: Fix help text
+    base_domain_application_subparsers = base_domain_application_parser.add_subparsers(title='DOMAIN APPLICATION',help='domain_application help')
 
     # create the domain application list subcommand
     domain_application_parser_list = base_domain_application_subparsers.add_parser('list', help='List Domain Applications for the Project')
