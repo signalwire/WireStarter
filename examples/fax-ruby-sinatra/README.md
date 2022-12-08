@@ -1,4 +1,4 @@
-# Send and track Faxes with the Twilio Fax API using Sinatra and Ruby
+# Send and track Faxes with the Signalwire Fax API using Sinatra and Ruby
 
 This is an example application that you can use to send and track faxes using the [Signalwire Fax API](https://developer.signalwire.com/compatibility-api/rest/entities/faxes).
 
