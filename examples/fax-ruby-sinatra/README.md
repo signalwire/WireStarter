@@ -23,7 +23,8 @@ bundle install
 ```
 
 Execute setup.sh to configure create and congfigure 'config/env.yml
-Note: When setup adkes for `BASE_URL` setup Fill it with  your ngrok URL or your server domain/ip with port ex: https://example.com:3000 or http://123.x.x.x:3000 .
+
+Note: When setup asks for `BASE_URL` setup Fill it with  your ngrok URL or your server domain/ip with port ex: https://example.com:3000 or http://123.x.x.x:3000 .
 ```bash
 bash setup.sh
 ```
