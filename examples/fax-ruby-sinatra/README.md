@@ -32,7 +32,7 @@ bash setup.sh
 Start the application:
 
 ```bash
-rackup config.ru -p 3000 -b 0.0.0.0
+rackup config.ru -p 3000 -o 0.0.0.0
 ```
 
 Open [localhost:3000](http://localhost:3000) and start sending faxes!
