@@ -2432,7 +2432,223 @@ Cross platform command line utility and shell for administering a Space or Space
         print("Complete!")
 
 
+## FACSIMILE ##
+# Create the top level parser for Fax: fax
+    base_fax_parser = cmd2.Cmd2ArgumentParser()
+    base_fax_subparsers = base_fax_parser.add_subparsers(title='FAX',help='fax help')
 
+    # create the fax list command
+    fax_parser_list = base_fax_subparsers.add_parser('list', help='List Faxes')
+    fax_parser_list.add_argument('-i', '--id', type=str, help='Retrive a fax by ID')
+    fax_parser_list.add_argument('--sent',  action='store_true', help='Show sent [outbound] faxes')
+    fax_parser_list.add_argument('--received', action='store_true', help='Show received [inbound] faxes')
+
+    # create the fax update command
+    # Adding here because the Fax status can be updated, but not sure in what scenario(s) that is needed
+    # NOTE: During testing of this, I found that all responses seem to give a 400 status back. I don't know if this is something that is actually still supposed to work.
+    fax_parser_update = base_fax_subparsers.add_parser('update', help='Update a Fax by Signalwire ID')
+    fax_parser_update.add_argument('-id', '--id', type=str, help='Signalwire ID of Fax to be updated', required=True)
+    fax_parser_update.add_argument('-s', '--status', help='The status to change the fax to: queued, processing, sending, delivered, receiving, received, no-answer, busy, failed, canceled', choices=['queued','processing','sending','delivered','receiving','received','no-answer','busy','failed','canceled'])
+
+    # create the fax send command
+    fax_parser_send = base_fax_subparsers.add_parser('send', help='Send a to a destination')
+    fax_parser_send.add_argument('--to_num', type=str, help='Destinaton Number to send fax', required=True)
+    fax_parser_send.add_argument('--from_num', type=str, help='From Number to send fax, must be a number associated with the Space and Project', required=True)
+    fax_parser_send.add_argument('-m', '--media-url', type=str, help='URL location of the accessible media (PDF) file', required=True)
+    fax_parser_send.add_argument('-b', '--background', action='store_true', help='Send a fax in the background without any output')
+
+    # create the fax receive command
+    # Placeholder to receive a fax.  Not sure how this would work.
+
+    # create the fax delete command
+    fax_parser_delete = base_fax_subparsers.add_parser('delete', help='Delete Faxes')
+    fax_parser_delete.add_argument('-id', '--id', type=str, help='Delete a fax record by SignalWire ID')
+
+    def fax_list(self, args):
+        '''list subcommand of fax'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
+        query_params = "/Faxes"
+        if args.id:
+            sid = args.id
+            query_params = query_params + "/" + sid
+
+        output, status_code = fax_func(query_params)
+        valid = validate_http(status_code)
+        if valid:
+            # format the output depnding on user args
+            output = json.loads(output)
+            if args.id:
+                json_nice_print(output)
+                return
+
+            if args.received:
+                all_received_json = output["faxes"]
+                received_faxes_list = []
+                for i in range(0, len(all_received_json)):
+                    if all_received_json[i]["direction"] == 'inbound':
+                        received_faxes_list.append(all_received_json[i])
+
+                if len(received_faxes_list) == 0:
+                    print("No Received Faxes found\n")
+                else:
+                    json_nice_print(received_faxes_list)
+
+            elif args.sent:
+                all_sent_json = output["faxes"]
+                sent_faxes_list = []
+                for i in range(0, len(all_sent_json)):
+                    if all_sent_json[i]["direction"] == 'outbound':
+                        sent_faxes_list.append(all_sent_json[i])
+
+                if len(sent_faxes_list) == 0:
+                    print("No Sent Faxes found\n")
+                else:
+                    json_nice_print(sent_faxes_list)
+            else:
+                json_nice_print(output["faxes"])
+
+    def fax_update(self, args):
+        '''update subcommand of fax'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
+        query_params = "/Faxes"
+
+        if args.id:
+            sid = args.id
+            query_params = query_params + "/" + sid
+
+        if args.status:
+            status = args.status
+            status_url_encode = urllib.parse.quote(status)
+            Status="Status=" + status_url_encode
+
+        payload = Status
+        output, status_code = fax_func(query_params, req_type='POST', payload=payload)
+        valid = validate_http(status_code)
+        if valid:
+            output_json = json.loads(output)
+            print ("FAX" + sid + " has been updated successfully\n")
+        else:
+            is_json = validate_json(output)
+            if is_json:
+                print_error_json_compatibility(output)
+            else:
+                print("Error: " + output + "\n")
+
+    def fax_send(self, args):
+        '''Send an outbound fax'''
+        # TODO: Should Move this to the functions, but going to live here for now.
+        # TODO: Long term I would like to be able to upload a PDF to wirestarter
+        #       and wirestarter will just take the file, add it to the webserver, and figure out the URL to send.
+        #       This is just a Phase 1 iteration.
+        signalwire_space, project_id, rest_api_token = get_environment()
+        from_no = args.from_num
+        to_no = args.to_num
+        url = args.media_url
+        print ("Sending a fax from " + from_no + " to " + to_no )
+        client = signalwire_client(project_id, rest_api_token, signalwire_space_url = '%s.signalwire.com' % signalwire_space)
+        fax = client.fax.faxes.create (
+          to=to_no,
+          from_=from_no,
+          media_url=url
+        )
+
+        # TODO: Web call back to confirm status // Some kind of output while sending?
+        faxsid = fax.sid
+        if faxsid is None or faxsid == "":
+            print ("There was an ERROR, please try the fax again")
+        else:
+            if not args.background:
+                # Setting as a 10 minute maximum.
+                # This will accomodate about a 10 page fax
+                # This can be adjusted if there is a need.
+                for i in range(1, 200):
+                    query_params = "/Faxes/" + faxsid
+                    update, status_code = fax_func(query_params)
+                    update_json = json.loads(update)
+
+                    from_ = str(update_json["from"])
+                    to = str(update_json["to"])
+                    status = str(update_json["status"])
+                    duration = str(update_json["duration"])
+
+                    print ("| Status: " + status + " | | Duration: " + duration + "|", end='\r')
+
+                    if status == "delivered":
+                        print ("\nDelivered Successfully!\n")
+                        return True
+                    elif status == "busy":
+                        print ("ERROR: The fax machine was busy.  Please try again.\n")
+                        return False
+                    elif status == "failed":
+                        print ("ERROR: The fax failed to send.  Please try again.\n")
+                        return False
+                    elif status == "no-answer":
+                        print ("ERROR: The fax machine did not answer. Please try again.\n")
+                        return False
+                    time.sleep(3)
+            else:
+                print ("Backgrounding...\n")
+
+
+    def fax_delete(self, args):
+        '''delete subcommand of fax'''
+        for arg in vars(args):
+            arg_val = str(getattr(args, arg))
+            if arg_val and arg_val.startswith("$"):
+                # Get env var
+                var = getattr(args, arg).strip("$")
+                new_arg=get_shell_env(var)
+                setattr(args, arg, new_arg)
+
+        sid = args.id
+        query_params = "/Faxes/" + sid
+        if sid is not None:
+            confirm = input("Remove FAX " + sid + "?  This cannot be undone! (Y/n): ")
+            if confirm.lower() == "yes" or confirm.lower() == "y":
+                output, status_code = fax_func(query_params, "DELETE")
+                valid = validate_http(status_code)
+                if valid:
+                    print("Success! FAX " + sid + " has been removed\n")
+                else:
+                    is_json = validate_json(output)
+                    if is_json:
+                        print_error_json_compatibility(output)
+                    else:
+                        status_code = str(status_code)
+                        print(status_code + ": " + output + "\n")
+            else:
+                print("OK.  Cancelling...\n")
+        else:
+            print ("ERROR: Please enter a valid SignalWire ID\n")
+
+    # Set default handlers for each sub command
+    fax_parser_list.set_defaults(func=fax_list)
+    fax_parser_send.set_defaults(func=fax_send)
+    fax_parser_update.set_defaults(func=fax_update)
+    fax_parser_delete.set_defaults(func=fax_delete)
+
+    @cmd2.with_argparser(base_fax_parser)
+    def do_fax(self, args: argparse.Namespace):
+        '''List, Send, Update, Retrieve and Remove Faxes'''
+        func = getattr(args, 'func', None)
+        if func is not None:
+            func(self, args)
+        else:
+            self.do_help('fax')
 
 
 ##
