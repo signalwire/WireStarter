@@ -15,7 +15,7 @@ RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-r
 RUN apt update && apt install -y nano vim emacs-nox
 
 # Install Python
-RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools pygments
+RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools pygments swsh
 
 # Install golang
 #RUN apt update && apt install -y golang 
@@ -73,8 +73,6 @@ RUN /usr/bin/dos2unix /start_services.sh    # Fixes DOS formatting when using Wi
 RUN rm -f /tmp/cmd2.patch
 RUN rm -f /tmp/pygment_mapping.patch
 RUN apt clean
-
-RUN pip install swsh
 
 # Copy file to redirect to documentation
 COPY www/ /var/www/html/
