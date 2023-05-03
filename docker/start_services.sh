@@ -11,7 +11,9 @@ export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].
 sed -i -e "s/#ServerName www.example.com/ServerName ${HOSTNAME}/" /etc/apache2/sites-enabled/000-default.conf
 sed -i -e "s/Options Indexes FollowSymLinks/Options Indexes FollowSymLinks ExecCGI/" /etc/apache2/apache2.conf
 echo "ServerName $HOSTNAME" >> /etc/apache2/apache2.conf
-
+if [ -f "${WORKDIR}/.env" ]; then
+    cat "${WORKDIR}/.env"  | sed 's/\=/ /' | awk '{print "SetEnv " $0}' >> /etc/apache2/apache2.conf
+fi
 # Enable and Start Apache
 /usr/sbin/apache2ctl start > /dev/null 2>&1
 
