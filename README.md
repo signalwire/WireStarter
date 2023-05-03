@@ -15,9 +15,6 @@ Docker Desktop
 NGROK account AND token (for tunnel into the WireStarter container, optional)
  - https://ngrok.com
  
-Localtonet account
- - https://localtonet.com (needs tunnel auth token and api token, optional)
-
 ## INSTALLATION ##
 
  ### On Windows:

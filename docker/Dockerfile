@@ -36,10 +36,6 @@ RUN apt-key adv --fetch-keys https://download.docker.com/linux/debian/gpg && ech
 RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com $(lsb_release -cs) main" |  tee /etc/apt/sources.list.d/ngrok.list && \
     apt update && apt install -y ngrok 
 
-# Install localtonet
-RUN export LOCALTONETARCH=`uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/x64/g'` && wget https://www.localtonet.com/download/localtonet-linux-${LOCALTONETARCH}.zip && unzip localtonet-linux-${LOCALTONETARCH}.zip && mv localtonet /usr/bin/ && \
-    rm -f localtonet-linux-${LOCALTONETARCH}.zip && chmod 755 /usr/bin/localtonet
-
 # Enable Python -- Apache
 # This may need to just be creating the symlink since the image doesn't run
 RUN a2enmod cgid

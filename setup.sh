@@ -6,8 +6,6 @@ if [ ! -f ".env" ]; then
    read -p "What is your Signalwire project ID: " proj_id;
    read -p "What is your Signalwire REST API token: " api_token;
    read -p "What is your NGROK Token (optional): " ngrok_token;
-   read -p "What is your LocaltoNet API TOKEN (optional): " localtonet_api_token;
-   read -p "What is your LocaltoNet AUTH TOKEN (optional): " localtonet_auth_token;
    read -p "What is your Work Dir: " workdir;
    read -p "Editor (nano, vim, emacs): " visual;
 
@@ -22,8 +20,6 @@ if [ ! -f ".env" ]; then
       echo "REST_API_TOKEN=$api_token" >> .env
       echo "NGROK_TOKEN=$ngrok_token" >> .env
       echo "VISUAL=$visual" >> .env
-      echo "LOCALTONET_API_TOKEN=$localtonet_api_token" >> .env
-      echo "LOCALTONET_AUTH_TOKEN=$localtonet_auth_token" >> .env
       echo "WORKDIR=$workdir" >> .env
       echo "setup successful"
    elif [[ $response_code -eq 404 ]]; then
