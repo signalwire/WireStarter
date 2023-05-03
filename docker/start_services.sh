@@ -1,15 +1,18 @@
 #!/bin/bash
 
-# Enable and Start Apache
-/usr/sbin/apache2ctl start > /dev/null 2>&1
-
 # Start Ngrok in a screen
 if [ ! -z $NGROK_TOKEN ]; then
     /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN > /dev/null 2>&1
     /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok --log=/var/log/ngrok.log http 9080
 fi
 
-sleep 2
+sleep 3
+export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' | sed 's/https:\/\///'`
+sed -i -e "s/#ServerName www.example.com/ServerName ${HOSTNAME}/" /etc/apache2/sites-enabled/000-default.conf
+
+# Enable and Start Apache
+/usr/sbin/apache2ctl start > /dev/null 2>&1
+
 
 # Loop so we can update the urls if they change while running.
 while true

@@ -9,7 +9,7 @@ FROM debian:bullseye-slim
 ARG python_version=python3.9
 
 # Install the basic package
-RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix
+RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox
@@ -32,7 +32,6 @@ RUN apt-key adv --fetch-keys https://download.docker.com/linux/debian/gpg && ech
     apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
 # Install Ngrok
-# TODO eventually may want to change this to not use curl and remove curl from the image.
 RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com $(lsb_release -cs) main" |  tee /etc/apt/sources.list.d/ngrok.list && \
     apt update && apt install -y ngrok 
 
@@ -74,6 +73,9 @@ RUN apt clean
 COPY www/ /var/www/html/
 
 WORKDIR /workdir
+
+# Enable CGI
+RUN sed -i -e 's/#AddHandler cgi-script .cgi/AddHandler cgi-script .cgi/' /etc/apache2/mods-available/mime.conf
 
 # Fix ports
 RUN sed -i -e 's/Listen 80/Listen 9080/' /etc/apache2/ports.conf
