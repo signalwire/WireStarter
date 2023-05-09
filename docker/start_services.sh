@@ -13,7 +13,7 @@ sed -i -e "s/Options Indexes FollowSymLinks/Options Indexes FollowSymLinks ExecC
 echo "ServerName $HOSTNAME" >> /etc/apache2/apache2.conf
 
 if [ -f "/workdir/.env" ]; then
-    cat "/workdir/.env"  | sed 's/\=/ /' | awk '{print "SetEnv " $0}' >> /etc/apache2/apache2.conf
+    cat "/workdir/.env"  | grep . | sed 's/\=/ /' | awk '{print "SetEnv " $0}' >> /etc/apache2/apache2.conf
 fi
 # Enable and Start Apache
 /usr/sbin/apache2ctl start > /dev/null 2>&1

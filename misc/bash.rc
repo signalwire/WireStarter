@@ -51,7 +51,7 @@ if [ -z $VISUAL ]; then
     export VISUAL=vim
 fi
 
-if [ ! -z $SIGNALWIRE_SPACE ] && [ ! -z $PROJECT_ID ] && [ ! -z $REST_API_TOKEN ]; then
+if [ ! -z $SIGNALWIRE_SPACE ] && [ ! -z $PROJECT_ID ] && [ ! -z $REST_API_TOKEN ] && [ ! -f /workdir/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
 
