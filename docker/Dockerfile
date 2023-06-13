@@ -21,7 +21,10 @@ RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire 
 #RUN apt update && apt install -y golang 
 
 # Install PHP
-#RUN apt update && apt install -y php-cli composer 
+#RUN apt update && apt install -y php-cli composer
+
+# Install PHP for Apache2
+RUN apt update && apt install -y php7.4 libapache2-mod-php
 
 # Install GH Cli
 RUN apt-key adv --fetch-keys https://cli.github.com/packages/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture)] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list && \
