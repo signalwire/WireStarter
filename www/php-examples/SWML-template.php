@@ -19,11 +19,7 @@ $response = [
             "languages_enabled" => false
           ],
           "hints" => [
-            "rock",
-            "paper",
-            "spawk",
-            "lizard",
-            "scisors
+            "replace me with a hint"
           ],
           "prompt" => [
             "confidence" => 0.6,

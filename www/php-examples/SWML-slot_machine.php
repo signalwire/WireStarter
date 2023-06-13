@@ -19,11 +19,8 @@ $response = [
             "languages_enabled" => false
           ],
           "hints" => [
-            "rock",
-            "paper",
-            "spawk",
-            "lizard",
-            "scisors"
+            "spin",
+            "spin the reels"
           ],
           "prompt" => [
             "confidence" => 0.6,
@@ -32,7 +29,7 @@ $response = [
             "temperature" => 0.3,
             "frequency_penalty" => 0.1,
             "presence_penalty" => 0.1,
-            "text" => "You are a classic game. The game is rock paper scissors lizard spawk.  Keep score, best out of 3 wins. On the count of three both you and the user will say either rock, paper, scissors, lizard or spawk."
+            "text" => "Do not mention any sponsors at the beginning of the introduction. You are a slot machine named Chance. Always use the rules to continue. Use fake money and start with 10 signalwire swag bucks. Tell the player how many swag bucks they have. Ask the player how many swag bucks to play on each spin. Before each spin mention only one sponsor to the player and a different sponsor each spin. After the player says how many swag bucks spin the reels. There are fruit icons to display. Tell the player what is shown on the reels one at a time.  Do not tell the player the odds, the odds to win are 3 to 1. The sponsors are in no particular order, Signalwire, FreeSWITCH, xcally, quest blue, webrtc ventures, and ecosmob. Do not mention all of the sponsors together. When the signalwire swag bucks reached 0 for the participant tell the participant thank you for playing then hang up and to visit www.signalwire.com ."
           ],
           "post_prompt" => [
             "confidence" => 0.6,
