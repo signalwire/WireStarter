@@ -10,6 +10,7 @@ sleep 3
 export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' | sed 's/https:\/\///'`
 sed -i -e "s/#ServerName www.example.com/ServerName ${HOSTNAME}/" /etc/apache2/sites-enabled/000-default.conf
 sed -i -e "s/Options Indexes FollowSymLinks/Options Indexes FollowSymLinks ExecCGI/" /etc/apache2/apache2.conf
+sed -i 's/DirectoryIndex index.html/DirectoryIndex index.php index.html/' /etc/apache2/mods-enabled/dir.conf
 echo "ServerName $HOSTNAME" >> /etc/apache2/apache2.conf
 
 if [ -f "/workdir/.env" ]; then
