@@ -23,7 +23,7 @@ $response = [
             "paper",
             "spawk",
             "lizard",
-            "scisors
+            "scisors"
           ],
           "prompt" => [
             "confidence" => 0.6,
