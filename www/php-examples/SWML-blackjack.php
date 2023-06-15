@@ -23,7 +23,7 @@ $response = [
             "bet",
             "stay",
             "stand",
-            "hit me
+            "hit me"
           ],
           "prompt" => [
             "confidence" => 0.6,
