@@ -3,7 +3,7 @@
 # Start Ngrok in a screen
 if [ ! -z $NGROK_TOKEN ]; then
     /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN > /dev/null 2>&1
-    /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok --log=/var/log/ngrok.log http $NGROK_ARGS 9080
+    /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080
 fi
 
 sleep 3
