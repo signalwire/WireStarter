@@ -37,8 +37,11 @@ if [  -d "/workdir/github-copilot" ]; then
     cp -drp /workdir/github-copilot ~/.config/
 fi
 
-if [  -f "/workdir/cpanfile" ]; then
-   cpanm --installdeps /workdir/
+if [ ! -f "/.cpandone" ]; then
+    if [  -f "/workdir/cpanfile" ]; then
+	cpanm --installdeps /workdir/
+	touch /.cpandone
+    fi
 fi
 
 # Common typos when using emacs, so things just work.
