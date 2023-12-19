@@ -9,6 +9,14 @@ if [ -f "/workdir/.bashrc" ]; then
    . "/workdir/.bashrc"
 fi
 
+if [  -f "/workdir/.emacs" ]; then
+    ln -f -s /workdir/.emacs ~/.emacs
+fi
+
+if [  -f "/workdir/cpanfile" ]; then
+   cpanm --force --installdeps /workdir/
+fi
+
 # Common typos when using emacs, so things just work.
 if [ $VISUAL == "emacs" ]; then
     alias e='emacs'
@@ -54,4 +62,3 @@ fi
 if [ ! -z $SIGNALWIRE_SPACE ] && [ ! -z $PROJECT_ID ] && [ ! -z $REST_API_TOKEN ] && [ ! -f /workdir/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
-
