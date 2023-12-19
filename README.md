@@ -1,5 +1,7 @@
 # WireStarter
 
+![WireStarter Screenshot](https://raw.githubusercontent.com/signalwire/WireStarter/master/misc/ws.png)
+
 Required Prerequisites:
 A Signalwire Account
 
