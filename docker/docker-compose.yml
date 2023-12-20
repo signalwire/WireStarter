@@ -6,13 +6,14 @@ services:
   wirestarter:
     image: signalwire/wirestarter
     environment:
-     PROJECT_ID: ${PROJECT_ID}
-     REST_API_TOKEN: ${REST_API_TOKEN}
-     NGROK_TOKEN: ${NGROK_TOKEN}
-     NGROK_ARGS: ${NGROK_ARGS}
-     SIGNALWIRE_SPACE: ${SIGNALWIRE_SPACE}
-     WORKDIR: ${WORKDIR:-workdir}
-     VISUAL: ${VISUAL:-vim}
+     - PROJECT_ID=${PROJECT_ID}
+     - REST_API_TOKEN=${REST_API_TOKEN}
+     - NGROK_TOKEN=${NGROK_TOKEN}
+     - NGROK_ARGS=${NGROK_ARGS}
+     - SIGNALWIRE_SPACE=${SIGNALWIRE_SPACE}
+     - WORKDIR= ${WORKDIR:-workdir}
+     - VISUAL=${VISUAL:-vim}
+     - SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock
     container_name: wirestarter
     command: ["/start_services.sh"]
     env_file: ../.env
@@ -20,11 +21,16 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "${WORKDIR}:/workdir"
       - "opt:/opt"
+      - type: bind
+        source: /run/host-services/ssh-auth.sock
+        target: /run/host-services/ssh-auth.sock
     ports:
       - 9080:9080/tcp
     stdin_open: true
     tty: true
     build:
+      ssh:
+        - default=${SSH_AUTH_SOCK}
       context: ../
       dockerfile: docker/Dockerfile
       args:

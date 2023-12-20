@@ -32,6 +32,15 @@ if [  -f "/workdir/.emacs" ]; then
     ln -f -s /workdir/.emacs ~/.emacs
 fi
 
+if [  -f "/workdir/.gitconfig" ]; then
+    ln -f -s /workdir/.gitconfig ~
+fi
+
+if [  -d "/workdir/.ssh" ]; then
+    ln -f -s /workdir/.ssh ~
+
+fi
+
 # This is where the copilot token is stored
 if [  -d "/workdir/github-copilot" ]; then
     cp -drp /workdir/github-copilot ~/.config/

@@ -19,7 +19,6 @@ fi
 # Enable and Start Apache
 /usr/sbin/apache2ctl start > /dev/null 2>&1
 
-
 # Loop so we can update the urls if they change while running.
 while true
 do
@@ -50,3 +49,5 @@ do
     
     sleep 300
 done
+
+
