@@ -31,7 +31,7 @@ Out-File -FilePath $PSScriptRoot\.env -Append -InputObject WORKDIR=$work_dir
 
 type $PSScriptRoot\.env
 
-docker network create --attachable wirestarter --subnet 172.50.0.1/24
+docker network create --attachable wirestarter --subnet 172.50.0.0/24
 docker compose -f $PSScriptRoot\docker\docker-compose.yml --env-file $PSScriptRoot\.env --project-name wirestarter up -d
 docker ps
 docker exec -it wirestarter /bin/bash

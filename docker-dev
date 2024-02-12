@@ -6,7 +6,7 @@ fi
 NETWORK=`docker network ls | grep 'wirestarter'`
 if [ -z "$NETWORK" ]
 then
-  docker network create --attachable wirestarter --subnet 172.50.0.1/24
+  docker network create --attachable wirestarter --subnet 172.50.0.0/24
 fi
 
 COMPOSE_IGNORE_ORPHANS=true docker-compose -f docker/docker-compose.yml --env-file .env --project-name wirestarter "$@"
