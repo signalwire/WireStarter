@@ -5,8 +5,8 @@
 ## Prerequisites
 Before you begin, ensure you have the following prerequisites:
 
-- A Signalwire Account
-- A Signalwire Space and Project
+- A Signalwire [Account](https://signalwire.com/signup)
+- A Signalwire [API Credentials](https://developer.signalwire.com/guides/your-first-api-calls/)
 - Docker Desktop
   - [Install on MacOS](https://docs.docker.com/desktop/install/mac-install/)
   - [Install on Windows](https://docs.docker.com/desktop/install/windows-install/)
