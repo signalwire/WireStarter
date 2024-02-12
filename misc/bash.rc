@@ -1,23 +1,59 @@
+
 export PROMPT_COMMAND='echo -en "\033[m\033[38;5;2m"$(( `sed -n "s/MemFree:[\t ]\+\([0-9]\+\) kB/\1/p" /proc/meminfo`/1024))"\033[38;5;22m/"$((`sed -n "s/MemTotal:[\t ]\+\([0-9]\+\) kB/\1/Ip" /proc/meminfo`/1024 ))MB"\t\033[m\033[38;5;55m$(< /proc/loadavg)\033[m"'
 export PS1='\[\e[m\n\e[32m\][$$:$PPID\j:\!\[\e[32m\]]\[\e[0;36m\] \T \d \[\e[1;30m\][\[\e[1;34m\]\u@\H\[\e[1;30m\]:\[\e[0;37m\]${SSH_TTY} \[\e[0;32m\]+${SHLVL}\[\e[1;30m\]] \[\e[1;37m\]\w\[\e[0;37m\] \n($SHLVL:\!)\$ '
 
 SW_TEST_URL="https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts -u ${PROJECT_ID}:${REST_API_TOKEN}"
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
+setup_environment() {
+    if [ ! -f ".env" ]; then
+        read -p "What is your Signalwire space: " sig_space;
+        read -p "What is your Signalwire project ID: " proj_id;
+        read -p "What is your Signalwire API token: " api_token;
+        read -p "What is your NGROK Token (optional): " ngrok_token;
+        read -p "What is your Work Dir: " workdir;
+        read -p "Editor (nano, vim, emacs): " visual;
+
+        # Remove domain, if attached to signalwire space
+        sig_space=$( echo "${sig_space}" | cut -d \. -f1 )
+
+        URL="https://${sig_space}.signalwire.com/api/laml/2010-04-01/Accounts -u ${proj_id}:${api_token}"
+        response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $URL )
+        if [[ $response_code  -eq 200 ]]; then
+            echo "SIGNALWIRE_SPACE=$sig_space" > .env
+            echo "PROJECT_ID=$proj_id" >> .env
+            echo "REST_API_TOKEN=$api_token" >> .env
+            echo "NGROK_TOKEN=$ngrok_token" >> .env
+            echo "VISUAL=$visual" >> .env
+            echo "WORKDIR=$workdir" >> .env
+            echo "setup successful"
+        elif [[ $response_code -eq 404 ]]; then
+            echo "Make sure you entered correct space URL"
+        elif [[ $response_code -eq 401 ]]; then
+            echo "Make sure you entered correct project ID and REST API token"
+        else
+            echo  "Setup failed please try again"
+        fi
+    else
+        # This can be changed once .env file validation is happening
+        # Search for .signalwire.com and remove if exists
+        sed -i~ 's/\.signalwire.com//g' .env
+
+        echo "Setup .env file already exists"
+    fi
+}
+
 if [[ $response_code  -eq 200 ]]; then
     echo "INFO: SignalWire Credentials work ✅"
 elif [[ $response_code -eq 404 ]]; then
     echo "ERROR: SignalWire Space NOT FOUND 🧐"
-    # INSERT DETAILS TO FIX THIS OR TRY TO FIX IT AUTOMATICALLY
-    exit;
+    setup_environment
 elif [[ $response_code -eq 401 ]]; then
     echo "ERROR: Signalwire Credentials DO NOT WORK 🤨"
-    # INSERT DETAILS TO FIX THIS OR TRY TO FIX IT AUTOMATICALLY
-    exit;
+    setup_environment
 else
     echo  "WARNING: SignalWire setup incomplete 🛑"
-    # INSERT DETAILS TO FIX THIS OR TRY TO FIX IT AUTOMATICALLY
-    exit;
+    setup_environment
 fi
 
 if [ -f "/workdir/.env" ]; then
