@@ -47,3 +47,13 @@ Note: If `.\setup.ps1` give an error and won't run, more steps are needed.
 
 That's it!  The container will build in the background and then start by itself placing the user in the SWiSH 
 shell.
+
+### Features that exist to help you keep updated and moving forward these execute if they exist in /workdir, [more](https://github.com/signalwire/WireStarter/blob/master/misc/bash.rc)
+ 1.  `. /workdir/.env`
+ 2. `. /workdir/.bashrc`
+ 3. `ln -f -s /workdir/.emacs ~/.emacs`
+ 4. `ln -f -s /workdir/.gitconfig ~`
+ 5. `ln -f -s /workdir/.ssh ~`
+ 6. `cp -drp /workdir/github-copilot ~/.config/`
+ 7. `cpanm --installdeps /workdir/` if `/workdir/cpanfile` exists.
+ 8. `setupgolang` and `setupnvm` to help keep persistent enviornments in `/opt` which will be its own volume.
