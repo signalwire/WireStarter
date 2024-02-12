@@ -9,7 +9,7 @@ FROM debian:bullseye-slim
 ARG python_version=python3.9
 
 # Install the basic package
-RUN apt update && apt install -y apache2 screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev
+RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox
@@ -77,12 +77,5 @@ COPY www/ /var/www/html/
 
 WORKDIR /workdir
 
-# Enable CGI
-RUN sed -i -e 's/#AddHandler cgi-script .cgi/AddHandler cgi-script .cgi/' /etc/apache2/mods-available/mime.conf
-
-# Fix ports
-RUN sed -i -e 's/Listen 80/Listen 9080/' /etc/apache2/ports.conf
-RUN sed -i -e 's/Listen 443/Listen 9443/' /etc/apache2/ports.conf
-
-# Start Apache and ngrok on container start
+# Start and ngrok on container start
 ENTRYPOINT /start_services.sh
