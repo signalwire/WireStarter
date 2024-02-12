@@ -17,15 +17,6 @@ RUN apt update && apt install -y nano vim emacs-nox
 # Install Python
 RUN apt update && apt install -y python3 python3-pip && pip3 install signalwire requests python-dotenv cmd2 setuptools pygments swsh
 
-# Install golang
-#RUN apt update && apt install -y golang 
-
-# Install PHP
-#RUN apt update && apt install -y php-cli composer
-
-# Install PHP for Apache2
-RUN apt update && apt install -y php7.4 libapache2-mod-php
-
 # Install GH Cli
 RUN apt-key adv --fetch-keys https://cli.github.com/packages/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture)] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list && \
     apt update && apt install -y gh
@@ -37,10 +28,6 @@ RUN apt-key adv --fetch-keys https://download.docker.com/linux/debian/gpg && ech
 # Install Ngrok
 RUN apt-key adv --fetch-keys https://ngrok-agent.s3.amazonaws.com/ngrok.asc && echo "deb [arch=$(dpkg --print-architecture)] https://ngrok-agent.s3.amazonaws.com $(lsb_release -cs) main" |  tee /etc/apt/sources.list.d/ngrok.list && \
     apt update && apt install -y ngrok 
-
-# Enable Python -- Apache
-# This may need to just be creating the symlink since the image doesn't run
-RUN a2enmod cgid
 
 # Install Docker examples
 COPY examples /root/examples
@@ -56,6 +43,7 @@ RUN chmod +x /start_services.sh
 
 # Make workdir
 RUN mkdir -p /workdir/public
+RUN mkdir -p /var/www/html/public
 
 #Create public web folder
 RUN ln -s /workdir/public/ /var/www/html/public
