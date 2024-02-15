@@ -1,64 +1,117 @@
-
 export PROMPT_COMMAND='echo -en "\033[m\033[38;5;2m"$(( `sed -n "s/MemFree:[\t ]\+\([0-9]\+\) kB/\1/p" /proc/meminfo`/1024))"\033[38;5;22m/"$((`sed -n "s/MemTotal:[\t ]\+\([0-9]\+\) kB/\1/Ip" /proc/meminfo`/1024 ))MB"\t\033[m\033[38;5;55m$(< /proc/loadavg)\033[m"'
 export PS1='\[\e[m\n\e[32m\][$$:$PPID\j:\!\[\e[32m\]]\[\e[0;36m\] \T \d \[\e[1;30m\][\[\e[1;34m\]\u@\H\[\e[1;30m\]:\[\e[0;37m\]${SSH_TTY} \[\e[0;32m\]+${SHLVL}\[\e[1;30m\]] \[\e[1;37m\]\w\[\e[0;37m\] \n($SHLVL:\!)\$ '
+
+if [ -f "/workdir/.env" ]; then
+    . /workdir/.env
+fi
 
 SW_TEST_URL="https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts -u ${PROJECT_ID}:${REST_API_TOKEN}"
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
-setup_environment() {
-    if [ ! -f ".env" ]; then
-        read -p "What is your Signalwire space: " sig_space;
-        read -p "What is your Signalwire project ID: " proj_id;
-        read -p "What is your Signalwire API token: " api_token;
-        read -p "What is your NGROK Token (optional): " ngrok_token;
-        read -p "What is your Work Dir: " workdir;
-        read -p "Editor (nano, vim, emacs): " visual;
-
-        # Remove domain, if attached to signalwire space
-        sig_space=$( echo "${sig_space}" | cut -d \. -f1 )
-
-        URL="https://${sig_space}.signalwire.com/api/laml/2010-04-01/Accounts -u ${proj_id}:${api_token}"
-        response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $URL )
-        if [[ $response_code  -eq 200 ]]; then
-            echo "SIGNALWIRE_SPACE=$sig_space" > .env
-            echo "PROJECT_ID=$proj_id" >> .env
-            echo "REST_API_TOKEN=$api_token" >> .env
-            echo "NGROK_TOKEN=$ngrok_token" >> .env
-            echo "VISUAL=$visual" >> .env
-            echo "WORKDIR=$workdir" >> .env
-            echo "setup successful"
-        elif [[ $response_code -eq 404 ]]; then
-            echo "Make sure you entered correct space URL"
-        elif [[ $response_code -eq 401 ]]; then
-            echo "Make sure you entered correct project ID and REST API token"
-        else
-            echo  "Setup failed please try again"
-        fi
-    else
-        # This can be changed once .env file validation is happening
-        # Search for .signalwire.com and remove if exists
-        sed -i~ 's/\.signalwire.com//g' .env
-
-        echo "Setup .env file already exists"
-    fi
-}
+# Define the output file
+ENV_FILE="/workdir/.env"
 
 if [[ $response_code  -eq 200 ]]; then
     echo "INFO: SignalWire Credentials work ✅"
 elif [[ $response_code -eq 404 ]]; then
     echo "ERROR: SignalWire Space NOT FOUND 🧐"
-    setup_environment
+    rm -f /workdir/.env
 elif [[ $response_code -eq 401 ]]; then
     echo "ERROR: Signalwire Credentials DO NOT WORK 🤨"
-    setup_environment
+    rm -f /workdir/.env
 else
     echo  "WARNING: SignalWire setup incomplete 🛑"
-    setup_environment
+    rm -f /workdir/.env
 fi
 
-if [ -f "/workdir/.env" ]; then
-    . /workdir/.env
+
+if [ ! -f "/workdir/.env" ]; then
+    # Display the form and collect the inputs
+    {
+	SIGNALWIRE_SPACE=$(whiptail --inputbox "Please enter your SignalWire Space:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then exit; fi
+
+	PROJECT_ID=$(whiptail --inputbox "Please enter your Project ID:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then exit; fi
+
+	REST_API_TOKEN=$(whiptail --inputbox "Please enter your Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then exit; fi
+
+	NGROK_TOKEN=$(whiptail --inputbox "Please enter your NGROK Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then exit; fi
+
+	NGROK_ARGS=$(whiptail --inputbox "Please enter your NGROK Args:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then exit; fi
+    }
+
+    # Dropdown for VISUAL using whiptail menu
+    VISUAL=$(whiptail --title "Visual Editor Selection" --menu "Choose your editor" 15 60 3 \
+		      "nano" "" \
+		      "emacs" "" \
+		      "vim" "" 3>&1 1>&2 2>&3)
+
+    exitstatus=$?
+    if [ $exitstatus != 0 ]; then exit; fi
+
+    # Write to .env file
+    {
+	echo "SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
+	echo "PROJECT_ID=$PROJECT_ID"
+	echo "AUTH_TOKEN=$AUTH_TOKEN"
+	echo "NGROK_TOKEN=$NGROK_TOKEN"
+	echo "NGROK_ARGS='$NGROK_ARGS'"
+	echo "VISUAL=$VISUAL"
+	echo "WORKDIR=/workdir"
+    } > $ENV_FILE
+
+    sed -i~ 's/\.signalwire.com//g' $ENV_FILE
+
+    source $ENV_FILE
+
+    # Confirmation message
+    whiptail --title "Confirmation" --msgbox "Details saved to $ENV_FILE." 8 78
+
 fi
+
+if [ ! -z $NGROK_TOKEN ]; then
+    echo "Starting ngrok tunnel...";
+    /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN > /dev/null 2>&1
+    /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080 > /dev/null 2>&1
+fi
+
+sleep 3
+
+export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' | sed 's/https:\/\///'`
+
+if [ ! -z $NGROK_TOKEN ]; then
+    export NGROK_URL=$( curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' )
+    if [ ! -z $NGROK_URL ]; then
+	# update the numbers that were previously mapped to an ngrok URL previously.
+	python3 /usr/lib/cgi-bin/update_laml_bins.py $NGROK_URL
+    fi
+fi
+
+clear
+echo -e "\n\n";
+cat /.sw.ans
+echo -e "\n\n";
+echo -e "Welcome to WireStarter!";
+echo -e "\n"
+
+if [ ! -z $NGROK_URL ]; then
+    echo -e "NGROK Tunnel: $NGROK_URL";
+    echo -e "/workdir/public -> $NGROK_URL/public\n";
+fi
+
+if [ ! -z $WORKDIR ]; then
+    echo -e "Persistent host directory is /workdir -> $WORKDIR\n";
+fi
+
 
 if [ -f "/workdir/.bashrc" ]; then
    . "/workdir/.bashrc"
@@ -117,6 +170,7 @@ if [ -f "/opt/go/bin/go" ]; then
     export PATH=/opt/go/bin:${PATH}
     export GOPATH=/opt/go
 fi
+
 if [ -z $VISUAL ]; then
     export VISUAL=vim
 fi

@@ -1,27 +1,22 @@
 build: 
-	@./setup.sh
-	@./docker-dev build
+	@docker build -f docker/Dockerfile .
 
-up: build
-	@./docker-dev up -d
-
-up: build 
-
-all: build up
+up:
+	@docker run -it -d --rm --name wirestarter --env-file .env --volume "${WORKDIR}:/workdir" --volume opt:/opt  briankwest/wirestarter /start_services.sh || echo "up"
 
 down:
-	@./docker-dev down
+	@docker stop wirestarter || echo "down"
 
 prune:
-	@docker system prune -a
+	@docker system prune -a || echo "no prune"
 
-enter: up
-	@docker exec -it wirestarter /bin/bash
-
-restart: down up
+enter:
+	@docker exec -it wirestarter /bin/bash || echo "no enter"
 
 tag:
-	docker tag signalwire/wirestarter:latest briankwest/wirestarter:latest
+	@docker tag briankwest/wirestarter:latest briankwest/wirestarter:latest 
 
-push:
-	docker buildx build -f docker/Dockerfile --platform linux/amd64,linux/arm64 --tag briankwest/wirestarter:latest --push .
+push: tag
+	@docker buildx build -f docker/Dockerfile --platform linux/amd64,linux/arm64 --push .
+
+clean: down prune
