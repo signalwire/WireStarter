@@ -30,4 +30,4 @@ sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D $NEW_PGDATA -l logfile sta
 # Verify the operation
 echo "Verifying the new data directory setting..."
 sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/psql -c "SHOW data_directory;"
-
+touch /workdir/.setuppgsql
