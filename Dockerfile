@@ -34,12 +34,10 @@ RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc |  tee /etc/apt/tr
     && apt install -y ngrok
 
 RUN pwd
-COPY docker/SRC /usr/lib/cgi-bin
-COPY docker/SRC/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
-RUN chmod +x -R /usr/lib/cgi-bin/
+COPY misc/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 
 # copy script to start services
-COPY docker/start_services.sh /start_services.sh
+COPY misc/start_services.sh /start_services.sh
 RUN chmod +x /start_services.sh
 
 # Make workdir
