@@ -73,8 +73,8 @@ if [  -f "/workdir/.gitconfig" ]; then
 fi
 
 if [  -d "/workdir/.ssh" ]; then
+    rm -rf ~/.ssh
     ln -f -s /workdir/.ssh ~
-
 fi
 
 if [  -f "/workdir/.setuppgsql" ]; then
