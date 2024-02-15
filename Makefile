@@ -24,4 +24,4 @@ tag:
 	docker tag signalwire/wirestarter:latest briankwest/wirestarter:latest
 
 push:
-	docker push briankwest/wirestarter:latest
+	docker buildx build -f docker/Dockerfile --platform linux/amd64,linux/arm64 --tag briankwest/wirestarter:latest --push .

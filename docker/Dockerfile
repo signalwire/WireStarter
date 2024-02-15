@@ -17,8 +17,6 @@ RUN apt update && apt install -y nano vim emacs-nox
 # Install Python
 RUN apt update && apt install -y python3 python3-pip && pip3 install --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh
 
-
-
 # Install Docker
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | tee /etc/apt/trusted.gpg.d/docker.asc > /dev/null \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/trusted.gpg.d/docker.asc] https://download.docker.com/linux/debian  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
