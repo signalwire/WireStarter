@@ -86,10 +86,12 @@ if [  -d "/workdir/github-copilot" ]; then
     cp -drp /workdir/github-copilot ~/.config/
 fi
 
-if [ ! -f "/.cpandone" ]; then
+if [ ! -f "/workdir/.cpandone" ]; then
     if [  -f "/workdir/cpanfile" ]; then
-	cpanm --installdeps /workdir/
+	mkdir -p /workdir/perllib
+       	cpanm -l /workdir/perllib --installdeps /workdir/
 	touch /.cpandone
+	export PERL5LIB=/workdir/perl/lib/perl5:$PERL5LIB
     fi
 fi
 
