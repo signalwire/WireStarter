@@ -1,0 +1,19 @@
+server {
+    listen 9080; # Listen on port 9080
+
+    root /var/www/html;
+
+    location /public {
+        alias /workdir/public; # Alias /public to /workdir/public
+        try_files $uri $uri/ =404; # Return 404 if file not found
+    }
+
+    location / {
+        proxy_pass http://localhost:5000; # Proxy to the app
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}

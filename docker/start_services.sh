@@ -9,9 +9,8 @@ fi
 sleep 3
 export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' | sed 's/https:\/\///'`
 
-if [ -f "/workdir/.env" ]; then
-    cat "/workdir/.env"  | grep . | sed 's/\=/ /' | awk '{print "SetEnv " $0}' >> /etc/apache2/apache2.conf
-fi
+/usr/sbin/nginx start > /dev/null 2>&1
+
 
 # Loop so we can update the urls if they change while running.
 while true

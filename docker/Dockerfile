@@ -9,7 +9,7 @@ FROM debian:12-slim
 ARG python_version=python3.9
 
 # Install the basic package
-RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates 
+RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox
@@ -55,7 +55,7 @@ RUN ln -s /workdir/public/ /var/www/html/public
 COPY misc/signalwire.ans /.sw.ans
 COPY misc/bash.rc /root/.bashrc
 COPY bin/ /usr/bin
-
+COPY conf/nginx.site /etc/nginx/sites-enabled/default
 # Clean up
 RUN /usr/bin/dos2unix /root/.bashrc         # Fixes DOS formatting when using Windows
 RUN /usr/bin/dos2unix /start_services.sh    # Fixes DOS formatting when using Windows
