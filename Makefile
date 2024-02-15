@@ -1,5 +1,5 @@
 build: 
-	@docker build --no-cache -f Dockerfile .
+	@docker build --no-cache -t briankwest/wirestarter .
 
 up:
 	@docker run -it -d --rm --name wirestarter --env-file .env --volume "${WORKDIR}:/workdir" --volume opt:/opt  briankwest/wirestarter /start_services.sh || echo "up"
@@ -17,6 +17,6 @@ tag:
 	@docker tag briankwest/wirestarter:latest briankwest/wirestarter:latest 
 
 push: tag
-	@docker buildx build -f Dockerfile --platform linux/amd64,linux/arm64 --push .
+	@docker buildx build --platform linux/amd64,linux/arm64 --tag briankwest/wirestarter:latest --push .
 
 clean: down prune
