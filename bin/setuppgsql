@@ -18,14 +18,6 @@ if [ ! -d "$NEW_PGDATA" ]; then
     sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/initdb -D "$NEW_PGDATA"
 fi
 
-
-    
-# Configure PostgreSQL to use the new data directory
-# This step might vary depending on your installation.
-# Here we assume a systemd service customization is needed.
-echo "Configuring PostgreSQL to use the new data directory..."
-sed -i "s|data_directory = '/var/lib/postgresql/$PG_VERSION/main'|data_directory = '/workdir/postgres'|g" /etc/postgresql/15/main/ postgresql.conf
-
 # Adjust permissions for the new data directory
 echo "Adjusting permissions for $NEW_PGDATA..."
 sudo chown -R postgres:postgres "$NEW_PGDATA"
