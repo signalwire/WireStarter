@@ -92,6 +92,10 @@ if [  -f "/workdir/cpanfile" ]; then
     touch /.cpandone
     export PATH=/workdir/perllib/bin:$PATH
     export PERL5LIB=/workdir/perllib/lib/perl5:$PERL5LIB
+
+    psql() {
+	command psql -U postgres "$@"
+    }
 fi
 
 # Common typos when using emacs, so things just work.
