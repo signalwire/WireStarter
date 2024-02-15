@@ -77,6 +77,10 @@ if [  -d "/workdir/.ssh" ]; then
 
 fi
 
+if [  -f "/workdir/.setuppgsql" ]; then
+   /usr/bin/setuppgsql
+fi
+
 # This is where the copilot token is stored
 if [  -d "/workdir/github-copilot" ]; then
     cp -drp /workdir/github-copilot ~/.config/
