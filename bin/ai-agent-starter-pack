@@ -1,0 +1,51 @@
+#!/bin/bash
+
+NPM=$(which npm)
+WORKDIR=/usr/local/ai-agent-starter-pack
+
+# Verify that the env vars are set
+
+# Signalwire Space
+if [ -z $SIGNALWIRE_SPACE ]; then
+  echo "ERROR: The SignalWire Space environment variable SIGNALWIRE_SPACE is missing.  Please export the SignalWire Space Name and try again"
+  exit 1
+# API Token
+elif [ -z $REST_API_TOKEN ]; then
+  echo "ERROR: SignalWire API Token environment variable REST_API_TOKEN is missing.  Please export the SignalWire Token ID and try again"
+  exit 1
+# Project ID
+elif [ -z $PROJECT_ID ]; then
+  echo "ERROR: Signalwire Project ID env variable PROJECT_ID is missing.  Please export the SignalWire Project ID and try again"
+  export 1
+# Ngrok Tunnel
+elif [ -z $NGROK_TOKEN ]; then
+  echo "ERROR:  An NGROK Token is required for this feature.  Please confirm the NGROK Token NGROK_TOKEN is exported to the system environment"
+  exit 1
+fi
+
+if [ -z $NPM ]; then
+  read -p "Node is not installed.  Would you like to install? [yes/no] " SETUPNVM
+
+  case $SETUPNVM in
+    yes | YES | y)
+        setupnvm
+        export NVM_DIR="/opt/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm install node
+        NPM=$(which npm)
+        ;;
+    *)
+        echo -e "Install Node and then try again.\n"
+        exit 0
+  esac
+
+fi
+
+cd $WORKDIR
+echo -en "Installing Application..."
+$NPM install
+echo -e "  Success!"
+
+export PORT=5000
+
+echo -en "Running Application..."
+$NPM run start
