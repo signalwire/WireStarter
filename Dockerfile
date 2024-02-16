@@ -37,7 +37,7 @@ RUN pwd
 COPY misc/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 
 # CLONE AI STARTER PACK
-RUN git clone --branch wirestarter https://github.com/signalwire/ai-agent-starter-pack.git /usr/local/ai-agent-starter-pack
+RUN git clone https://github.com/signalwire/ai-agent-starter-pack.git /usr/local/ai-agent-starter-pack
 
 # copy script to start services
 COPY misc/start_services.sh /start_services.sh
