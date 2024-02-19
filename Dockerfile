@@ -8,7 +8,7 @@ FROM debian:12-slim
 
 ARG python_version=python3.9
 
-# Install the basic package
+# Install the basic packages
 RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail
 
 # Install Editors
@@ -36,6 +36,9 @@ RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc |  tee /etc/apt/tr
 RUN pwd
 COPY misc/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 
+# CLONE AI STARTER PACK
+RUN git clone https://github.com/signalwire/ai-agent-starter-pack.git /usr/local/ai-agent-starter-pack
+
 # copy script to start services
 COPY misc/start_services.sh /start_services.sh
 RUN chmod +x /start_services.sh
@@ -55,8 +58,6 @@ COPY conf/nginx.site /etc/nginx/sites-enabled/default
 # Clean up
 RUN /usr/bin/dos2unix /root/.bashrc         # Fixes DOS formatting when using Windows
 RUN /usr/bin/dos2unix /start_services.sh    # Fixes DOS formatting when using Windows
-RUN rm -f /tmp/cmd2.patch
-RUN rm -f /tmp/pygment_mapping.patch
 RUN apt clean
 
 # Copy file to redirect to documentation
@@ -64,5 +65,5 @@ COPY www/ /var/www/html/
 
 WORKDIR /workdir
 
-# Start and ngrok on container start
+# Start ngrok on container start
 ENTRYPOINT /start_services.sh
