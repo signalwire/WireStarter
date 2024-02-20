@@ -28,7 +28,7 @@ fi
 if [ ! -f "/workdir/.env" ]; then
     # Display the form and collect the inputs
     {
-	SIGNALWIRE_SPACE=$(whiptail --inputbox "Please enter your SignalWire Space:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	SIGNALWIRE_SPACE=$(whiptail --inputbox "Please enter your SignalWire Space Domain:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then exit; fi
 
@@ -36,7 +36,7 @@ if [ ! -f "/workdir/.env" ]; then
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then exit; fi
 
-	REST_API_TOKEN=$(whiptail --inputbox "Please enter your Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	REST_API_TOKEN=$(whiptail --inputbox "Please enter your API Auth Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then exit; fi
 
