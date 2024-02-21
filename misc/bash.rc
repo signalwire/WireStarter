@@ -62,7 +62,7 @@ if [ ! -f "/workdir/.env" ]; then
     {
 	echo "SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
 	echo "PROJECT_ID=$PROJECT_ID"
-	echo "AUTH_TOKEN=$AUTH_TOKEN"
+	echo "REST_API_TOKEN=$REST_API_TOKEN"
 	echo "NGROK_TOKEN=$NGROK_TOKEN"
 	echo "NGROK_ARGS='$NGROK_ARGS'"
 	echo "VISUAL=$VISUAL"
