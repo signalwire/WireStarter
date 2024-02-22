@@ -42,9 +42,9 @@ cd ${WORKINGDIR}
 # If the module fails, a re-run of this wrapper command should resolve and start the app.
 #
 echo -ne "Installing Perl Dependencies.  This may take a few minutes... "
-cpanm --installdeps ${WORKINGDIR} 2>&1 > /dev/null 
-# Retry incase C failed (yes, this is hacky)
-cpanm --installdeps ${WORKINGDIR} > /dev/null
+cpanm --installdeps ${WORKINGDIR} > /dev/null 2>&1
+# Retry incase something failed (yes, this is hacky, but C seems to fail randomly)
+cpanm --installdeps ${WORKINGDIR} > /dev/null 2>&1
 echo -e  "Complete!"
 
 
@@ -57,15 +57,17 @@ service postgresql start > /dev/null
 echo -e  "Complete!"
 
 # set DB password
-psql -U postgres -c " ALTER USER postgres WITH PASSWORD 'asdf' " > /dev/null
+psql -U postgres -c " ALTER USER postgres WITH PASSWORD 'asdf' " > /dev/null 2>&1
 
 # create the roomieserve DB
-psql -U postgres -c "create database roomieserve" 2>&1 > /dev/null
+psql -U postgres -c "create database roomieserve" > /dev/null 2>&1
 
 
 ## APPLICATION
 # create symlink from WORKINGDIR to /app
-ln -s ${WORKINGDIR} /app 2>&1 > /dev/null
+if [ ! -h /app ]; then
+    ln -s ${WORKINGDIR} /app > /dev/null 2>&1
+fi
 
 # Set the Application ENV
 export DATABASE_URL=postgres://postgres:asdf@localhost:5432/roomieserve
@@ -89,7 +91,12 @@ sed -i "s/+1 (240) 3ROOMIE/${formatted_num}/g" ${WORKINGDIR}/template/index.tmpl
 # Set Phone Number to point to a relay bin webhook
 NGROK_HOST=${NGROK_URL:8}   # Strip out https:// for now.
 RELAY_URL="https://${USERNAME}:${PASSWORD}@${NGROK_HOST}/swml"
-swsh phone_number update --call-relay-script-url ${RELAY_URL} --call-handler relay_script --number ${PHONE_NUMBER}
+
+UPDATE_PHONE_NUMBER=$(swsh phone_number update --call-relay-script-url ${RELAY_URL} --call-handler relay_script --number ${PHONE_NUMBER} 2>&1)
+if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
+  echo "ERROR: There was an issue updating the phone number.  Please check that it belongs to your SignalWire Space and Try again"
+  exit 1
+fi
 
 echo -e "View the ROOMIE SERVE at $NGROK_URL"
 echo -e "Call into the ROOMIE SERVE AI Agent at $PHONE_NUMBER\n"
