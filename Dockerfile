@@ -15,7 +15,7 @@ RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release c
 RUN apt update && apt install -y nano vim emacs-nox
 
 # Install Python
-RUN apt update && apt install -y python3 python3-pip && pip3 install --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh
+RUN apt update && apt install -y python3 python3-pip python3.11-venv && pip3 install --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh==0.1.13
 
 # Install Docker
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | tee /etc/apt/trusted.gpg.d/docker.asc > /dev/null \
