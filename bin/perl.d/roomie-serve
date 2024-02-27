@@ -56,8 +56,10 @@ echo -en "Starting Database... "
 service postgresql start > /dev/null
 echo -e  "Complete!"
 
+export DB_PASS=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
+
 # set DB password
-psql -U postgres -c " ALTER USER postgres WITH PASSWORD 'asdf' " > /dev/null 2>&1
+psql -U postgres -c " ALTER USER postgres WITH PASSWORD '$DB_PASS' " > /dev/null 2>&1
 
 # create the roomieserve DB
 psql -U postgres -c "create database roomieserve" > /dev/null 2>&1
@@ -70,7 +72,7 @@ if [ ! -h /app ]; then
 fi
 
 # Set the Application ENV
-export DATABASE_URL=postgres://postgres:asdf@localhost:5432/roomieserve
+export DATABASE_URL=postgres://postgres:$DB_PASS@localhost:5432/roomieserve
 export USERNAME=roomie
 export PASSWORD=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
 export DEBUG=0
