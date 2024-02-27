@@ -61,7 +61,7 @@ psql -U postgres -c " ALTER USER postgres WITH PASSWORD 'asdf' " > /dev/null 2>&
 
 # create the roomieserve DB
 psql -U postgres -c "create database roomieserve" > /dev/null 2>&1
-
+psql -U postgres -d roomieserve ${WORKINGDIR}/menu.sql > /dev/null 2>&1
 
 ## APPLICATION
 # create symlink from WORKINGDIR to /app
