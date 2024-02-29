@@ -17,6 +17,6 @@ tag:
 	@docker tag briankwest/wirestarter:latest briankwest/wirestarter:latest 
 
 push: tag
-	@docker buildx build --platform linux/amd64,linux/arm64 --tag briankwest/wirestarter:latest --push .
+	@docker buildx build --platform linux/amd64,linux/arm64,linux/armhf --tag briankwest/wirestarter:latest --push .
 
 clean: down prune

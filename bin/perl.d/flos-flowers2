@@ -1,7 +1,7 @@
 #!/bin/bash
 
 GITDIR=/usr/local/digital_employees
-WORKINGDIR=/usr/local/digital_employees/server/Perl_Examples/BobbysTable.ai
+WORKINGDIR=/usr/local/digital_employees/server/Perl_Examples/FlosFlowers2
 
 # Verify that the env vars are set
 if [ -z $SIGNALWIRE_SPACE ]; then
@@ -21,7 +21,7 @@ elif [ -z $NGROK_TOKEN ]; then
   exit 1
 fi
 
-read -p "Please enter a phone number to associate with BOBBYS TABLE.  Formatted as +15551234567: " PHONE_NUMBER
+read -p "Please enter a phone number to associate with FLOS FLOWERS2.  Formatted as +15551234567: " PHONE_NUMBER
 
 # TODO:  Add US number validation
 
@@ -59,10 +59,10 @@ echo -e  "Complete!"
 export DB_PASS=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
 
 # set DB password
-psql -U postgres -c " ALTER USER postgres WITH PASSWORD '${DB_PASS}' " > /dev/null 2>&1
+psql -U postgres -c " ALTER USER postgres WITH PASSWORD '$DB_PASS' " > /dev/null 2>&1
 
-# create the bobbytables DB
-psql -U postgres -c "create database bobbystable" > /dev/null 2>&1
+# create the flosflowers DB
+psql -U postgres -c "create database flosflowers" > /dev/null 2>&1
 
 ## APPLICATION
 # create symlink from WORKINGDIR to /app
@@ -71,8 +71,8 @@ if [ ! -h /app ]; then
 fi
 
 # Set the Application ENV
-export DATABASE_URL=postgres://postgres:${DB_PASS}@localhost:5432/bobbystable
-export USERNAME=bobbystable
+export DATABASE_URL=postgres://postgres:$DB_PASS@localhost:5432/flosflowers
+export USERNAME=roomie
 export PASSWORD=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
 export DEBUG=0
 
@@ -99,8 +99,8 @@ if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
   exit 1
 fi
 
-echo -e "View the BOBBYS TABLE at $NGROK_URL"
-echo -e "Call into the BOBBYS TABLE AI Agent at $PHONE_NUMBER\n"
+echo -e "View the FLOS FLOWERS2 at $NGROK_URL"
+echo -e "Call into the FLOS FLOWERS2 AI Agent at $PHONE_NUMBER\n"
 
 plackup ${WORKINGDIR}/app.pl
 
