@@ -21,7 +21,11 @@ elif [ -z $NGROK_TOKEN ]; then
   exit 1
 fi
 
+<<<<<<< HEAD
 read -p "Please enter a phone number to associate with JOB SEARCH.  Formatted as +15551234567: " PHONE_NUMBER
+=======
+read -p "Please enter a phone number to associate with JobSearch.  Formatted as +15551234567: " PHONE_NUMBER
+>>>>>>> master
 
 # TODO:  Add US number validation
 
@@ -59,11 +63,20 @@ echo -e  "Complete!"
 export DB_PASS=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
 
 # set DB password
+<<<<<<< HEAD
 psql -U postgres -c " ALTER USER postgres WITH PASSWORD '$DB_PASS' " > /dev/null 2>&1
 
 # create the jobsearch DB
 psql -U postgres -c "create database jobsearch" > /dev/null 2>&1
 
+=======
+psql -U postgres -c " ALTER USER postgres WITH PASSWORD '${DB_PASS}' " > /dev/null 2>&1
+
+# create the JobSearch DB
+psql -U postgres -c "create database jobsearch" > /dev/null 2>&1
+
+
+>>>>>>> master
 ## APPLICATION
 # create symlink from WORKINGDIR to /app
 if [ ! -h /app ]; then
@@ -71,8 +84,13 @@ if [ ! -h /app ]; then
 fi
 
 # Set the Application ENV
+<<<<<<< HEAD
 export DATABASE_URL=postgres://postgres:$DB_PASS@localhost:5432/jobsearch
 export USERNAME=roomie
+=======
+export DATABASE_URL=postgres://postgres:${DB_PASS}@localhost:5432/jobsearch
+export USERNAME=jobsearch
+>>>>>>> master
 export PASSWORD=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
 export DEBUG=0
 
@@ -86,8 +104,15 @@ nxx=${PHONE_NUMBER:5:3}
 xxxx=${PHONE_NUMBER:8:4}
 formatted_num="$country_code ($npa) $nxx-$xxxx"
 
+<<<<<<< HEAD
 export PHONE_LINK=tel:${PHONE_NUMBER}
 export PHONE_DISPLAY=${formatted_num}
+=======
+sed -i "s/++19714385627/${PHONE_NUMBER}/g" ${WORKINGDIR}/template/index.tmpl
+sed -i "s/+1 (971) GETJOBS/${formatted_num}/g" ${WORKINGDIR}/template/index.tmpl 
+sed -i "s/+19714385627/${PHONE_NUMBER}/g" ${WORKINGDIR}/template/edit.tmpl
+sed -i "s/+1 (971) GETJOBS/${formatted_num}/g" ${WORKINGDIR}/template/edit.tmpl
+>>>>>>> master
 
 # Set Phone Number to point to a relay bin webhook
 NGROK_HOST=${NGROK_URL:8}   # Strip out https:// for now.
@@ -99,8 +124,13 @@ if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
   exit 1
 fi
 
+<<<<<<< HEAD
 echo -e "View the JOB SEARCH at $NGROK_URL"
 echo -e "Call into the JOB SEARCH AI Agent at $PHONE_NUMBER\n"
+=======
+echo -e "View the JobSearch at $NGROK_URL"
+echo -e "Call into the JobSearch AI Agent at $PHONE_NUMBER\n"
+>>>>>>> master
 
 plackup ${WORKINGDIR}/app.pl
 
