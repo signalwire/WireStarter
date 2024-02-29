@@ -60,13 +60,13 @@ if [ ! -f "/workdir/.env" ]; then
 
     # Write to .env file
     {
-	echo "export SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
-	echo "export PROJECT_ID=$PROJECT_ID"
-	echo "export REST_API_TOKEN=$REST_API_TOKEN"
-	echo "export NGROK_TOKEN=$NGROK_TOKEN"
-	echo "export NGROK_ARGS='$NGROK_ARGS'"
-	echo "export VISUAL=$VISUAL"
-	echo "export WORKDIR=/workdir"
+	echo "SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
+	echo "PROJECT_ID=$PROJECT_ID"
+	echo "REST_API_TOKEN=$REST_API_TOKEN"
+	echo "NGROK_TOKEN=$NGROK_TOKEN"
+	echo "NGROK_ARGS='$NGROK_ARGS'"
+	echo "VISUAL=$VISUAL"
+	echo "WORKDIR=/workdir"
     } > $ENV_FILE
 
     sed -i~ 's/\.signalwire.com//g' $ENV_FILE
