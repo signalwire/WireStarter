@@ -87,10 +87,8 @@ nxx=${PHONE_NUMBER:5:3}
 xxxx=${PHONE_NUMBER:8:4}
 formatted_num="$country_code ($npa) $nxx-$xxxx"
 
-sed -i "s/+17544326229/${PHONE_NUMBER}/g" ${WORKINGDIR}/template/reservations.tmpl
-sed -i "s/+1 (754) 43-BOBBY/${formatted_num}/g" ${WORKINGDIR}/template/reservations.tmpl
-sed -i "s/+17544326229/${PHONE_NUMBER}/g" ${WORKINGDIR}/template/update.tmpl
-sed -i "s/+1 (754) 43-BOBBY/${formatted_num}/g" ${WORKINGDIR}/template/update.tmpl
+export PHONE_LINK=tel:${PHONE_NUMBER}
+export PHONE_DISPLAY=${formatted_num}
 
 # Set Phone Number to point to a relay bin webhook
 NGROK_HOST=${NGROK_URL:8}   # Strip out https:// for now.
