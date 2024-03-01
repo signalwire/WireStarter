@@ -45,7 +45,6 @@ RUN chmod +x /start_services.sh
 
 # Make workdir
 RUN mkdir -p /workdir/public
-RUN mkdir -p /var/www/html/public
 
 #Create public web folder
 RUN ln -s /workdir/public/ /var/www/html/public
@@ -60,9 +59,6 @@ COPY conf/nginx.site /etc/nginx/sites-enabled/default
 RUN /usr/bin/dos2unix /root/.bashrc         # Fixes DOS formatting when using Windows
 RUN /usr/bin/dos2unix /start_services.sh    # Fixes DOS formatting when using Windows
 RUN apt clean
-
-# Copy file to redirect to documentation
-COPY www/ /var/www/html/
 
 WORKDIR /workdir
 
