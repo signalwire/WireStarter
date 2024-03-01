@@ -1,0 +1,61 @@
+#!/bin/bash
+
+GITDIR=/usr/local/sw_dialer_agent_docker
+WORKINGDIR=/usr/local/sw_dialer_agent_docker/
+
+# Verify that the env vars are set
+if [ -z $SIGNALWIRE_SPACE ]; then
+  echo "ERROR: The SignalWire Space environment variable SIGNALWIRE_SPACE is missing.  Please export the SignalWire Space Name and try again"
+  exit 1
+# API Token
+elif [ -z $REST_API_TOKEN ]; then
+  echo "ERROR: SignalWire API Token environment variable REST_API_TOKEN is missing.  Please export the SignalWire Token ID and try again"
+  exit 1
+# Project ID
+elif [ -z $PROJECT_ID ]; then
+  echo "ERROR: Signalwire Project ID env variable PROJECT_ID is missing.  Please export the SignalWire Project ID and try again"
+  export 1
+# Ngrok Tunnel
+elif [ -z $NGROK_TOKEN ]; then
+  echo "ERROR:  An NGROK Token is required for this feature.  Please confirm the NGROK Token NGROK_TOKEN is exported to the system environment"
+  exit 1
+elif [ -z $PHONE_NUMBER ]; then
+  # Ask for a phone number
+  read -p "Please enter a phone number to associate with SURVEY BOT.  Formatted as +15551234567: " PHONE_NUMBER
+fi
+
+
+# TODO:  Add US number validation
+
+# Clone
+if [ ! -d ${GITDIR} ]; then
+  echo -ne "Downloading Source Code... "
+  git clone --quiet https://github.com/shane-signalwire/sw_dialer_agent_docker.git ${GITDIR} > /dev/null
+  echo -e  "Complete!"
+else
+  echo "Source code already exists, skipping download"
+fi
+
+cd ${WORKINGDIR}
+# Make virtualenv
+python3 -m venv survey-bot-dialer
+source ./survey-bot-dialer/bin/activate
+echo -ne "Installing Python Dependencies.  This may take a few minutes... "
+pip install -r requirements.txt > /dev/null 2>&1
+echo -e  "Complete!"
+
+
+# Set the Application ENV
+export PHONE_NUMBER=$PHONE_NUMBER
+
+RELAY_URL="$NGROK_URL/ai"
+UPDATE_PHONE_NUMBER=$(swsh phone_number update --call-relay-script-url ${RELAY_URL} --call-handler relay_script --number ${PHONE_NUMBER} 2>&1)
+if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
+  echo "ERROR: There was an issue updating the phone number.  Please check that it belongs to your SignalWire Space and Try again"
+  exit 1
+fi
+
+echo -e "View the ROOMIE SERVE at $NGROK_URL"
+echo -e "Call into the ROOMIE SERVE AI Agent at $PHONE_NUMBER\n"
+
+python3 ${WORKINGDIR}/app.py

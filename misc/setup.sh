@@ -43,9 +43,7 @@ case $LANG in
         ;;
 
     "2" )
-        # dir="python.d"
-        echo "This option coming soon!"
-        exit 0
+        dir="python.d"
         ;;
 
     "3" )
