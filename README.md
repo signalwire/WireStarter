@@ -32,13 +32,7 @@ Before you begin, ensure you have the following prerequisites:
 3. Clone the repository.
 4. In GitHub Desktop, navigate to `Repository` > `Open in Command Prompt`.
 5. Install Git if prompted.
-6. Execute in PowerShell: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`.
-7. Run the setup script: `.\setup.ps1`.
-
-**Note:** If `.\setup.ps1` encounters an error, ensure the execution policy is set correctly:
-
-- `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-- [More on Execution Policies](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.2#powershell-execution-policies)
+6. Run the `windows-start.bat` script
 
 ### Mac OSX or Linux:
 
