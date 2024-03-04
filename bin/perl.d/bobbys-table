@@ -67,6 +67,7 @@ psql -U postgres -d bobbystable -f /${WORKINGDIR}/bobbystable.sql > /dev/null 2>
 
 ## APPLICATION
 # create symlink from WORKINGDIR to /app
+
 rm /app
 if [ ! -h /app ]; then
     ln -s ${WORKINGDIR} /app > /dev/null 2>&1
