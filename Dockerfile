@@ -50,7 +50,6 @@ RUN mkdir -p /workdir/public
 RUN ln -s /workdir/public/ /var/www/html/public
 
 # Misc
-COPY misc/setup.sh /root/setup.sh
 COPY misc/signalwire.ans /.sw.ans
 COPY misc/bash.rc /root/.bashrc
 COPY bin/ /usr/bin
