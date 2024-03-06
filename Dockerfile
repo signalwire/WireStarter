@@ -4,7 +4,7 @@
 # - Variablize the space name and API Key
 # - Research how to take API key and made Basic Auth Header
 
-FROM debian:12-slim
+FROM debian:stable-slim
 
 ARG python_version=python3.9
 
