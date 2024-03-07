@@ -1,8 +1,8 @@
 #!/bin/bash
 
-GITDIR=/usr/local/sw_dialer_agent_docker
-WORKINGDIR=/usr/local/sw_dialer_agent_docker/
-
+GITDIR=/usr/local/ziplink
+WORKINGDIR=/usr/local/ziplink/
+GITNAME="ziplink"
 
 # Verify that the env vars are set
 if [ -z $SIGNALWIRE_SPACE ]; then
@@ -22,16 +22,15 @@ elif [ -z $NGROK_TOKEN ]; then
   exit 1
 elif [ -z $PHONE_NUMBER ]; then
   # Ask for a phone number
-  read -p "Please enter a phone number to associate with SURVEY BOT.  Formatted as +15551234567: " PHONE_NUMBER
+  read -p "Please enter a phone number to associate with ${GITNAME}.  Formatted as +15551234567: " PHONE_NUMBER
 fi
-
 
 # TODO:  Add US number validation
 
 # Clone
 if [ ! -d ${GITDIR} ]; then
   echo -ne "Downloading Source Code... "
-  git clone --quiet https://github.com/shane-signalwire/sw_dialer_agent_docker.git ${GITDIR} > /dev/null
+  git clone --quiet https://github.com/shane-signalwire/${GITNAME}.git ${GITDIR} > /dev/null
   echo -e  "Complete!"
 else
   echo "Source code already exists, skipping download"
@@ -39,8 +38,8 @@ fi
 
 cd ${WORKINGDIR}
 # Make virtualenv
-python3 -m venv survey-bot-dialer
-source ./survey-bot-dialer/bin/activate
+python3 -m venv ${GITNAME}
+source ./${GITNAME}/bin/activate
 echo -ne "Installing Python Dependencies.  This may take a few minutes... "
 pip install -r requirements.txt > /dev/null 2>&1
 echo -e  "Complete!"
@@ -49,14 +48,13 @@ echo -e  "Complete!"
 # Set the Application ENV
 export PHONE_NUMBER=$PHONE_NUMBER
 
-RELAY_URL="$NGROK_URL/ai"
+RELAY_URL="$NGROK_URL"
 UPDATE_PHONE_NUMBER=$(swsh phone_number update --call-relay-script-url ${RELAY_URL} --call-handler relay_script --number ${PHONE_NUMBER} 2>&1)
 if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
   echo "ERROR: There was an issue updating the phone number.  Please check that it belongs to your SignalWire Space and Try again"
   exit 1
 fi
 
-echo -e "Configure SURVEYBOT BOT and view results  at $NGROK_URL"
-echo -e "Call into the SURVEY BOT AI Agent at $PHONE_NUMBER\n"
+echo -e "Call into the ZIPLINK AI Agent at $PHONE_NUMBER\n"
 
 python3 ${WORKINGDIR}/app.py
