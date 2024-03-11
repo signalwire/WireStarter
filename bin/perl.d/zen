@@ -63,8 +63,8 @@ psql -U postgres -c " ALTER USER postgres WITH PASSWORD '${DB_PASS}' " > /dev/nu
 
 # create the Zen DB
 psql -U postgres -c "create database zen" > /dev/null 2>&1
-psql -U postgres -d zen -f /${WORKINGDIR}/ai-zen_schema.sql > /dev/null 2>&1
-psql -U postgres -d zen -f /${WORKINGDIR}/ai-zen_data.sql > /dev/null 2>&1
+psql -U postgres -d zen -f ${WORKINGDIR}/ai-zen_schema.sql > /dev/null 2>&1
+psql -U postgres -d zen -f ${WORKINGDIR}/ai-zen_data.sql > /dev/null 2>&1
 
 ## APPLICATION
 # create symlink from WORKINGDIR to /app
