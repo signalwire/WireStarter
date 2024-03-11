@@ -21,9 +21,7 @@ elif [ -z $NGROK_TOKEN ]; then
   exit 1
 fi
 
-#read -p "Please enter a phone number to associate with Zen.  Formatted as +15551234567: " PHONE_NUMBER
-
-PHONE_NUMBER=+17248013160
+read -p "Please enter a phone number to associate with Zen.  Formatted as +15551234567: " PHONE_NUMBER
 
 # TODO:  Add US number validation
 
