@@ -75,6 +75,7 @@ export DATABASE_URL=postgres://postgres:$DB_PASS@localhost:5432/flosflowers
 export USERNAME=roomie
 export PASSWORD=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
 export DEBUG=0
+# export OPENAI_API_KEY=your-openai-api-key
 
 # Replace the default/demo phone number with the provided PHONE_NUMBER
 # Assuming this won't change, so using hard-coded values
