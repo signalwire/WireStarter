@@ -66,16 +66,31 @@ psql -U postgres -c "create database flosflowers" > /dev/null 2>&1
 
 ## APPLICATION
 # create symlink from WORKINGDIR to /app
+
+rm /app
 if [ ! -h /app ]; then
     ln -s ${WORKINGDIR} /app > /dev/null 2>&1
 fi
 
 # Set the Application ENV
 export DATABASE_URL=postgres://postgres:$DB_PASS@localhost:5432/flosflowers
-export USERNAME=roomie
+export USERNAME=FLO
 export PASSWORD=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
 export DEBUG=0
+export ASSISTANT=${PHONE_NUMBER}
 # export OPENAI_API_KEY=your-openai-api-key
+export SAVE_BLANK_CONVERSATIONS=1
+export API_VERSION=api/relay/rest
+export TOP_P=0.6
+export TEMPERATURE=0.6
+echo -e "===================================="
+echo -e "  Website Username: ${USERNAME}"
+echo -e "  Website Password: ${PASSWORD}"
+echo -e "  Conversation log: $NGROK_URL/convo"
+echo -e "  View FLOW'S FLOWERS at $NGROK_URL"
+echo -e "  Call FLOW'S FLOWERS AI Agent at $PHONE_NUMBER"
+echo -e "===================================="
+
 
 # Replace the default/demo phone number with the provided PHONE_NUMBER
 # Assuming this won't change, so using hard-coded values
@@ -99,9 +114,6 @@ if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
   echo "ERROR: There was an issue updating the phone number.  Please check that it belongs to your SignalWire Space and Try again"
   exit 1
 fi
-
-echo -e "View the FLOS FLOWERS2 at $NGROK_URL"
-echo -e "Call into the FLOS FLOWERS2 AI Agent at $PHONE_NUMBER\n"
 
 plackup ${WORKINGDIR}/app.pl
 
