@@ -1,0 +1,125 @@
+#!/bin/bash
+
+GITDIR=/usr/local/digital_employees
+WORKINGDIR=/usr/local/digital_employees/server/Perl_Examples/aical
+
+# Verify that the env vars are set
+if [ -z $SIGNALWIRE_SPACE ]; then
+  echo "ERROR: The SignalWire Space environment variable SIGNALWIRE_SPACE is missing.  Please export the SignalWire Space Name and try again"
+  exit 1
+# API Token
+elif [ -z $REST_API_TOKEN ]; then
+  echo "ERROR: SignalWire API Token environment variable REST_API_TOKEN is missing.  Please export the SignalWire Token ID and try again"
+  exit 1
+# Project ID
+elif [ -z $PROJECT_ID ]; then
+  echo "ERROR: Signalwire Project ID env variable PROJECT_ID is missing.  Please export the SignalWire Project ID and try again"
+  export 1
+# Ngrok Tunnel
+elif [ -z $NGROK_TOKEN ]; then
+  echo "ERROR:  An NGROK Token is required for this feature.  Please confirm the NGROK Token NGROK_TOKEN is exported to the system environment"
+  exit 1
+fi
+
+#read -p "Please enter a phone number to associate with aical.  Formatted as +15551234567: " PHONE_NUMBER
+PHONE_NUMBER=+17248013150
+
+# TODO:  Add US number validation
+
+# Clone
+if [ ! -d ${GITDIR} ]; then
+  echo -ne "Downloading Source Code... "
+  git clone --quiet https://github.com/signalwire/digital_employees.git ${GITDIR} > /dev/null
+  echo -e  "Complete!"
+else
+  echo "Source code already exists, skipping download"
+fi
+
+cd ${WORKINGDIR}
+
+## CPAN
+# NOTE:
+# Occasionally the C module will fail to install.  Re-running seems to resolve the issue.
+# If the module fails, a re-run of this wrapper command should resolve and start the app.
+#
+echo -ne "Installing Perl Dependencies.  This may take a few minutes... "
+cpanm --installdeps ${WORKINGDIR} > /dev/null 2>&1
+# Retry incase something failed (yes, this is hacky, but C seems to fail randomly)
+cpanm --installdeps ${WORKINGDIR} > /dev/null 2>&1
+echo -e  "Complete!"
+
+
+## DATABASE
+# update pg_hba to use trust instead of peer
+sed -i "s/peer$/trust/g" /etc/postgresql/15/main/pg_hba.conf
+
+echo -en "Starting Database... "
+service postgresql start > /dev/null
+echo -e  "Complete!"
+
+export DB_PASS=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
+
+# set DB password
+psql -U postgres -c " ALTER USER postgres WITH PASSWORD '${DB_PASS}' " > /dev/null 2>&1
+
+# create the aical DB
+psql -U postgres -c "create database aical" > /dev/null 2>&1
+psql -U postgres -d aical -f ${WORKINGDIR}/aical.sql > /dev/null 2>&1
+
+## APPLICATION
+# create symlink from WORKINGDIR to /app
+
+rm /app
+if [ ! -h /app ]; then
+    ln -s ${WORKINGDIR} /app > /dev/null 2>&1
+fi
+
+# Set the Application ENV
+export DATABASE_URL=postgres://postgres:${DB_PASS}@localhost:5432/aical
+export USERNAME=aical
+export PASSWORD=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
+export DEBUG=10
+export ASSISTANT=${PHONE_NUMBER}
+export SAVE_BLANK_CONVERSATIONS=1
+export API_VERSION=api/relay/rest
+export TOP_P=0.6
+export TEMPERATURE=0.6
+export CLIENT_ID=
+export CLIENT_SECRET=
+
+echo -e "${DATABASE_URL}"
+echo -e "===================================="
+echo -e "  Get CLIENT_ID from google
+echo -e "  Get CLIENT_SECRET from google
+echo -e "  Website Username: ${USERNAME}"
+echo -e "  Website Password: ${PASSWORD}"
+echo -e "  View aical at $NGROK_URL"
+echo -e "  Call into the aical AI Agent at $PHONE_NUMBER"
+echo -e "===================================="
+# Replace the default/demo phone number with the provided PHONE_NUMBER
+# Assuming this won't change, so using hard-coded values
+# Now format the phone number
+# +1 (555) 123-4567
+country_code=${PHONE_NUMBER:0:2}
+npa=${PHONE_NUMBER:2:3}
+nxx=${PHONE_NUMBER:5:3}
+xxxx=${PHONE_NUMBER:8:4}
+formatted_num="$country_code ($npa) $nxx-$xxxx"
+
+export PHONE_LINK=tel:${PHONE_NUMBER}
+export PHONE_DISPLAY=${formatted_num}
+
+# sed -i "s/+12137522253/${PHONE_NUMBER}/g" ${WORKINGDIR}/template/index.tmpl
+# sed -i "s/+1 (213) 75CABLE/${formatted_num}/g" ${WORKINGDIR}/template/index.tmpl
+
+# Set Phone Number to point to a relay bin webhook
+NGROK_HOST=${NGROK_URL:8}   # Strip out https:// for now.
+RELAY_URL="https://${USERNAME}:${PASSWORD}@${NGROK_HOST}/swml"
+
+UPDATE_PHONE_NUMBER=$(swsh phone_number update --call-relay-script-url ${RELAY_URL} --call-handler relay_script --number ${PHONE_NUMBER} 2>&1)
+if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
+  echo "ERROR: There was an issue updating the phone number.  Please check that it belongs to your SignalWire Space and Try again"
+  exit 1
+fi
+
+plackup ${WORKINGDIR}/app.pl
