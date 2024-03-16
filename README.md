@@ -12,8 +12,6 @@ Before you begin, ensure you have the following prerequisites:
   - [Install on Windows](https://docs.docker.com/desktop/install/windows-install/)
   - [Install on Linux](https://docs.docker.com/desktop/install/linux-install/)
 
-**Note:** A Docker account is required to use Docker Compose.
-
 - An NGROK account and token. NGROK is optional but recommended for tunneling into the WireStarter container. 
   - [Sign up for NGROK](https://ngrok.com)
 
@@ -36,6 +34,14 @@ Before you begin, ensure you have the following prerequisites:
 
 ### Mac OSX or Linux:
 
+### Linux quick start bash script
+
+- `Start-WireStarter.sh` is an optional automated option to launch WireStarter in Linux
+- How to use Start-WireStater.sh:
+```
+chmod +x Start-WireStater.sh
+./Start-WireStater.sh
+```
 #### Steps:
 1. Pull the repository: `git pull`.
 2. Build and start the container: `make up`.
