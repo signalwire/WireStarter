@@ -32,7 +32,7 @@ Before you begin, ensure you have the following prerequisites:
 5. Install Git if prompted.
 6. Run the `windows-start.bat` script
 
-### Mac OSX or Linux:
+
 
 ### Linux quick start bash script
 
@@ -42,6 +42,9 @@ Before you begin, ensure you have the following prerequisites:
 chmod +x Start-WireStater.sh
 ./Start-WireStater.sh
 ```
+
+### Mac OSX or Linux:
+
 #### Steps:
 1. Pull the repository: `git pull`.
 2. Build and start the container: `make up`.
