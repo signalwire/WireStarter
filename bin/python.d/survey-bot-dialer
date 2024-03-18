@@ -22,7 +22,7 @@ elif [ -z $NGROK_TOKEN ]; then
   exit 1
 elif [ -z $PHONE_NUMBER ]; then
   # Ask for a phone number
-  read -p "Please enter a phone number to associate with SURVEY BOT.  Formatted as +15551234567: " PHONE_NUMBER
+  read -p "Please enter your SignalWire phone number to associate with SURVEY BOT.  Formatted as +15551234567: " PHONE_NUMBER
 fi
 
 
