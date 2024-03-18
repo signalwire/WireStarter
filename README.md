@@ -66,3 +66,16 @@ The following features and utilities are available if they exist in `/workdir`:
 8. Set up Go and Node Version Manager: `setupgolang` and `setupnvm` for persistent environments in `/opt`, which will be its own volume.
 
 For more information, visit the [WireStarter GitHub repository](https://github.com/signalwire/WireStarter).
+
+### SignalWire Digital Employee
+
+WireStarter also has the capability to setup and run pre-made AI Agent demo's.
+To install and run an AI Agent:
+1. Type exit or ctrl+d to go back to exit the `swsh` command line
+2. Then type `setup.sh`
+3. Choose a language to work with
+4. Select the Ai Agent to install.
+
+![image](https://github.com/signalwire/WireStarter/assets/13131198/43fc9ff8-e99e-48cd-9d4b-3780b3030360)
+
+`*Please note each language has different AI Agents*`
