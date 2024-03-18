@@ -21,7 +21,7 @@ elif [ -z $NGROK_TOKEN ]; then
   exit 1
 fi
 
-read -p "Please enter a phone number to associate with ROOMIE SERVE.  Formatted as +15551234567: " PHONE_NUMBER
+read -p "Please enter your SignalWire phone number to associate with ROOMIE SERVE.  Formatted as +15551234567: " PHONE_NUMBER
 
 # TODO:  Add US number validation
 
