@@ -1,4 +1,12 @@
 @echo off
+setlocal EnableDelayedExpansion
+
+REM Check if the batch file is running in a Command Prompt window and relaunch it if not
+if not "%~1"=="relaunched" (
+    start cmd /k ""%~f0" relaunched"
+    exit /b
+)
+
 REM Create the C:/SWISH directory if it does not already exist
 mkdir "C:/SWISH"
 
@@ -10,7 +18,9 @@ docker ps -a --format "{{.Names}}" | findstr /B "wirestarter" > nul
 if %ERRORLEVEL% equ 0 (
     echo Container "wirestarter" already exists.
     set /p USE_EXISTING="Do you want to use the existing container (y/n)? "
-    if /I "%USE_EXISTING%"=="y" (
+    echo You selected: '!USE_EXISTING!'
+
+    if "!USE_EXISTING!"=="y" (
         echo Checking if "wirestarter" container is running...
         docker ps --format "{{.Names}}" | findstr /B "wirestarter" > nul
         if %ERRORLEVEL% neq 0 (
@@ -20,12 +30,13 @@ if %ERRORLEVEL% equ 0 (
             echo Container "wirestarter" is already running.
         )
         goto ExecShell
-    ) else if /I "%USE_EXISTING%"=="n" (
+    ) else if "!USE_EXISTING!"=="n" (
         echo Removing the existing "wirestarter" container...
         docker rm -f wirestarter
         goto CreateNew
     ) else (
         echo Invalid option. Exiting...
+        pause
         exit /b
     )
 ) else (
