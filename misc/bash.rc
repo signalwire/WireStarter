@@ -160,6 +160,8 @@ if [ $VISUAL == "emacs" ]; then
     alias mecas='emacs'
 fi
 
+alias ngrok_url="curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'"
+
 export NVM_DIR="/opt/.nvm"
 
 if [ -f "$NVM_DIR/nvm.sh" ]; then
