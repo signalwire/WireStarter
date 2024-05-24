@@ -10,6 +10,31 @@ if not "%~1"=="relaunched" (
 REM Create the C:/SWISH directory if it does not already exist
 mkdir "C:/SWISH"
 
+echo Checking if Docker Desktop is running...
+
+tasklist /FI "IMAGENAME eq Docker Desktop.exe" 2>NUL | find /I /N "Docker Desktop.exe" >NUL
+if "%ERRORLEVEL%"=="0" (
+    echo Docker Desktop is already running.
+) else (
+    echo Starting Docker Desktop...
+    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    
+    echo Waiting for Docker Desktop to start...
+    timeout /t 10 /nobreak >NUL 2>&1
+
+    :CHECK_DOCKER
+    tasklist /FI "IMAGENAME eq Docker Desktop.exe" 2>NUL | find /I /N "Docker Desktop.exe" >NUL
+    if "%ERRORLEVEL%"=="0" (
+        echo Docker Desktop has started successfully.
+    ) else (
+        echo Docker Desktop is still not running. Retrying...
+        timeout /t 5 /nobreak >NUL 2>&1
+        goto CHECK_DOCKER
+    )
+)
+
+echo Continuing with the rest of the batch script...
+
 REM Pull the briankwest/wirestarter Docker image
 docker pull briankwest/wirestarter
 
