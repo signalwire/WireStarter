@@ -10,6 +10,15 @@ if not "%~1"=="relaunched" (
 REM Create the C:/SWISH directory if it does not already exist
 mkdir "C:/SWISH"
 
+REM Check if C:/SWISH/.env file exists, if not, copy env.example to C:/SWISH/.env
+if not exist "C:/SWISH/.env" (
+    copy "env.example" "C:/SWISH/.env"
+    echo The .env file has been copied to C:/SWISH/.env from env.example.
+)
+
+echo Please edit the .env file to set the required options.
+notepad "C:/SWISH/.env"
+
 echo Checking if Docker Desktop is running...
 
 tasklist /FI "IMAGENAME eq Docker Desktop.exe" 2>NUL | find /I /N "Docker Desktop.exe" >NUL
@@ -45,7 +54,7 @@ if %ERRORLEVEL% equ 0 (
     set /p USE_EXISTING="Do you want to use the existing container (y/n)? "
     echo You selected: '!USE_EXISTING!'
 
-    if "!USE_EXISTING!"=="y" (
+    if /I "!USE_EXISTING!"=="y" (
         echo Checking if "wirestarter" container is running...
         docker ps --format "{{.Names}}" | findstr /B "wirestarter" > nul
         if %ERRORLEVEL% neq 0 (
@@ -55,7 +64,7 @@ if %ERRORLEVEL% equ 0 (
             echo Container "wirestarter" is already running.
         )
         goto ExecShell
-    ) else if "!USE_EXISTING!"=="n" (
+    ) else if /I "!USE_EXISTING!"=="n" (
         echo Removing the existing "wirestarter" container...
         docker rm -f wirestarter
         goto CreateNew
@@ -71,7 +80,7 @@ if %ERRORLEVEL% equ 0 (
 
 :CreateNew
 REM Run a new container named "wirestarter" from the pulled image
-docker run -it -d --name wirestarter --env-file .env --volume "C:/SWISH:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh || echo "up"
+docker run -it -d --name wirestarter --env-file "C:/SWISH/.env" --volume "C:/SWISH:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh || echo "up"
 goto ExecShell
 
 :ExecShell
