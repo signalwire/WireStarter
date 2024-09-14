@@ -1,5 +1,6 @@
+# Define functions
 function CreateNew {
-    docker run -it -d --name wirestarter --env-file .env --volume "C:/SWISH:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh
+    docker run -it -d --name wirestarter --env-file "C:/SWISH/.env" --volume "C:/SWISH:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh
     ExecShell
 }
 
@@ -13,6 +14,17 @@ function ExecShell {
 if (-Not (Test-Path "C:/SWISH")) {
     New-Item -Path "C:/SWISH" -ItemType Directory
 }
+
+# Check if C:/SWISH/.env file exists, if not, copy env.example to C:/SWISH/.env
+if (-Not (Test-Path "C:/SWISH/.env")) {
+    Copy-Item -Path "env.example" -Destination "C:/SWISH/.env"
+    Write-Host "The .env file has been copied to C:/SWISH/.env from env.example."
+}
+
+# Prompt the user to edit the .env file
+Write-Host "Please edit the .env file to set the required options."
+& notepad.exe "C:/SWISH/.env"
+Write-Host "Waiting for you to finish editing the .env file..."
 
 # Pull the briankwest/wirestarter Docker image
 docker pull briankwest/wirestarter
