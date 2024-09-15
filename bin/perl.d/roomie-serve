@@ -23,11 +23,12 @@ fi
 
 read -p "Please enter your SignalWire phone number to associate with ROOMIE SERVE.  Formatted as +15551234567: " PHONE_NUMBER
 
+
 # TODO:  Add US number validation
 
 # Clone
 if [ ! -d ${GITDIR} ]; then
-  echo -ne "Downloading Source Code... " 
+  echo -ne "Downloading Source Code... "
   git clone --quiet https://github.com/signalwire/digital_employees.git ${GITDIR} > /dev/null
   echo -e  "Complete!"
 else
@@ -37,7 +38,7 @@ fi
 cd ${WORKINGDIR}
 
 ## CPAN
-# NOTE:  
+# NOTE:
 # Occasionally the C module will fail to install.  Re-running seems to resolve the issue.
 # If the module fails, a re-run of this wrapper command should resolve and start the app.
 #
@@ -78,7 +79,19 @@ fi
 export DATABASE_URL=postgres://postgres:$DB_PASS@localhost:5432/roomieserve
 export USERNAME=roomie
 export PASSWORD=$(openssl rand -base64 10 | tr -dc 'a-zA-Z0-9')
-export DEBUG=0
+export DEBUG=1
+export ASSISTANT=$PHONE_NUMBER
+export SAVE_BLANK_CONVERSATIONS=1
+export API_VERSION=api/relay/rest
+export TOP_P=0.6
+export TEMPERATURE=0.6
+echo -e "===================================="
+echo -e "  Website Username: ${USERNAME}"
+echo -e "  Website Password: ${PASSWORD}"
+echo -e "  Conversation log: $NGROK_URL/convo"
+echo -e "  View the roomie at $NGROK_URL"
+echo -e "  Call into roomie at $PHONE_NUMBER"
+echo -e "===================================="
 
 # Replace the default/demo phone number with the provided PHONE_NUMBER
 # Assuming this won't change, so using hard-coded values
@@ -107,4 +120,3 @@ echo -e "View the ROOMIE SERVE at $NGROK_URL"
 echo -e "Call into the ROOMIE SERVE AI Agent at $PHONE_NUMBER\n"
 
 plackup ${WORKINGDIR}/app.pl
-
