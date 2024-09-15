@@ -1,66 +1,171 @@
-# Define functions
-function CreateNew {
-    docker run -it -d --name wirestarter --env-file "C:/SWISH/.env" --volume "C:/SWISH:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh
-    ExecShell
+# Start of the PowerShell script
+
+# Function to ensure the execution policy is set to RemoteSigned
+function Ensure-ExecutionPolicy {
+    $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
+    if ($currentPolicy -ne 'RemoteSigned') {
+        Write-Host "Current execution policy is '$currentPolicy'. Attempting to set it to 'RemoteSigned'."
+        try {
+            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction Stop
+            Write-Host "Execution policy set to 'RemoteSigned' for CurrentUser."
+        } catch {
+            Write-Warning "Failed to set execution policy. Administrative privileges may be required."
+            # Check if running as Administrator
+            $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+            if (-not $IsAdmin) {
+                Write-Host "This script needs to be run as Administrator to change the execution policy."
+                $scriptPath = $MyInvocation.MyCommand.Definition
+                Write-Host "Relaunching the script with administrative privileges..."
+                Start-Process powershell "-ExecutionPolicy Bypass -File `"$scriptPath`"" -Verb RunAs
+                exit
+            } else {
+                Write-Error "Even with administrative privileges, failed to set execution policy. Exiting."
+                Pause
+                exit
+            }
+        }
+    } else {
+        Write-Host "Execution policy is already set to 'RemoteSigned' for CurrentUser."
+    }
 }
 
-function ExecShell {
-    docker start wirestarter
-    docker exec -it wirestarter bash
-    Write-Host "Container 'wirestarter' is running and a bash shell has been executed inside it."
+# Function to check and start Docker Desktop if necessary
+function Start-DockerDesktop {
+    Write-Host "Checking if Docker Desktop is running..."
+    $dockerProcess = Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue
+    if (-not $dockerProcess) {
+        Write-Host "Docker Desktop is not running. Starting Docker Desktop..."
+        $dockerDesktopPath = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+        if (-not (Test-Path $dockerDesktopPath)) {
+            Write-Error "Docker Desktop executable not found at $dockerDesktopPath"
+            Pause
+            exit
+        }
+        Start-Process -FilePath $dockerDesktopPath
+        Write-Host "Waiting for Docker Desktop to start..."
+        Start-Sleep -Seconds 10
+
+        while (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
+            Write-Host "Docker Desktop is still not running. Retrying in 5 seconds..."
+            Start-Sleep -Seconds 5
+        }
+        Write-Host "Docker Desktop has started successfully."
+    } else {
+        Write-Host "Docker Desktop is already running."
+    }
 }
+
+# Function to create a new container
+function CreateNewContainer {
+    Write-Host "Creating a new 'wirestarter' container..."
+    docker run -it -d --name wirestarter --env-file "${envFileDestination}" --volume "${swishPath}:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh
+    StartAndExecShell
+}
+
+# Function to start the container and execute a bash shell inside it
+function StartAndExecShell {
+    Write-Host "Starting the 'wirestarter' container..."
+    docker start wirestarter | Out-Null
+    Write-Host "Executing a bash shell inside the 'wirestarter' container..."
+    docker exec -it wirestarter bash
+    Write-Host "Exited the bash shell inside the 'wirestarter' container."
+}
+
+# Main script execution starts here
+
+# Ensure Execution Policy is set to RemoteSigned
+Ensure-ExecutionPolicy
 
 # Create the C:/SWISH directory if it does not already exist
-if (-Not (Test-Path "C:/SWISH")) {
-    New-Item -Path "C:/SWISH" -ItemType Directory
+$swishPath = "C:/SWISH"
+if (-not (Test-Path $swishPath)) {
+    New-Item -Path $swishPath -ItemType Directory | Out-Null
 }
 
 # Check if C:/SWISH/.env file exists, if not, copy env.example to C:/SWISH/.env
-if (-Not (Test-Path "C:/SWISH/.env")) {
-    Copy-Item -Path "env.example" -Destination "C:/SWISH/.env"
-    Write-Host "The .env file has been copied to C:/SWISH/.env from env.example."
+$envFileSource = "env.example"
+$envFileDestination = "${swishPath}/.env"
+if (-not (Test-Path $envFileDestination)) {
+    if (-not (Test-Path $envFileSource)) {
+        Write-Error "The env.example file was not found in the current directory."
+        Pause
+        exit
+    }
+    Copy-Item -Path $envFileSource -Destination $envFileDestination
+    Write-Host "The .env file has been copied to $envFileDestination from $envFileSource."
 }
 
-# Prompt the user to edit the .env file
-Write-Host "Please edit the .env file to set the required options."
-& notepad.exe "C:/SWISH/.env"
-Write-Host "Waiting for you to finish editing the .env file..."
+# Check if the .env file needs to be edited
+$requiredVariables = @("SIGNALWIRE_SPACE", "PROJECT_ID", "REST_API_TOKEN", "NGROK_TOKEN", "VISUAL", "WORKDIR")
+$envVariables = @{}
+
+Get-Content $envFileDestination | ForEach-Object {
+    $line = $_.Trim()
+    if ($line -and -not $line.StartsWith("#")) {
+        $parts = $line -split '=', 2
+        if ($parts.Length -eq 2) {
+            $key = $parts[0].Trim()
+            $value = $parts[1].Trim()
+            $envVariables[$key] = $value
+        }
+    }
+}
+
+$variablesNotSet = @()
+foreach ($var in $requiredVariables) {
+    if (-not ($envVariables.ContainsKey($var) -and $envVariables[$var])) {
+        $variablesNotSet += $var
+    }
+}
+
+if ($variablesNotSet.Count -gt 0) {
+    Write-Host "The following required variables are not set in the .env file:"
+    $variablesNotSet | ForEach-Object { Write-Host "- $_" }
+    Write-Host "Please edit the .env file to set the required options."
+    Start-Process -FilePath "notepad.exe" -ArgumentList $envFileDestination -Wait
+} else {
+    Write-Host "All required environment variables are set in the .env file."
+}
+
+# Start Docker Desktop if not running
+Start-DockerDesktop
+
+Write-Host "Continuing with the rest of the script..."
 
 # Pull the briankwest/wirestarter Docker image
 docker pull briankwest/wirestarter
 
 # Check if the container "wirestarter" already exists
-$containerExists = docker ps -a --format "{{.Names}}" | Select-String -Pattern "^wirestarter$"
+$containerExists = docker ps -a --format "{{.Names}}" | Select-String -Pattern "^wirestarter$" -Quiet
 
 if ($containerExists) {
     Write-Host "Container 'wirestarter' already exists."
-    $useExisting = Read-Host "Do you want to use the existing container (y/n)?"
-    switch ($useExisting.ToLower()) {
-        "y" {
-            Write-Host "Checking if 'wirestarter' container is running..."
-            $containerRunning = docker ps --format "{{.Names}}" | Select-String -Pattern "^wirestarter$"
-            if (-Not $containerRunning) {
-                Write-Host "Starting the 'wirestarter' container..."
-                docker start wirestarter
-            } else {
-                Write-Host "Container 'wirestarter' is already running."
-            }
-            ExecShell
+    $useExisting = Read-Host "Do you want to use the existing container (y/n)? "
+    Write-Host "You selected: '$useExisting'"
+
+    if ($useExisting -match '^[Yy]$') {
+        # Check if the container is running
+        $containerRunning = docker ps --format "{{.Names}}" | Select-String -Pattern "^wirestarter$" -Quiet
+        if (-not $containerRunning) {
+            Write-Host "Starting the 'wirestarter' container..."
+            docker start wirestarter
+        } else {
+            Write-Host "Container 'wirestarter' is already running."
         }
-        "n" {
-            Write-Host "Removing the existing 'wirestarter' container..."
-            docker rm -f wirestarter
-            CreateNew
-        }
-        default {
-            Write-Host "Invalid option. Exiting..."
-            exit
-        }
+        # Execute bash shell inside the container
+        StartAndExecShell
+    } elseif ($useExisting -match '^[Nn]$') {
+        Write-Host "Removing the existing 'wirestarter' container..."
+        docker rm -f wirestarter
+        CreateNewContainer
+    } else {
+        Write-Host "Invalid option. Exiting..."
+        Pause
+        exit
     }
 } else {
     Write-Host "No existing container named 'wirestarter'. Creating new one..."
-    CreateNew
+    CreateNewContainer
 }
 
-# Pauses the script execution and waits for user input before closing
-Read-Host "Press Enter to exit..."
+Pause  # Wait for user input before closing
