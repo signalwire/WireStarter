@@ -16,7 +16,9 @@ function Ensure-ExecutionPolicy {
                 Write-Host "This script needs to be run as Administrator to change the execution policy."
                 $scriptPath = $MyInvocation.MyCommand.Definition
                 Write-Host "Relaunching the script with administrative privileges..."
+                Write-Host "If the script ends, please start it again..."
                 Start-Process powershell "-ExecutionPolicy Bypass -File `"$scriptPath`"" -Verb RunAs
+                Pause
                 exit
             } else {
                 Write-Error "Even with administrative privileges, failed to set execution policy. Exiting."
@@ -49,9 +51,31 @@ function Start-DockerDesktop {
             Write-Host "Docker Desktop is still not running. Retrying in 5 seconds..."
             Start-Sleep -Seconds 5
         }
-        Write-Host "Docker Desktop has started successfully."
+        Write-Host "Docker Desktop process has started."
     } else {
         Write-Host "Docker Desktop is already running."
+    }
+
+    # Wait until the Docker daemon is responsive
+    Write-Host "Waiting for Docker daemon to become responsive..."
+    $maxAttempts = 30
+    $attempt = 0
+    while ($attempt -lt $maxAttempts) {
+        try {
+            docker info | Out-Null
+            Write-Host "Docker daemon is responsive."
+            break
+        } catch {
+            Write-Host "Docker daemon not yet responsive. Retrying in 5 seconds..."
+            Start-Sleep -Seconds 5
+            $attempt++
+        }
+    }
+
+    if ($attempt -eq $maxAttempts) {
+        Write-Error "Docker daemon did not become responsive in a timely manner. Exiting."
+        Pause
+        exit
     }
 }
 
@@ -133,6 +157,7 @@ Start-DockerDesktop
 Write-Host "Continuing with the rest of the script..."
 
 # Pull the briankwest/wirestarter Docker image
+Write-Host "Pulling the 'briankwest/wirestarter' Docker image..."
 docker pull briankwest/wirestarter
 
 # Check if the container "wirestarter" already exists
