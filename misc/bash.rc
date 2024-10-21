@@ -182,3 +182,57 @@ export PATH=$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 if [ ! -z $SIGNALWIRE_SPACE ] && [ ! -z $PROJECT_ID ] && [ ! -z $REST_API_TOKEN ] && [ ! -f /workdir/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
+
+cd() {
+    builtin cd "$@" || return
+
+    # Check if a 'venv' directory exists in the new directory
+    if [ -d "./venv" ]; then
+        # Avoid reactivating if the same virtual environment is already active
+        if [ "$VIRTUAL_ENV" != "$(pwd)/venv" ]; then
+            source ./venv/bin/activate
+            echo "Activated virtual environment in $(pwd)/venv"
+        fi
+    else
+        # Deactivate if moving out of the virtual environment directory
+        if [ -n "$VIRTUAL_ENV" ] && [[ "$PWD" != "$VIRTUAL_ENV"* ]]; then
+            deactivate
+            echo "Deactivated virtual environment"
+        fi
+    fi
+}
+
+venv() {
+    action="$1"
+
+    if [ "$action" = "init" ]; then
+        if [ -d "./venv" ]; then
+            echo "Virtual environment 'venv' already exists in the current directory."
+            # Optionally, activate it if not already active
+            if [ -z "$VIRTUAL_ENV" ] || [ "$VIRTUAL_ENV" != "$(pwd)/venv" ]; then
+                source "./venv/bin/activate"
+                echo "Activated existing virtual environment 'venv'."
+            fi
+        else
+            python3 -m venv "./venv"
+            echo "Virtual environment 'venv' created in the current directory."
+            source "./venv/bin/activate"
+            echo "Activated virtual environment 'venv'."
+        fi
+    elif [ "$action" = "delete" ]; then
+        if [ -d "./venv" ]; then
+            # Deactivate the virtual environment if it's active
+            if [ -n "$VIRTUAL_ENV" ] && [ "$VIRTUAL_ENV" = "$(pwd)/venv" ]; then
+                deactivate
+                echo "Deactivated virtual environment 'venv'."
+            fi
+            rm -rf "./venv"
+            echo "Virtual environment 'venv' deleted from the current directory."
+        else
+            echo "No virtual environment named 'venv' found in the current directory."
+        fi
+    else
+        echo "Usage: venv [init|delete]"
+    fi
+}
+
