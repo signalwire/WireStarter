@@ -236,3 +236,18 @@ venv() {
     fi
 }
 
+up() {
+    # Check if app.py exists in the current directory
+    if [ -f "./app.py" ]; then
+        echo "Starting app.py in an infinite loop..."
+        # Infinite loop to run app.py, restarting after a 1-second delay if it exits
+        while true; do
+            python3 app.py
+            echo "app.py exited, restarting after 1 second..."
+            sleep 1
+        done
+    else
+        echo "Error: app.py not found in the current directory."
+    fi
+}
+
