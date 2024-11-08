@@ -1,5 +1,5 @@
 server {
-    listen 9080; # Listen on port 9080
+    listen 9080; # Listen on port 9080 ngrok points at this port
 
     root /var/www/html;
 
@@ -12,19 +12,19 @@ server {
         proxy_pass http://localhost:5000; # Proxy to the app
         proxy_http_version 1.1;
         client_max_body_size 32M;
-	proxy_next_upstream_tries 0;
-	proxy_next_upstream_timeout 1s;
+        proxy_next_upstream_tries 0;
+        proxy_next_upstream_timeout 1s;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
     }
     location /swaig {
-        proxy_pass http://localhost:5001; # Proxy to the app
+        proxy_pass http://localhost:5001; # Proxy to the swaig app
         proxy_http_version 1.1;
-	client_max_body_size 32M;
-	proxy_next_upstream_tries 0;
-	proxy_next_upstream_timeout 1s;
+        client_max_body_size 32M;
+        proxy_next_upstream_tries 0;
+        proxy_next_upstream_timeout 1s;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;

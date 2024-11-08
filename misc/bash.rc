@@ -112,7 +112,6 @@ if [ ! -z $WORKDIR ]; then
     echo -e "Persistent host directory is /workdir -> $WORKDIR\n";
 fi
 
-
 if [ -f "/workdir/.bashrc" ]; then
    . "/workdir/.bashrc"
 fi
@@ -123,6 +122,9 @@ fi
 
 if [  -f "/workdir/.gitconfig" ]; then
     ln -f -s /workdir/.gitconfig ~
+fi
+if [ -f "/workdir/.pypirc" ]; then
+    ln -f -s /workdir/.pypirc ~
 fi
 
 if [  -d "/workdir/.ssh" ]; then
@@ -201,7 +203,6 @@ cd() {
         fi
     fi
 }
-
 venv() {
     action="$1"
 
@@ -218,6 +219,13 @@ venv() {
             echo "Virtual environment 'venv' created in the current directory."
             source "./venv/bin/activate"
             echo "Activated virtual environment 'venv'."
+            # Check if requirements.txt exists and prompt for installation
+            if [ -f "requirements.txt" ]; then
+                read -p "requirements.txt found. Do you want to install dependencies? (y/n): " choice
+                if [ "$choice" = "y" ]; then
+                    pip install -r requirements.txt
+                fi
+            fi
         fi
     elif [ "$action" = "delete" ]; then
         if [ -d "./venv" ]; then
