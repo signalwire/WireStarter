@@ -4,6 +4,14 @@ PG_VERSION="15"
 # Define the new data directory
 NEW_PGDATA="/workdir/postgres"
 
+# Check if PostgreSQL is already using the new data directory
+current_data_dir=$(sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/psql -t -c "SHOW data_directory;" 2>/dev/null)
+
+if [ "$current_data_dir" = " $NEW_PGDATA" ]; then
+    echo "PostgreSQL is already using $NEW_PGDATA as data directory. No changes needed."
+    exit 0
+fi
+
 # Stop the PostgreSQL service
 echo "Stopping PostgreSQL service..."
 sudo /etc/init.d/postgresql stop

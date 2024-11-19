@@ -79,14 +79,37 @@ if [ ! -f "/workdir/.env" ]; then
 fi
 
 if [ ! -z $NGROK_TOKEN ]; then
-    echo "Starting ngrok tunnel...";
-    /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN > /dev/null 2>&1
-    /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080 > /dev/null 2>&1
+    # Check if ngrok tunnel is already running
+    if ! curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' > /dev/null 2>&1; then
+        echo "Starting ngrok tunnel...";
+        /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN > /dev/null 2>&1
+        m
+    else
+        export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' | sed 's/https:\/\///'`
+        echo "ngrok tunnel is already running"
+    fi
+fi
+RETRY_COUNT=0
+MAX_RETRIES=10
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+    if [ ! -z $NGROK_URL ]; then
+        echo "ngrok tunnel is up: $NGROK_URL"
+        export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' | sed 's/https:\/\///'`
+        break
+    else
+        echo "Waiting for ngrok tunnel to be up... Attempt $((RETRY_COUNT+1))/$MAX_RETRIES"
+        sleep 0.5
+        RETRY_COUNT=$((RETRY_COUNT+1))
+    fi
+done
+
+if [ -z $NGROK_URL ]; then
+    echo "Failed to establish ngrok tunnel after $MAX_RETRIES attempts."
 fi
 
-sleep 3
 
-export HOSTNAME=`curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' | sed 's/https:\/\///'`
 
 if [ ! -z $NGROK_TOKEN ]; then
     export NGROK_URL=$( curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' )
