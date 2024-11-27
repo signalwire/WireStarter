@@ -23,7 +23,7 @@ elif [ -z $NGROK_TOKEN ]; then
   exit 1
 elif [ -z $PHONE_NUMBER ]; then
   # Ask for a phone number
-  read -p "Please enter your SignalWire phone number to associate with SURVEY BOT.  Formatted as +15551234567: " PHONE_NUMBER
+  read -p "Please enter your SignalWire phone number to associate with CREDIT CARD PAYMENT ASSISTANT.  Formatted as +15551234567: " PHONE_NUMBER
 fi
 
 
@@ -57,7 +57,7 @@ if [[ ! "$UPDATE_PHONE_NUMBER" =~ "success" ]]; then
   exit 1
 fi
 
-#echo -e "Configure SURVEYBOT BOT and view results at $NGROK_URL"
+#echo -e "Configure CREDIT CARD PAYMENT ASSISTANT  and view results at $NGROK_URL"
 echo -e "Call into the CREDIT CARD PAYMENT ASSISTANT at $PHONE_NUMBER\n"
 
 python3 ${WORKINGDIR}/app.py
