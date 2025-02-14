@@ -20,3 +20,6 @@ push: tag
 	@docker buildx build --platform linux/amd64,linux/arm64,linux/armhf --tag briankwest/wirestarter:latest --push .
 
 clean: down prune
+
+debug:
+	@docker run -it --rm --name wirestarter --env-file .env --volume "${WORKDIR}:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh || echo "debug"

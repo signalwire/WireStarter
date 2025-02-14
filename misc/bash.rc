@@ -93,7 +93,7 @@ if [ ! -z $NGROK_TOKEN ]; then
 fi
 
 RETRY_COUNT=0
-MAX_RETRIES=10
+MAX_RETRIES=4
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
