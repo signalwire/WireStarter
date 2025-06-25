@@ -2,7 +2,7 @@ build:
 	@docker build --no-cache -t briankwest/wirestarter .
 
 up:
-	@docker run -it -d --rm --name wirestarter --env-file .env --volume "${WORKDIR}:/workdir" --volume opt:/opt  briankwest/wirestarter /start_services.sh || echo "up"
+	@docker run -it -d --rm --name wirestarter --env-file .env --volume "${WORKDIR}:/workdir" briankwest/wirestarter /start_services.sh || echo "up"
 
 down:
 	@docker stop wirestarter || echo "down"
@@ -22,4 +22,4 @@ push: tag
 clean: down prune
 
 debug:
-	@docker run -it --rm --name wirestarter --env-file .env --volume "${WORKDIR}:/workdir" --volume opt:/opt briankwest/wirestarter /start_services.sh || echo "debug"
+	@docker run -it --rm --name wirestarter --env-file .env --volume "${WORKDIR}:/workdir" briankwest/wirestarter /start_services.sh || echo "debug"
