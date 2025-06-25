@@ -4,9 +4,9 @@
 # - Variablize the space name and API Key
 # - Research how to take API key and made Basic Auth Header
 
-FROM debian:12.9-slim
+FROM debian:12.11-slim
 
-ARG python_version=python3.9
+ARG python_version=python3.11
 
 # Install the basic packages
 RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server 
@@ -15,7 +15,7 @@ RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release c
 RUN apt update && apt install -y nano vim emacs-nox
 
 # Install Python
-RUN apt update && apt install -y python3 python3-pip python3.11-venv && pip3 install --upgrade --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh flask
+RUN apt update && apt install -y python3 python3-pip python3.11-venv && pip3 install --upgrade --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh flask signalwire-agents signalwire-swml signalwire-swaig signalwire-pom
 
 # Install Docker
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | tee /etc/apt/trusted.gpg.d/docker.asc > /dev/null \
@@ -27,8 +27,6 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
     && echo "deb [arch=$(dpkg --print-architecture) signed-b7=/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github.list > /dev/null \
     && apt update \
     && apt install -y gh
-
-RUN curl -sSf https://get.openziti.io/install.bash | sudo bash -s zrok
 
 RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc |  tee /etc/apt/trusted.gpg.d/ngrok.asc > /dev/null \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/trusted.gpg.d/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list > /dev/null \

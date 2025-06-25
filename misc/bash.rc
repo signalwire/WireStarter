@@ -39,6 +39,14 @@ if [ ! -f "/workdir/.env" ]; then
 	REST_API_TOKEN=$(whiptail --inputbox "Please enter your API Auth Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then exit; fi
+
+	NGROK_TOKEN=$(whiptail --inputbox "Please enter your NGROK Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then exit; fi
+
+	NGROK_ARGS=$(whiptail --inputbox "Please enter your NGROK Args:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then exit; fi
     }
 
     # Dropdown for VISUAL using whiptail menu
@@ -55,6 +63,8 @@ if [ ! -f "/workdir/.env" ]; then
 	echo "export SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
 	echo "export PROJECT_ID=$PROJECT_ID"
 	echo "export REST_API_TOKEN=$REST_API_TOKEN"
+	echo "export NGROK_TOKEN=$NGROK_TOKEN"
+	echo "export NGROK_ARGS='$NGROK_ARGS'"
 	echo "export VISUAL=$VISUAL"
 	echo "export WORKDIR=/workdir"
     } > $ENV_FILE
@@ -68,12 +78,61 @@ if [ ! -f "/workdir/.env" ]; then
 
 fi
 
+if [ ! -z $NGROK_TOKEN ]; then
+    # Check if ngrok tunnel is already running
+    NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
+    
+    if [ "$NGROK_URL" = "null" ] || [ -z "$NGROK_URL" ]; then
+        echo "Starting ngrok tunnel...";
+        /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN > /dev/null 2>&1
+        /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080
+        
+        # Wait for ngrok to start up
+        RETRY_COUNT=0
+        MAX_RETRIES=10
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            sleep 2
+            NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
+            
+            if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
+                echo "ngrok tunnel is up: $NGROK_URL"
+                export HOSTNAME=$(echo "$NGROK_URL" | sed 's/https:\/\///')
+                break
+            else
+                echo "Waiting for ngrok tunnel to be up... Attempt $((RETRY_COUNT+1))/$MAX_RETRIES"
+                RETRY_COUNT=$((RETRY_COUNT+1))
+            fi
+        done
+        
+        if [ "$NGROK_URL" = "null" ] || [ -z "$NGROK_URL" ]; then
+            echo "Failed to establish ngrok tunnel after $MAX_RETRIES attempts."
+            NGROK_URL=""
+        fi
+    else
+        echo "ngrok tunnel is already running: $NGROK_URL"
+        export HOSTNAME=$(echo "$NGROK_URL" | sed 's/https:\/\///')
+    fi
+fi
+
+
+
+# Update the phone numbers that were previously mapped to an ngrok URL
+if [ ! -z "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
+    python3 /usr/lib/cgi-bin/update_laml_bins.py $NGROK_URL
+fi
+
 clear
 echo -e "\n\n";
 cat /.sw.ans
 echo -e "\n\n";
 echo -e "Welcome to WireStarter!";
 echo -e "\n"
+
+if [ ! -z $NGROK_URL ]; then
+    echo -e "NGROK Tunnel: $NGROK_URL";
+    echo -e "/workdir/public -> $NGROK_URL/public\n";
+fi
 
 if [ ! -z $WORKDIR ]; then
     echo -e "Persistent host directory is /workdir -> $WORKDIR\n";
@@ -97,11 +156,6 @@ fi
 if [  -d "/workdir/.ssh" ]; then
     rm -rf ~/.ssh
     ln -f -s /workdir/.ssh ~
-fi
-
-if [  -d "/workdir/.zrok" ]; then
-    rm -rf ~/.zrok
-    ln -f -s /workdir/.zrok ~
 fi
 
 if [  -f "/workdir/.setuppgsql" ]; then
@@ -133,6 +187,8 @@ if [ $VISUAL == "emacs" ]; then
     alias meacs='emacs'
     alias mecas='emacs'
 fi
+
+alias ngrok_url="curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'"
 
 export NVM_DIR="/opt/.nvm"
 
@@ -173,7 +229,6 @@ cd() {
         fi
     fi
 }
-
 venv() {
     action="$1"
 
