@@ -166,8 +166,171 @@ setup_npm() {
     whiptail --title "NPM Cache" --msgbox "NPM cache set to /workdir/.npm" 8 50
 }
 
+setup_python_dev() {
+    whiptail --title "Python Dev Tools" --yesno "Install Python development packages?\n\n- pdb++ (better debugger)\n- icecream (debug printing)\n- rich (beautiful output)\n- pytest + pytest-asyncio\n- uvicorn (ASGI server)\n- websockets\n- pydantic\n- loguru (logging)\n- aiohttp, httpx" 18 55
+    if [ $? -ne 0 ]; then
+        return
+    fi
+
+    echo "Installing Python dev packages..."
+    pip3 install --break-system-packages \
+        pdbpp icecream rich \
+        pytest pytest-asyncio \
+        uvicorn gunicorn \
+        websockets websocket-client \
+        pydantic pyyaml \
+        loguru structlog \
+        aiohttp httpx
+
+    whiptail --title "Python Dev Tools" --msgbox "Python development packages installed!" 8 50
+}
+
+setup_audio_tools() {
+    whiptail --title "Audio Tools" --yesno "Install audio/media tools for SignalWire voice apps?\n\n- ffmpeg (audio/video processing)\n- sox (sound processing)\n- pydub (Python audio)" 12 55
+    if [ $? -ne 0 ]; then
+        return
+    fi
+
+    echo "Installing audio tools..."
+    apt-get update && apt-get install -y ffmpeg sox
+    pip3 install --break-system-packages pydub soundfile
+
+    whiptail --title "Audio Tools" --msgbox "Audio tools installed!\n\nffmpeg, sox, pydub ready to use." 10 50
+}
+
+setup_ssh_key() {
+    if [ -f "/workdir/.ssh/id_ed25519" ]; then
+        whiptail --title "SSH Key Exists" --yesno "SSH key already exists at /workdir/.ssh/id_ed25519\n\nRegenerate? (This will overwrite!)" 10 55
+        if [ $? -ne 0 ]; then
+            return
+        fi
+    fi
+
+    local email=$(whiptail --inputbox "Email for SSH key:" 8 60 "" --title "SSH Key Setup" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    mkdir -p /workdir/.ssh
+    chmod 700 /workdir/.ssh
+
+    ssh-keygen -t ed25519 -C "$email" -f /workdir/.ssh/id_ed25519 -N ""
+
+    # Link to home
+    rm -rf ~/.ssh
+    ln -s /workdir/.ssh ~/.ssh
+
+    local pubkey=$(cat /workdir/.ssh/id_ed25519.pub)
+
+    whiptail --title "SSH Key Generated" --msgbox "SSH key generated!\n\nPublic key:\n${pubkey}\n\nAdd this to GitHub/GitLab." 16 70
+}
+
+setup_git_identity() {
+    local current_name=$(git config --global user.name 2>/dev/null)
+    local current_email=$(git config --global user.email 2>/dev/null)
+
+    local name=$(whiptail --inputbox "Git user name:" 8 60 "$current_name" --title "Git Identity" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    local email=$(whiptail --inputbox "Git email:" 8 60 "$current_email" --title "Git Identity" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    # Write to /workdir/.gitconfig for persistence
+    cat > /workdir/.gitconfig << GITEOF
+[user]
+    name = $name
+    email = $email
+[init]
+    defaultBranch = main
+[core]
+    editor = ${VISUAL:-vim}
+[pull]
+    rebase = false
+GITEOF
+
+    # Link to home
+    ln -sf /workdir/.gitconfig ~/.gitconfig
+
+    whiptail --title "Git Identity" --msgbox "Git configured!\n\nName: $name\nEmail: $email\n\nSaved to /workdir/.gitconfig" 12 50
+}
+
+setup_ai_keys() {
+    # Load current values
+    local anthropic_key="${ANTHROPIC_API_KEY:-}"
+    local gemini_key="${GEMINI_API_KEY:-}"
+
+    anthropic_key=$(whiptail --inputbox "Anthropic API Key (for Claude Code):" 8 70 "$anthropic_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    gemini_key=$(whiptail --inputbox "Google Gemini API Key:" 8 70 "$gemini_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    # Append to .env if not already there, or update
+    if [ -f "/workdir/.env" ]; then
+        # Remove old keys if present
+        sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
+        sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
+    fi
+
+    # Append new keys
+    echo "ANTHROPIC_API_KEY=$anthropic_key" >> /workdir/.env
+    echo "GEMINI_API_KEY=$gemini_key" >> /workdir/.env
+
+    # Export for current session
+    export ANTHROPIC_API_KEY="$anthropic_key"
+    export GEMINI_API_KEY="$gemini_key"
+
+    whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env\n\nClaude Code and Gemini CLI are ready to use." 10 55
+}
+
+clean_environment() {
+    CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 16 60 6 \
+        "1" "Clean all Python venvs (/workdir/.venvs/)" \
+        "2" "Clean NPM cache (/workdir/.npm/)" \
+        "3" "Clean pip cache" \
+        "4" "Clean all caches (npm + pip)" \
+        "5" "Full reset (remove all dev tools)" \
+        "6" "Back to main menu" \
+        3>&1 1>&2 2>&3)
+
+    [ $? -ne 0 ] && return
+
+    case $CLEAN_CHOICE in
+        "1")
+            if whiptail --title "Confirm" --yesno "Delete ALL Python virtual environments?" 8 50; then
+                rm -rf /workdir/.venvs
+                mkdir -p /workdir/.venvs
+                whiptail --title "Cleaned" --msgbox "All venvs deleted." 8 40
+            fi
+            ;;
+        "2")
+            rm -rf /workdir/.npm/*
+            whiptail --title "Cleaned" --msgbox "NPM cache cleared." 8 40
+            ;;
+        "3")
+            pip3 cache purge 2>/dev/null
+            whiptail --title "Cleaned" --msgbox "Pip cache cleared." 8 40
+            ;;
+        "4")
+            rm -rf /workdir/.npm/*
+            pip3 cache purge 2>/dev/null
+            whiptail --title "Cleaned" --msgbox "All caches cleared." 8 40
+            ;;
+        "5")
+            if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n\nCredentials and SSH keys will be kept.\n\nAre you SURE?" 18 50; then
+                rm -rf /workdir/.venvs
+                rm -rf /workdir/.go
+                rm -rf /workdir/.nvm
+                rm -rf /workdir/.npm
+                rm -rf /workdir/postgres
+                rm -f /workdir/.setuppgsql
+                pip3 cache purge 2>/dev/null
+                whiptail --title "Reset Complete" --msgbox "Environment reset.\n\nRun 'exec bash' and then 'setup.sh' to reinstall." 10 50
+            fi
+            ;;
+    esac
+}
+
 setup_all() {
-    whiptail --title "Setup All" --yesno "This will setup:\n\n- Go (latest)\n- NVM + Node LTS\n- PostgreSQL\n- NPM cache\n\nContinue?" 14 50
+    whiptail --title "Setup All" --yesno "This will setup:\n\n- Go (latest)\n- NVM + Node LTS\n- PostgreSQL\n- NPM cache\n- Python dev tools\n\nContinue?" 16 50
     if [ $? -ne 0 ]; then
         return
     fi
@@ -176,6 +339,7 @@ setup_all() {
     setup_nvm
     setup_pgsql
     setup_npm
+    setup_python_dev
 
     whiptail --title "Setup Complete" --msgbox "All development tools installed!\n\nRun 'exec bash' to update your environment." 10 50
 }
@@ -231,27 +395,64 @@ show_status() {
         STATUS+="Python venvs: [--] None\n"
     fi
 
-    STATUS+="\nPersistent directories:\n"
-    STATUS+="- /workdir/.venvs (Python venvs)\n"
-    STATUS+="- /workdir/.claude (Claude Code)\n"
-    STATUS+="- /workdir/.gemini (Gemini CLI)\n"
-    STATUS+="- /workdir/.ssh (SSH keys)\n"
-    STATUS+="- /workdir/public (Static files)\n"
+    STATUS+="\n"
 
-    whiptail --title "Environment Status" --msgbox "$STATUS" 26 50
+    # SSH key
+    if [ -f "/workdir/.ssh/id_ed25519" ]; then
+        STATUS+="SSH Key: [OK] Configured\n"
+    else
+        STATUS+="SSH Key: [--] Not configured\n"
+    fi
+
+    # Git identity
+    if [ -f "/workdir/.gitconfig" ]; then
+        local git_name=$(git config --global user.name 2>/dev/null)
+        STATUS+="Git Identity: [OK] ${git_name}\n"
+    else
+        STATUS+="Git Identity: [--] Not configured\n"
+    fi
+
+    # AI keys
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
+        STATUS+="Claude API: [OK] Configured\n"
+    else
+        STATUS+="Claude API: [--] Not configured\n"
+    fi
+
+    if [ -n "$GEMINI_API_KEY" ]; then
+        STATUS+="Gemini API: [OK] Configured\n"
+    else
+        STATUS+="Gemini API: [--] Not configured\n"
+    fi
+
+    # Audio tools
+    if command -v ffmpeg &>/dev/null; then
+        STATUS+="Audio Tools: [OK] Installed\n"
+    else
+        STATUS+="Audio Tools: [--] Not installed\n"
+    fi
+
+    whiptail --title "Environment Status" --msgbox "$STATUS" 28 55
 }
 
 # Main menu
 while true; do
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 20 60 10 \
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 24 60 15 \
         "1" "Setup SignalWire & NGROK Credentials" \
-        "2" "Setup Go (latest stable)" \
-        "3" "Setup NVM + Node.js" \
-        "4" "Setup PostgreSQL" \
-        "5" "Setup NPM cache persistence" \
-        "6" "Setup All Dev Tools" \
-        "7" "Show Status" \
-        "8" "Exit" \
+        "2" "Setup AI API Keys (Claude/Gemini)" \
+        "3" "Setup Git Identity" \
+        "4" "Setup SSH Key" \
+        "5" "---" \
+        "6" "Setup Go (latest stable)" \
+        "7" "Setup NVM + Node.js" \
+        "8" "Setup PostgreSQL" \
+        "9" "Setup Python Dev Tools" \
+        "10" "Setup Audio Tools (ffmpeg/sox)" \
+        "11" "Setup All Dev Tools" \
+        "12" "---" \
+        "13" "Show Status" \
+        "14" "Clean Environment" \
+        "15" "Exit" \
         3>&1 1>&2 2>&3)
 
     exitstatus=$?
@@ -261,12 +462,17 @@ while true; do
 
     case $CHOICE in
         "1") setup_credentials ;;
-        "2") setup_golang ;;
-        "3") setup_nvm ;;
-        "4") setup_pgsql ;;
-        "5") setup_npm ;;
-        "6") setup_all ;;
-        "7") show_status ;;
-        "8") exit 0 ;;
+        "2") setup_ai_keys ;;
+        "3") setup_git_identity ;;
+        "4") setup_ssh_key ;;
+        "6") setup_golang ;;
+        "7") setup_nvm ;;
+        "8") setup_pgsql ;;
+        "9") setup_python_dev ;;
+        "10") setup_audio_tools ;;
+        "11") setup_all ;;
+        "13") show_status ;;
+        "14") clean_environment ;;
+        "15") exit 0 ;;
     esac
 done

@@ -9,7 +9,7 @@ FROM debian:12.11-slim
 ARG python_version=python3.11
 
 # Install the basic packages
-RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools 
+RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools ffmpeg sox sqlite3 
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox

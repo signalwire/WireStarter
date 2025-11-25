@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     print(f"""
 {BOLD}{CYAN}╔══════════════════════════════════════════════════════════════╗
-║                    Webhook Catcher                            ║
+║                    Webhook Catcher                           ║
 ╚══════════════════════════════════════════════════════════════╝{RESET}
 
 Listening on port {BOLD}{port}{RESET}
