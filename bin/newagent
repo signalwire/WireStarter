@@ -410,7 +410,7 @@ class TestMainAgent:
         """Test the get_info tool."""
         agent = MainAgent()
         result = agent.get_info({"topic": "test"}, {})
-        assert "test" in str(result)
+        assert "test" in result.response
 
 
 if __name__ == "__main__":
@@ -888,9 +888,8 @@ if [ -n "$NGROK_URL" ]; then
     echo "  Web:  $NGROK_URL/"
     echo ""
 fi
-echo "Run 'up' to start the agent"
+echo "Type 'up' to start the agent"
 echo ""
 
-# Change to project directory and spawn new shell
+# Change to project directory (venv will auto-activate via cd hook)
 cd "$PROJECT_DIR"
-exec bash
