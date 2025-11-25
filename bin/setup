@@ -667,145 +667,165 @@ setup_all() {
 }
 
 show_status() {
-    # Show loading while gathering status
-    loading_screen "Status" "Gathering system information..." 1
+    # Gather status in background while showing spinner
+    gather_status() {
+        local STATUS="=== Services ===\n"
 
-    STATUS="=== Services ===\n"
-
-    # Redis status
-    if pgrep -x redis-server > /dev/null 2>&1; then
-        STATUS+="Redis: [OK] Running\n"
-    else
-        STATUS+="Redis: [--] Not running\n"
-    fi
-
-    # nginx status
-    if pgrep -x nginx > /dev/null 2>&1; then
-        STATUS+="nginx: [OK] Running\n"
-    else
-        STATUS+="nginx: [--] Not running\n"
-    fi
-
-    # ngrok status
-    if [ -n "$NGROK_TOKEN" ]; then
-        local ngrok_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
-        if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
-            STATUS+="ngrok: [OK] $ngrok_url\n"
+        # Redis status
+        if pgrep -x redis-server > /dev/null 2>&1; then
+            STATUS+="Redis: [OK] Running\n"
         else
-            STATUS+="ngrok: [!!] Token set but not running\n"
+            STATUS+="Redis: [--] Not running\n"
         fi
-    else
-        STATUS+="ngrok: [--] Not configured\n"
-    fi
 
-    # Docker socket
-    if [ -S /var/run/docker.sock ]; then
-        STATUS+="Docker: [OK] Socket available\n"
-    else
-        STATUS+="Docker: [--] No socket\n"
-    fi
-
-    STATUS+="\n=== Credentials ===\n"
-
-    if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ]; then
-        STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE_NAME}\n"
-    else
-        STATUS+="SignalWire: [--] Not configured\n"
-    fi
-
-    # Check Claude Code auth - OAuth credentials file or API key
-    if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
-        STATUS+="Claude Code: [OK] OAuth logged in\n"
-    elif [ -n "$ANTHROPIC_API_KEY" ]; then
-        STATUS+="Claude Code: [OK] API key configured\n"
-    else
-        STATUS+="Claude Code: [--] Not configured\n"
-    fi
-
-    # Check Gemini CLI auth - OAuth file or API key
-    if [ -f "/workdir/.gemini/oauth_creds.json" ]; then
-        STATUS+="Gemini CLI: [OK] OAuth logged in\n"
-    elif [ -n "$GEMINI_API_KEY" ]; then
-        STATUS+="Gemini CLI: [OK] API key configured\n"
-    else
-        STATUS+="Gemini CLI: [--] Not configured\n"
-    fi
-
-    if [ -f "/workdir/.ssh/id_ed25519" ]; then
-        STATUS+="SSH Key: [OK] Configured\n"
-    else
-        STATUS+="SSH Key: [--] Not configured\n"
-    fi
-
-    if [ -f "/workdir/.gitconfig" ]; then
-        local git_name=$(git config --global user.name 2>/dev/null)
-        STATUS+="Git Identity: [OK] ${git_name}\n"
-    else
-        STATUS+="Git Identity: [--] Not configured\n"
-    fi
-
-    STATUS+="\n=== Dev Tools ===\n"
-
-    # Python version
-    local py_ver=$(python3 --version 2>/dev/null | awk '{print $2}')
-    STATUS+="Python: [OK] ${py_ver}\n"
-
-    # Active venv
-    if [ -n "$VIRTUAL_ENV" ]; then
-        STATUS+="Active venv: [OK] $(basename $VIRTUAL_ENV)\n"
-    else
-        STATUS+="Active venv: [--] None\n"
-    fi
-
-    # Venv count
-    if [ -d "/workdir/.venvs" ]; then
-        VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l | tr -d ' ')
-        STATUS+="Python venvs: [OK] ${VENV_COUNT} saved\n"
-    else
-        STATUS+="Python venvs: [--] None\n"
-    fi
-
-    if [ -d "/workdir/.go" ]; then
-        GO_VER=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}')
-        STATUS+="Go: [OK] ${GO_VER}\n"
-    else
-        STATUS+="Go: [--] Not installed\n"
-    fi
-
-    if [ -d "/workdir/.nvm" ]; then
-        # Try to get node version
-        local node_ver=""
-        if [ -f "/workdir/.nvm/nvm.sh" ]; then
-            node_ver=$(source /workdir/.nvm/nvm.sh 2>/dev/null && node --version 2>/dev/null)
-        fi
-        if [ -n "$node_ver" ]; then
-            STATUS+="Node.js: [OK] ${node_ver}\n"
+        # nginx status
+        if pgrep -x nginx > /dev/null 2>&1; then
+            STATUS+="nginx: [OK] Running\n"
         else
-            STATUS+="NVM: [OK] Installed\n"
+            STATUS+="nginx: [--] Not running\n"
         fi
-    else
-        STATUS+="NVM: [--] Not installed\n"
-    fi
 
-    if [ -f "/workdir/.setuppgsql" ]; then
-        if pgrep -x postgres > /dev/null 2>&1; then
-            STATUS+="PostgreSQL: [OK] Running\n"
+        # ngrok status
+        if [ -n "$NGROK_TOKEN" ]; then
+            local ngrok_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
+            if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
+                STATUS+="ngrok: [OK] $ngrok_url\n"
+            else
+                STATUS+="ngrok: [!!] Token set but not running\n"
+            fi
         else
-            STATUS+="PostgreSQL: [!!] Configured but not running\n"
+            STATUS+="ngrok: [--] Not configured\n"
         fi
-    else
-        STATUS+="PostgreSQL: [--] Not configured\n"
-    fi
 
-    if command -v ffmpeg &>/dev/null; then
-        STATUS+="Audio Tools: [OK] Installed\n"
-    else
-        STATUS+="Audio Tools: [--] Not installed\n"
-    fi
+        # Docker socket
+        if [ -S /var/run/docker.sock ]; then
+            STATUS+="Docker: [OK] Socket available\n"
+        else
+            STATUS+="Docker: [--] No socket\n"
+        fi
 
-    # Container uptime
-    local uptime=$(cat /proc/uptime 2>/dev/null | awk '{printf "%dd %dh %dm", $1/86400, ($1%86400)/3600, ($1%3600)/60}')
-    STATUS+="\nUptime: ${uptime}\n"
+        STATUS+="\n=== Credentials ===\n"
+
+        if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ]; then
+            STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE_NAME}\n"
+        else
+            STATUS+="SignalWire: [--] Not configured\n"
+        fi
+
+        # Check Claude Code auth - OAuth credentials file or API key
+        if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
+            STATUS+="Claude Code: [OK] OAuth logged in\n"
+        elif [ -n "$ANTHROPIC_API_KEY" ]; then
+            STATUS+="Claude Code: [OK] API key configured\n"
+        else
+            STATUS+="Claude Code: [--] Not configured\n"
+        fi
+
+        # Check Gemini CLI auth - OAuth file or API key
+        if [ -f "/workdir/.gemini/oauth_creds.json" ]; then
+            STATUS+="Gemini CLI: [OK] OAuth logged in\n"
+        elif [ -n "$GEMINI_API_KEY" ]; then
+            STATUS+="Gemini CLI: [OK] API key configured\n"
+        else
+            STATUS+="Gemini CLI: [--] Not configured\n"
+        fi
+
+        if [ -f "/workdir/.ssh/id_ed25519" ]; then
+            STATUS+="SSH Key: [OK] Configured\n"
+        else
+            STATUS+="SSH Key: [--] Not configured\n"
+        fi
+
+        if [ -f "/workdir/.gitconfig" ]; then
+            local git_name=$(git config --global user.name 2>/dev/null)
+            STATUS+="Git Identity: [OK] ${git_name}\n"
+        else
+            STATUS+="Git Identity: [--] Not configured\n"
+        fi
+
+        STATUS+="\n=== Dev Tools ===\n"
+
+        # Python version
+        local py_ver=$(python3 --version 2>/dev/null | awk '{print $2}')
+        STATUS+="Python: [OK] ${py_ver}\n"
+
+        # Active venv
+        if [ -n "$VIRTUAL_ENV" ]; then
+            STATUS+="Active venv: [OK] $(basename $VIRTUAL_ENV)\n"
+        else
+            STATUS+="Active venv: [--] None\n"
+        fi
+
+        # Venv count
+        if [ -d "/workdir/.venvs" ]; then
+            local VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l | tr -d ' ')
+            STATUS+="Python venvs: [OK] ${VENV_COUNT} saved\n"
+        else
+            STATUS+="Python venvs: [--] None\n"
+        fi
+
+        if [ -d "/workdir/.go" ]; then
+            local GO_VER=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}')
+            STATUS+="Go: [OK] ${GO_VER}\n"
+        else
+            STATUS+="Go: [--] Not installed\n"
+        fi
+
+        if [ -d "/workdir/.nvm" ]; then
+            # Try to get node version
+            local node_ver=""
+            if [ -f "/workdir/.nvm/nvm.sh" ]; then
+                node_ver=$(source /workdir/.nvm/nvm.sh 2>/dev/null && node --version 2>/dev/null)
+            fi
+            if [ -n "$node_ver" ]; then
+                STATUS+="Node.js: [OK] ${node_ver}\n"
+            else
+                STATUS+="NVM: [OK] Installed\n"
+            fi
+        else
+            STATUS+="NVM: [--] Not installed\n"
+        fi
+
+        if [ -f "/workdir/.setuppgsql" ]; then
+            if pgrep -x postgres > /dev/null 2>&1; then
+                STATUS+="PostgreSQL: [OK] Running\n"
+            else
+                STATUS+="PostgreSQL: [!!] Configured but not running\n"
+            fi
+        else
+            STATUS+="PostgreSQL: [--] Not configured\n"
+        fi
+
+        if command -v ffmpeg &>/dev/null; then
+            STATUS+="Audio Tools: [OK] Installed\n"
+        else
+            STATUS+="Audio Tools: [--] Not installed\n"
+        fi
+
+        # Container uptime
+        local uptime=$(cat /proc/uptime 2>/dev/null | awk '{printf "%dd %dh %dm", $1/86400, ($1%86400)/3600, ($1%3600)/60}')
+        STATUS+="\nUptime: ${uptime}\n"
+
+        echo "$STATUS"
+    }
+
+    # Run gather_status in background and show spinner
+    gather_status > /tmp/status_output.txt &
+    local pid=$!
+
+    local spinner='|/-\'
+    local i=0
+    while kill -0 $pid 2>/dev/null; do
+        local spin_char="${spinner:i%4:1}"
+        whiptail --title "Status" --infobox "Gathering system information... $spin_char" 7 50
+        sleep 0.2
+        i=$((i+1))
+    done
+    wait $pid
+
+    # Display the gathered status
+    local STATUS=$(cat /tmp/status_output.txt)
+    rm -f /tmp/status_output.txt
 
     whiptail --title "Environment Status" --msgbox "$STATUS" 38 60
 }
