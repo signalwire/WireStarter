@@ -677,12 +677,12 @@ setup_mcp() {
 
         # Parse --env arguments
         local claude_env_args=""
-        local gemini_env_prefix=""
+        local gemini_env_args=""
         while [ "$1" != "--" ] && [ $# -gt 0 ]; do
             if [ "$1" = "--env" ]; then
                 shift
                 claude_env_args+="--env $1 "
-                gemini_env_prefix+="$1 "
+                gemini_env_args+="-e $1 "
                 shift
             else
                 shift
@@ -700,7 +700,8 @@ setup_mcp() {
 
         if [ "$has_gemini" = "yes" ]; then
             echo "  -> Gemini CLI"
-            eval "$gemini_env_prefix gemini mcp add \"$name\" -- \"\$@\"" 2>/dev/null || true
+            # Gemini CLI doesn't use -- separator, and uses -e for env vars
+            eval "gemini mcp add -s user \"$name\" $gemini_env_args\"\$@\"" 2>/dev/null || true
         fi
         echo ""
     }
