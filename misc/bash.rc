@@ -330,7 +330,9 @@ PYTHON VIRTUAL ENVIRONMENTS (persistent in /workdir/.venvs/)
   venv list             List all persistent venvs
   venv path             Show venv path for current directory
   venv nuke             Deactivate and delete currently active venv
+  venv audit            Find and remove orphaned venvs
   (auto-activates when cd'ing into /workdir/* directories with venvs)
+  (auto-cleans orphaned venvs on shell startup)
 
 PROJECT SCAFFOLDING
   newproject [name]     Create new Flask project with venv
@@ -561,6 +563,34 @@ _get_venv_for_pwd() {
     fi
 }
 
+# Audit venvs and remove orphaned ones (where source directory no longer exists)
+_audit_venvs() {
+    local venvs_dir="/workdir/.venvs"
+    [ ! -d "$venvs_dir" ] && return 0
+
+    local removed=0
+    for venv_dir in "$venvs_dir"/*/; do
+        [ ! -d "$venv_dir" ] && continue
+
+        # Get venv name and convert back to path
+        local venv_name=$(basename "$venv_dir")
+        local source_path="/workdir/$(echo "$venv_name" | tr '_' '/')"
+
+        # Check if source directory exists
+        if [ ! -d "$source_path" ]; then
+            rm -rf "$venv_dir"
+            removed=$((removed + 1))
+        fi
+    done
+
+    if [ $removed -gt 0 ]; then
+        echo "Cleaned up $removed orphaned venv(s)"
+    fi
+}
+
+# Run venv audit on shell startup (silently)
+_audit_venvs 2>/dev/null
+
 cd() {
     builtin cd "$@" || return
 
@@ -665,8 +695,46 @@ venv() {
                 echo "No active venv to nuke"
             fi
             ;;
+        audit)
+            echo "Auditing venvs for orphaned directories..."
+            local venvs_dir="/workdir/.venvs"
+            if [ ! -d "$venvs_dir" ]; then
+                echo "No venvs directory found"
+                return 0
+            fi
+
+            local orphaned=0
+            local valid=0
+            for venv_dir in "$venvs_dir"/*/; do
+                [ ! -d "$venv_dir" ] && continue
+
+                local venv_name=$(basename "$venv_dir")
+                local source_path="/workdir/$(echo "$venv_name" | tr '_' '/')"
+
+                if [ -d "$source_path" ]; then
+                    echo "  [OK] $venv_name -> $source_path"
+                    valid=$((valid + 1))
+                else
+                    echo "  [ORPHAN] $venv_name (missing: $source_path)"
+                    orphaned=$((orphaned + 1))
+                fi
+            done
+
+            echo ""
+            echo "Found $valid valid, $orphaned orphaned"
+
+            if [ $orphaned -gt 0 ]; then
+                read -p "Remove orphaned venvs? (y/n): " confirm
+                if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+                    _audit_venvs
+                    echo "Orphaned venvs removed"
+                else
+                    echo "Cancelled"
+                fi
+            fi
+            ;;
         *)
-            echo "Usage: venv [init|delete|list|path|nuke]"
+            echo "Usage: venv [init|delete|list|path|nuke|audit]"
             echo ""
             echo "Commands:"
             echo "  init   - Create and activate venv for current directory"
@@ -674,6 +742,7 @@ venv() {
             echo "  list   - List all persistent venvs"
             echo "  path   - Show venv path for current directory"
             echo "  nuke   - Deactivate and delete currently active venv"
+            echo "  audit  - Find and remove orphaned venvs"
             ;;
     esac
 }
