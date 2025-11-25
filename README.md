@@ -72,7 +72,7 @@ For more information, visit the [WireStarter GitHub repository](https://github.c
 WireStarter also has the capability to setup and run pre-made AI Agent demo's.
 To install and run an AI Agent:
 1. Type exit or ctrl+d to go back to exit the `swsh` command line
-2. Then type `setup.sh`
+2. Then type `setup`
 3. Choose a language to work with
 4. Select the Ai Agent to install.
 

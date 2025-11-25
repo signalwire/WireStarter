@@ -316,7 +316,7 @@ help() {
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 SETUP & STATUS
-  setup.sh              Interactive environment setup (Go, NVM, PostgreSQL, npm)
+  setup                 Interactive environment setup (Go, NVM, PostgreSQL, npm)
 
 NAVIGATION
   work                  cd /workdir

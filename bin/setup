@@ -323,7 +323,7 @@ clean_environment() {
                 rm -rf /workdir/postgres
                 rm -f /workdir/.setuppgsql
                 pip3 cache purge 2>/dev/null
-                whiptail --title "Reset Complete" --msgbox "Environment reset.\n\nRun 'exec bash' and then 'setup.sh' to reinstall." 10 50
+                whiptail --title "Reset Complete" --msgbox "Environment reset.\n\nRun 'exec bash' and then 'setup' to reinstall." 10 50
             fi
             ;;
     esac

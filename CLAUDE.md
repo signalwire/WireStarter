@@ -21,7 +21,7 @@ make clean    # Stop container and prune Docker system
 
 ### Inside Container
 ```bash
-setup.sh      # Interactive menu to install AI Agent demos (Python/NodeJS/Perl)
+setup         # Interactive environment setup menu
 swsh          # SignalWire Shell - interactive CLI for SignalWire API
 up            # Run app.py in infinite loop (auto-restart on exit)
 venv init     # Create and activate Python virtual environment
@@ -32,8 +32,8 @@ ngrok_url     # Get current NGROK public URL
 ## Architecture
 
 ### Directory Structure
-- `bin/` - Utility scripts and AI Agent installers
-  - `setup.sh` - Interactive installer menu
+- `bin/` - Utility scripts
+  - `setup` - Interactive environment setup menu
   - `python.d/`, `nodejs.d/`, `perl.d/` - Language-specific AI Agent demo installers
   - `setupgolang`, `setupnvm`, `setuppgsql` - Environment setup scripts
 - `misc/` - Container configuration files
