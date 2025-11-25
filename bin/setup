@@ -449,11 +449,15 @@ setup_ssh_key() {
 setup_git_identity() {
     local current_name=$(git config --global user.name 2>/dev/null)
     local current_email=$(git config --global user.email 2>/dev/null)
+    local current_token="${GITHUB_TOKEN:-}"
 
     local name=$(whiptail --inputbox "Git user name:" 8 60 "$current_name" --title "Git Identity" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     local email=$(whiptail --inputbox "Git email:" 8 60 "$current_email" --title "Git Identity" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    local github_token=$(whiptail --inputbox "GitHub Personal Access Token (optional):\n\nUsed for: gh CLI, MCP github server, private repos" 10 70 "$current_token" --title "GitHub Token" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     cat > /workdir/.gitconfig << GITEOF
@@ -469,7 +473,21 @@ setup_git_identity() {
 GITEOF
 
     ln -sf /workdir/.gitconfig ~/.gitconfig
-    whiptail --title "Git Identity" --msgbox "Git configured!\n\nName: $name\nEmail: $email" 10 50
+
+    # Save GitHub token to .env if provided
+    if [ -n "$github_token" ]; then
+        if [ -f "/workdir/.env" ]; then
+            sed -i '/^GITHUB_TOKEN=/d' /workdir/.env
+        fi
+        echo "GITHUB_TOKEN=$github_token" >> /workdir/.env
+        export GITHUB_TOKEN="$github_token"
+    fi
+
+    local msg="Git configured!\n\nName: $name\nEmail: $email"
+    if [ -n "$github_token" ]; then
+        msg+="\nGitHub Token: Saved to .env"
+    fi
+    whiptail --title "Git Identity" --msgbox "$msg" 12 50
 }
 
 setup_ai_keys() {
