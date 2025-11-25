@@ -227,8 +227,10 @@ if [ -n "$NGROK_URL" ]; then
     echo -e "/workdir/public -> $NGROK_URL/public\n";
 fi
 
-if [ -n "$WORKDIR" ]; then
-    echo -e "Persistent host directory is /workdir -> $WORKDIR\n";
+if [ -n "$HOST_WORKDIR" ]; then
+    echo -e "Persistent host directory is $HOST_WORKDIR -> /workdir\n";
+elif [ -n "$WORKDIR" ]; then
+    echo -e "Persistent host directory is /workdir\n";
 fi
 
 if [ -f "/workdir/.bashrc" ]; then

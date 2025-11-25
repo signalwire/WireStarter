@@ -56,6 +56,7 @@ export WORKDIR=~/workdir
 ```bash
 docker run -it --name wirestarter \
   -p 9080:9080 \
+  -e HOST_WORKDIR=$WORKDIR \
   -v $WORKDIR:/workdir \
   briankwest/wirestarter
 ```

@@ -26,6 +26,7 @@ up: ## Start container in background (detached)
 	@docker run -it -d --rm \
 		--name $(CONTAINER_NAME) \
 		--env-file .env \
+		-e HOST_WORKDIR="$${WORKDIR}" \
 		--volume "$${WORKDIR}:/workdir" \
 		--volume /var/run/docker.sock:/var/run/docker.sock \
 		$(IMAGE_NAME) || echo "Container may already be running"
@@ -85,6 +86,7 @@ debug: ## Run container in foreground (for debugging)
 	@docker run -it --rm \
 		--name $(CONTAINER_NAME) \
 		--env-file .env \
+		-e HOST_WORKDIR="$${WORKDIR}" \
 		--volume "$${WORKDIR}:/workdir" \
 		--volume /var/run/docker.sock:/var/run/docker.sock \
 		$(IMAGE_NAME)
