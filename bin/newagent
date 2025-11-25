@@ -128,6 +128,7 @@ class MainAgent(AgentBase):
 
         self._configure_voice()
         self._configure_prompts()
+        self._configure_debug_webhooks()
 
     def _configure_voice(self):
         """Set up voice and language."""
@@ -177,6 +178,18 @@ class MainAgent(AgentBase):
         # TODO: Implement your logic here
         return SwaigFunctionResult(f"Information about {topic}: This is a placeholder response.")
 
+    def _configure_debug_webhooks(self):
+        """Set up debug and post-prompt webhooks."""
+        proxy_url = os.getenv("SWML_PROXY_URL_BASE", "")
+        debug_level = int(os.getenv("DEBUG_WEBHOOK_LEVEL", "1"))
+
+        if proxy_url and debug_level > 0:
+            self.set_params({
+                "debug_webhook_url": f"{proxy_url}/debug",
+                "debug_webhook_level": debug_level,
+            })
+            self.set_post_prompt_url(f"{proxy_url}/post_prompt")
+
     def on_summary(self, summary):
         """Handle call summary."""
         print(f"Call summary: {summary}")
@@ -195,8 +208,12 @@ cat > app.py << 'EOF'
 """Main entry point for the agent server."""
 
 import os
+import sys
+import json
 from pathlib import Path
+from datetime import datetime
 from dotenv import load_dotenv
+from flask import request
 
 # Load environment variables from .env file
 load_dotenv()
@@ -204,10 +221,106 @@ load_dotenv()
 from signalwire_agents import AgentServer
 from agents import MainAgent
 
+# ANSI colors for console output
+RESET = "\033[0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+CYAN = "\033[36m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+MAGENTA = "\033[35m"
+BLUE = "\033[34m"
+WHITE = "\033[37m"
+
+
+def print_separator(char="─", width=80):
+    print(f"{DIM}{char * width}{RESET}")
+
+
+def print_debug_data(data):
+    """Pretty print debug webhook data."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print()
+    print_separator("═")
+    print(f"{BOLD}{CYAN}▶ DEBUG WEBHOOK{RESET}")
+    print(f"{DIM}{timestamp}{RESET}")
+    print_separator()
+
+    # Extract and display key fields
+    if isinstance(data, dict):
+        event_type = data.get("event_type", data.get("type", "unknown"))
+        print(f"{YELLOW}Event:{RESET} {event_type}")
+
+        # Show call info if present
+        call_id = data.get("call_id", data.get("CallSid", ""))
+        if call_id:
+            print(f"{YELLOW}Call ID:{RESET} {call_id}")
+
+        # Show conversation data if present
+        if "conversation" in data:
+            print(f"\n{BOLD}{YELLOW}Conversation:{RESET}")
+            for msg in data.get("conversation", [])[-5:]:  # Last 5 messages
+                role = msg.get("role", "?")
+                content = msg.get("content", "")[:100]
+                color = GREEN if role == "assistant" else MAGENTA
+                print(f"  {color}{role}:{RESET} {content}")
+
+        # Show full data in verbose mode
+        debug_level = int(os.getenv("DEBUG_WEBHOOK_LEVEL", "1"))
+        if debug_level >= 2:
+            print(f"\n{BOLD}{YELLOW}Full Data:{RESET}")
+            formatted = json.dumps(data, indent=2)
+            for line in formatted.split('\n')[:50]:
+                print(f"  {DIM}{line}{RESET}")
+    else:
+        print(f"{DIM}{data}{RESET}")
+
+    print_separator("═")
+    print()
+    sys.stdout.flush()
+
+
+def print_post_prompt_data(data):
+    """Pretty print post-prompt summary data."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print()
+    print_separator("═")
+    print(f"{BOLD}{YELLOW}▶ POST-PROMPT SUMMARY{RESET}")
+    print(f"{DIM}{timestamp}{RESET}")
+    print_separator()
+
+    if isinstance(data, dict):
+        # Show summary if present
+        summary = data.get("post_prompt_data", {})
+        if isinstance(summary, dict):
+            for key, value in summary.items():
+                print(f"{GREEN}{key}:{RESET} {value}")
+        elif summary:
+            print(f"{GREEN}Summary:{RESET} {summary}")
+
+        # Show raw response if present
+        raw = data.get("raw_response", data.get("response", ""))
+        if raw:
+            print(f"\n{BOLD}{YELLOW}Response:{RESET}")
+            print(f"  {MAGENTA}{raw}{RESET}")
+
+        # Show call info
+        call_id = data.get("call_id", "")
+        if call_id:
+            print(f"\n{DIM}Call ID: {call_id}{RESET}")
+    else:
+        print(f"{DIM}{data}{RESET}")
+
+    print_separator("═")
+    print()
+    sys.stdout.flush()
+
 
 def main():
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "5000"))
+    proxy_url = os.getenv("SWML_PROXY_URL_BASE", "")
+    debug_level = int(os.getenv("DEBUG_WEBHOOK_LEVEL", "1"))
 
     # Create server and register agent
     server = AgentServer(host=host, port=port)
@@ -218,14 +331,49 @@ def main():
     if web_dir.exists():
         server.serve_static_files(str(web_dir))
 
-    print(f"Starting agent server on {host}:{port}")
-    print(f"SWML endpoint: http://{host}:{port}/swml")
-    print(f"Web root: http://{host}:{port}/")
+    # Add debug webhook endpoint
+    @server.app.route('/debug', methods=['POST'])
+    def debug_webhook():
+        """Receive and display debug webhook data."""
+        try:
+            data = request.get_json(force=True)
+        except:
+            data = request.form.to_dict() or request.data.decode('utf-8', errors='ignore')
+        print_debug_data(data)
+        return {'status': 'received'}, 200
 
-    # Show public URL if available
-    proxy_url = os.getenv("SWML_PROXY_URL_BASE")
+    # Add post-prompt webhook endpoint
+    @server.app.route('/post_prompt', methods=['POST'])
+    def post_prompt_webhook():
+        """Receive and display post-prompt summary data."""
+        try:
+            data = request.get_json(force=True)
+        except:
+            data = request.form.to_dict() or request.data.decode('utf-8', errors='ignore')
+        print_post_prompt_data(data)
+        return {'status': 'received'}, 200
+
+    # Print startup banner
+    print()
+    print_separator("═")
+    print(f"{BOLD}{CYAN}SignalWire Agent Server{RESET}")
+    print_separator()
+    print(f"{GREEN}SWML endpoint:{RESET}  http://{host}:{port}/swml")
+    print(f"{GREEN}Web root:{RESET}       http://{host}:{port}/")
+    print(f"{GREEN}Debug webhook:{RESET}  http://{host}:{port}/debug")
+    print(f"{GREEN}Post-prompt:{RESET}    http://{host}:{port}/post_prompt")
+
     if proxy_url:
-        print(f"Public SWML: {proxy_url}/swml")
+        print()
+        print(f"{BOLD}{YELLOW}Public URLs:{RESET}")
+        print(f"  SWML:        {proxy_url}/swml")
+        print(f"  Debug:       {proxy_url}/debug")
+        print(f"  Post-prompt: {proxy_url}/post_prompt")
+
+    print()
+    print(f"{DIM}Debug level: {debug_level} (0=off, 1=basic, 2=verbose){RESET}")
+    print_separator("═")
+    print()
 
     server.run()
 
@@ -287,6 +435,9 @@ SWML_BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASS}
 
 # Public URL (ngrok tunnel)
 SWML_PROXY_URL_BASE=${NGROK_URL}
+
+# Debug settings (0=off, 1=basic, 2=verbose)
+DEBUG_WEBHOOK_LEVEL=1
 ENVEOF
 print_success ".env"
 
@@ -307,6 +458,9 @@ SWML_BASIC_AUTH_PASSWORD=your-secure-password
 
 # Public URL (ngrok tunnel or production domain)
 SWML_PROXY_URL_BASE=https://your-domain.ngrok.io
+
+# Debug settings (0=off, 1=basic, 2=verbose)
+DEBUG_WEBHOOK_LEVEL=1
 EOF
 print_success ".env.example"
 
