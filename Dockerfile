@@ -12,7 +12,7 @@ ARG python_version=python3.11
 RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools ffmpeg sox sqlite3 ncdu 
 
 # Install Editors
-RUN apt update && apt install -y nano vim emacs-nox
+RUN apt update && apt install -y nano vim emacs-nox micro ne
 
 # Install Python and dev tools
 RUN apt update && apt install -y python3 python3-pip python3.11-venv && pip3 install --upgrade --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh flask signalwire-agents signalwire-swml signalwire-swaig signalwire-pom ipython httpie watchdog black build twine

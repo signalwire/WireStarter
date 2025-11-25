@@ -191,10 +191,13 @@ setup_credentials() {
     ngrok_args=$(whiptail --inputbox "NGROK Args (e.g., --url yourdomain.ngrok.io):" 8 70 --title "NGROK Setup" -- "$ngrok_args" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    visual=$(whiptail --title "Default Editor" --default-item "$visual" --menu "Choose your editor:" 12 50 3 \
-        "vim" "" \
-        "emacs" "" \
-        "nano" "" 3>&1 1>&2 2>&3)
+    visual=$(whiptail --title "Default Editor" --default-item "$visual" --menu "Choose your editor:" 14 50 5 \
+        "vim" "Vi IMproved" \
+        "emacs" "GNU Emacs" \
+        "nano" "Simple editor" \
+        "micro" "Modern terminal editor" \
+        "ne" "Nice Editor" \
+        3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     # Strip .signalwire.com if included
