@@ -577,6 +577,17 @@ def main():
             "password": os.getenv("SWML_BASIC_AUTH_PASSWORD", "")
         }
 
+    @server.app.get('/get_resource_info')
+    def get_resource_info():
+        """Get SWML handler resource info for linking to SignalWire dashboard."""
+        sw_host = get_signalwire_host()
+        space_name = os.getenv("SIGNALWIRE_SPACE_NAME", "")
+        return {
+            "space_name": space_name,
+            "resource_id": swml_handler_info["id"],
+            "dashboard_url": f"https://{sw_host}/neon/resources/{swml_handler_info['id']}/edit?t=addresses" if sw_host and swml_handler_info["id"] else None
+        }
+
     # Set up SWML handler on startup
     setup_swml_handler()
 
@@ -1313,6 +1324,45 @@ cat > web/index.html << 'HTMLEOF'
         .audio-setting label {
             cursor: pointer;
         }
+        /* Phone number info box */
+        .phone-info {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #044cf6;
+            border-radius: 12px;
+            padding: 20px 25px;
+            margin: 30px 0;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .phone-info h3 {
+            margin: 0 0 10px 0;
+            color: #fff;
+            font-size: 16px;
+        }
+        .phone-info p {
+            margin: 0 0 15px 0;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .phone-info a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #044cf6;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .phone-info a:hover {
+            background: #0339c2;
+        }
+        .phone-info.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -1345,6 +1395,12 @@ cat > web/index.html << 'HTMLEOF'
             </div>
         </div>
         <div id="callStatus" class="call-status"></div>
+    </div>
+
+    <div id="phoneInfo" class="phone-info hidden">
+        <h3>Want to call from a phone number?</h3>
+        <p>You can assign a SignalWire phone number to this agent so callers can reach it from any phone. Click below, then click "Add" to attach an existing number or buy a new one.</p>
+        <a id="dashboardLink" href="#" target="_blank">Add Phone Number in Dashboard</a>
     </div>
 
     <h2>Endpoints</h2>
@@ -1708,6 +1764,20 @@ testapp</pre>
                 document.querySelectorAll('.auth-creds').forEach(function(el) {
                     el.textContent = 'user:password';
                 });
+            }
+
+            // Fetch resource info for phone number link
+            try {
+                const resourceResp = await fetch('/get_resource_info');
+                if (resourceResp.ok) {
+                    const resourceInfo = await resourceResp.json();
+                    if (resourceInfo.dashboard_url) {
+                        document.getElementById('dashboardLink').href = resourceInfo.dashboard_url;
+                        document.getElementById('phoneInfo').classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                console.log('Could not fetch resource info:', e);
             }
         });
     </script>
