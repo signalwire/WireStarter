@@ -550,6 +550,8 @@ setup_ai_keys() {
 
     local anthropic_key="${ANTHROPIC_API_KEY:-}"
     local gemini_key="${GEMINI_API_KEY:-}"
+    local slack_token="${SLACK_BOT_TOKEN:-}"
+    local brave_key="${BRAVE_API_KEY:-}"
 
     # Only prompt for keys if not using OAuth for that service
     if [ "$claude_oauth" = false ]; then
@@ -562,20 +564,39 @@ setup_ai_keys() {
         [ $? -ne 0 ] && return
     fi
 
-    # Save non-OAuth keys to .env
+    # MCP server API keys (optional)
+    slack_token=$(whiptail --inputbox "Slack Bot Token (optional, for MCP):" 8 70 "$slack_token" --title "MCP API Keys" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    brave_key=$(whiptail --inputbox "Brave Search API Key (optional, for MCP):" 8 70 "$brave_key" --title "MCP API Keys" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    # Save keys to .env
     if [ -f "/workdir/.env" ]; then
         sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
         sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
+        sed -i '/^SLACK_BOT_TOKEN=/d' /workdir/.env
+        sed -i '/^BRAVE_API_KEY=/d' /workdir/.env
     fi
 
     if [ "$claude_oauth" = false ] && [ -n "$anthropic_key" ]; then
-        echo "ANTHROPIC_API_KEY=$anthropic_key" >> /workdir/.env
+        echo "ANTHROPIC_API_KEY=\"$anthropic_key\"" >> /workdir/.env
         export ANTHROPIC_API_KEY="$anthropic_key"
     fi
 
     if [ "$gemini_oauth" = false ] && [ -n "$gemini_key" ]; then
-        echo "GEMINI_API_KEY=$gemini_key" >> /workdir/.env
+        echo "GEMINI_API_KEY=\"$gemini_key\"" >> /workdir/.env
         export GEMINI_API_KEY="$gemini_key"
+    fi
+
+    if [ -n "$slack_token" ]; then
+        echo "SLACK_BOT_TOKEN=\"$slack_token\"" >> /workdir/.env
+        export SLACK_BOT_TOKEN="$slack_token"
+    fi
+
+    if [ -n "$brave_key" ]; then
+        echo "BRAVE_API_KEY=\"$brave_key\"" >> /workdir/.env
+        export BRAVE_API_KEY="$brave_key"
     fi
 
     whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env" 8 50
@@ -608,7 +629,7 @@ setup_mcp() {
     [ "$has_claude" = "yes" ] && tools_msg+="- Claude Code\n"
     [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
 
-    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)" 16 60
+    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- puppeteer (browser automation)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)" 20 60
 
     # Install MCP servers using CLI commands
     clear
@@ -659,6 +680,12 @@ setup_mcp() {
     # memory - persistent notes
     add_mcp_server "memory" -- npx -y @modelcontextprotocol/server-memory
 
+    # sequential-thinking - step-by-step reasoning
+    add_mcp_server "sequential-thinking" -- npx -y @modelcontextprotocol/server-sequential-thinking
+
+    # puppeteer - browser automation
+    add_mcp_server "puppeteer" -- npx -y @modelcontextprotocol/server-puppeteer
+
     # postgres - only if configured (requires connection URL as argument)
     if [ -f "/workdir/.setuppgsql" ]; then
         add_mcp_server "postgres" -- npx -y @modelcontextprotocol/server-postgres postgresql://postgres@localhost/postgres
@@ -667,6 +694,16 @@ setup_mcp() {
     # github - only if token set
     if [ -n "$GITHUB_TOKEN" ]; then
         add_mcp_server "github" --env GITHUB_TOKEN="$GITHUB_TOKEN" -- npx -y @modelcontextprotocol/server-github
+    fi
+
+    # slack - only if token set
+    if [ -n "$SLACK_BOT_TOKEN" ]; then
+        add_mcp_server "slack" --env SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" -- npx -y @modelcontextprotocol/server-slack
+    fi
+
+    # brave-search - only if API key set
+    if [ -n "$BRAVE_API_KEY" ]; then
+        add_mcp_server "brave-search" --env BRAVE_API_KEY="$BRAVE_API_KEY" -- npx -y @modelcontextprotocol/server-brave-search
     fi
 
     echo "========================================"
@@ -749,31 +786,71 @@ remove_mcp() {
 }
 
 setup_freeswitch() {
-    # Choose edition first
-    local edition=$(whiptail --title "FreeSWITCH Edition" --menu "Select FreeSWITCH edition:" 14 70 2 \
-        "enterprise" "FreeSWITCH Enterprise (requires SignalWire token)" \
-        "community" "FreeSWITCH Community/OSS" \
+    # Check token access by testing against the repos
+    loading_screen "FreeSWITCH" "Checking token access..." 1
+
+    local has_enterprise=false
+    local has_community=false
+    local enterprise_token=""
+    local community_token=""
+
+    # Test SIGNALWIRE_TOKEN for Enterprise access
+    if [ -n "$SIGNALWIRE_TOKEN" ]; then
+        echo "machine fsa.freeswitch.com login signalwire password $SIGNALWIRE_TOKEN" > /tmp/fs_netrc_test
+        local response=$(curl -s -o /dev/null -w "%{http_code}" --netrc-file /tmp/fs_netrc_test "https://fsa.freeswitch.com/repo/deb/fsa/keyring.gpg" 2>/dev/null)
+        if [ "$response" = "200" ]; then
+            has_enterprise=true
+            enterprise_token="$SIGNALWIRE_TOKEN"
+        fi
+        rm -f /tmp/fs_netrc_test
+    fi
+
+    # Test FREESWITCH_PAT for Community access
+    if [ -n "$FREESWITCH_PAT" ]; then
+        echo "machine freeswitch.signalwire.com login signalwire password $FREESWITCH_PAT" > /tmp/fs_netrc_test
+        local response=$(curl -s -o /dev/null -w "%{http_code}" --netrc-file /tmp/fs_netrc_test "https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg" 2>/dev/null)
+        if [ "$response" = "200" ]; then
+            has_community=true
+            community_token="$FREESWITCH_PAT"
+        fi
+        rm -f /tmp/fs_netrc_test
+    fi
+
+    # Test SIGNALWIRE_TOKEN for Community access (if PAT didn't work)
+    if [ "$has_community" = false ] && [ -n "$SIGNALWIRE_TOKEN" ]; then
+        echo "machine freeswitch.signalwire.com login signalwire password $SIGNALWIRE_TOKEN" > /tmp/fs_netrc_test
+        local response=$(curl -s -o /dev/null -w "%{http_code}" --netrc-file /tmp/fs_netrc_test "https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg" 2>/dev/null)
+        if [ "$response" = "200" ]; then
+            has_community=true
+            community_token="$SIGNALWIRE_TOKEN"
+        fi
+        rm -f /tmp/fs_netrc_test
+    fi
+
+    # Build menu options based on what's available
+    local menu_options=()
+    if [ "$has_enterprise" = true ]; then
+        menu_options+=("enterprise" "FreeSWITCH Enterprise (access verified)")
+    fi
+    if [ "$has_community" = true ]; then
+        menu_options+=("community" "FreeSWITCH Community/OSS (access verified)")
+    fi
+
+    if [ ${#menu_options[@]} -eq 0 ]; then
+        whiptail --title "No Access" --msgbox "No valid FreeSWITCH access found.\n\nFor Enterprise:\n- SIGNALWIRE_TOKEN needs 'FreeSWITCH Access' scope\n- Contact sales@signalwire.com for access\n\nFor Community:\n- Get a FREESWITCH_PAT from signalwire.com\n\nUse option 1 to set up credentials." 16 65
+        return 1
+    fi
+
+    local edition=$(whiptail --title "FreeSWITCH Edition" --menu "Select FreeSWITCH edition:\n(Only editions your tokens have access to are shown)" 14 70 ${#menu_options[@]} \
+        "${menu_options[@]}" \
         3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     local token=""
-
     if [ "$edition" = "enterprise" ]; then
-        if [ -z "$SIGNALWIRE_TOKEN" ]; then
-            whiptail --title "Token Required" --msgbox "FreeSWITCH Enterprise requires SIGNALWIRE_TOKEN.\n\nYour token needs 'FreeSWITCH Access' scope enabled.\nContact sales@signalwire.com for more info.\n\nUse option 1 to set up credentials." 14 65
-            return 1
-        fi
-        token="$SIGNALWIRE_TOKEN"
+        token="$enterprise_token"
     else
-        if [ -n "$FREESWITCH_PAT" ]; then
-            token="$FREESWITCH_PAT"
-        elif [ -n "$SIGNALWIRE_TOKEN" ]; then
-            # Can use SW token for community too
-            token="$SIGNALWIRE_TOKEN"
-        else
-            whiptail --title "Token Required" --msgbox "FreeSWITCH Community requires a token.\n\nConfigure one of:\n- FREESWITCH_PAT (from SignalWire dashboard)\n- SIGNALWIRE_TOKEN\n\nUse option 1 to set up credentials." 14 65
-            return 1
-        fi
+        token="$community_token"
     fi
 
     # Choose release channel
