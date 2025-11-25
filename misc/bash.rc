@@ -293,6 +293,8 @@ fi
 # Start PostgreSQL if data directory exists (PG_VERSION file indicates valid cluster)
 if [ -f "/workdir/postgres/PG_VERSION" ]; then
     sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start 2>/dev/null
+    # Alias psql to connect as postgres user
+    alias psql='psql -U postgres'
 fi
 
 # ~/.config persistence (for various tools like GitHub Copilot, etc.)
@@ -311,10 +313,6 @@ if [  -f "/workdir/cpanfile" ]; then
     touch /.cpandone
     export PATH=/workdir/perllib/bin:$PATH
     export PERL5LIB=/workdir/perllib/lib/perl5:$PERL5LIB
-
-    psql() {
-	command psql -U postgres "$@"
-    }
 fi
 
 # Common typos when using emacs, so things just work.
