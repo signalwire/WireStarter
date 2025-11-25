@@ -290,8 +290,8 @@ if [ ! -f "/workdir/.gemini/settings.json" ]; then
     echo '{"mcpServers":{}}' > /workdir/.gemini/settings.json
 fi
 
-# Start PostgreSQL if previously configured via setup.sh
-if [ -f "/workdir/.setuppgsql" ] && [ -d "/workdir/postgres" ]; then
+# Start PostgreSQL if data directory exists (PG_VERSION file indicates valid cluster)
+if [ -f "/workdir/postgres/PG_VERSION" ]; then
     sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start 2>/dev/null
 fi
 

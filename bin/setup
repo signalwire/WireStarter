@@ -353,12 +353,13 @@ setup_pgsql() {
     PG_VERSION="15"
     NEW_PGDATA="/workdir/postgres"
 
-    if [ -d "$NEW_PGDATA" ] && [ -f "/workdir/.setuppgsql" ]; then
+    # Check for existing PostgreSQL data (PG_VERSION file indicates valid cluster)
+    if [ -f "$NEW_PGDATA/PG_VERSION" ]; then
         whiptail --title "PostgreSQL Already Setup" --yesno "PostgreSQL data directory exists. Reinitialize?\n\nWARNING: This will delete existing data!" 10 50
         [ $? -ne 0 ] && return
+        sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl -D "$NEW_PGDATA" stop 2>/dev/null
         sudo /etc/init.d/postgresql stop 2>/dev/null
         rm -rf "$NEW_PGDATA"
-        rm -f /workdir/.setuppgsql
     fi
 
     (
@@ -714,7 +715,7 @@ setup_mcp() {
     add_mcp_server "sequential-thinking" -- npx -y @modelcontextprotocol/server-sequential-thinking
 
     # postgres - only if configured (requires connection URL as argument)
-    if [ -f "/workdir/.setuppgsql" ]; then
+    if [ -f "/workdir/postgres/PG_VERSION" ]; then
         add_mcp_server "postgres" -- npx -y @modelcontextprotocol/server-postgres postgresql://postgres@localhost/postgres
     fi
 
