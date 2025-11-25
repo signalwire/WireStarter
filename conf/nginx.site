@@ -3,6 +3,10 @@ server {
 
     root /var/www/html;
 
+    # Prevent nginx from adding port to redirects (important for ngrok)
+    absolute_redirect off;
+    port_in_redirect off;
+
     location /public {
         alias /workdir/public; # Alias /public to /workdir/public
         autoindex on; # Enable directory listing
