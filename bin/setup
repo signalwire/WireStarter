@@ -11,6 +11,43 @@ if [ -f "/workdir/.env" ]; then
     set +a
 fi
 
+# Start ngrok tunnel
+start_ngrok() {
+    if [ -z "$NGROK_TOKEN" ]; then
+        echo "No NGROK_TOKEN set"
+        return 1
+    fi
+
+    # Check if ngrok is already running
+    if curl -s http://127.0.0.1:4040/api/tunnels > /dev/null 2>&1; then
+        echo "ngrok is already running"
+        return 0
+    fi
+
+    echo "Configuring ngrok..."
+    ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1
+
+    echo "Starting ngrok tunnel..."
+    screen -dmS ngrok ngrok http $NGROK_ARGS 9080
+
+    # Wait for ngrok to be ready
+    local retry=0
+    while [ $retry -lt 10 ]; do
+        sleep 2
+        local url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
+        if [ -n "$url" ] && [ "$url" != "null" ]; then
+            echo "ngrok tunnel ready: $url"
+            export NGROK_URL="$url"
+            export HOSTNAME=$(echo "$url" | sed 's|https://||')
+            return 0
+        fi
+        retry=$((retry + 1))
+    done
+
+    echo "Failed to start ngrok tunnel"
+    return 1
+}
+
 setup_credentials() {
     # Prepopulate with existing values
     local sw_space="${SIGNALWIRE_SPACE:-}"
@@ -70,10 +107,30 @@ ENVEOF
     local test_url="https://${sw_space}.signalwire.com/api/laml/2010-04-01/Accounts"
     local response_code=$(curl -s -o /dev/null -w "%{http_code}" "$test_url" -u "${project_id}:${api_token}")
 
+    local status_msg=""
     if [ "$response_code" = "200" ]; then
-        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n[OK] SignalWire API test successful!" 10 50
+        status_msg="[OK] SignalWire API test successful!"
     else
-        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n[!!] SignalWire API test failed (HTTP $response_code)\nPlease verify your credentials." 12 50
+        status_msg="[!!] SignalWire API test failed (HTTP $response_code)"
+    fi
+
+    # Check if ngrok is running
+    local ngrok_running=false
+    if curl -s http://127.0.0.1:4040/api/tunnels > /dev/null 2>&1; then
+        ngrok_running=true
+    fi
+
+    # If ngrok token was provided and ngrok isn't running, offer to start it
+    if [ -n "$ngrok_token" ] && [ "$ngrok_running" = "false" ]; then
+        if whiptail --title "Credentials Saved" --yesno "Credentials saved to /workdir/.env\n\n$status_msg\n\nngrok is not running. Start ngrok tunnel now?" 14 55; then
+            start_ngrok
+            whiptail --title "Setup Complete" --yesno "ngrok tunnel started!\n\nReload shell to apply all changes?" 10 50
+            if [ $? -eq 0 ]; then
+                exec bash
+            fi
+        fi
+    else
+        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n$status_msg" 10 50
     fi
 }
 
@@ -358,9 +415,14 @@ show_status() {
     fi
 
     if [ -n "$NGROK_TOKEN" ]; then
-        STATUS+="NGROK: [OK] Configured\n"
+        local ngrok_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
+        if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
+            STATUS+="ngrok: [OK] $ngrok_url\n"
+        else
+            STATUS+="ngrok: [!!] Token set but not running\n"
+        fi
     else
-        STATUS+="NGROK: [--] Not configured\n"
+        STATUS+="ngrok: [--] Not configured\n"
     fi
 
     STATUS+="\n"
@@ -440,20 +502,27 @@ show_status() {
 
 # Main menu
 while true; do
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 22 60 13 \
+    # Check ngrok status for menu
+    ngrok_status="Start ngrok Tunnel"
+    if curl -s http://127.0.0.1:4040/api/tunnels > /dev/null 2>&1; then
+        ngrok_status="ngrok Running (restart)"
+    fi
+
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 24 60 15 \
         "1" "Setup SignalWire & NGROK Credentials" \
-        "2" "Setup AI API Keys (Claude/Gemini)" \
-        "3" "Setup Git Identity" \
-        "4" "Setup SSH Key" \
-        "5" "Setup Go (latest stable)" \
-        "6" "Setup NVM + Node.js" \
-        "7" "Setup PostgreSQL" \
-        "8" "Setup Python Dev Tools" \
-        "9" "Setup Audio Tools (ffmpeg/sox)" \
-        "10" "Setup All Dev Tools" \
-        "11" "Show Status" \
-        "12" "Clean Environment" \
-        "13" "Exit" \
+        "2" "$ngrok_status" \
+        "3" "Setup AI API Keys (Claude/Gemini)" \
+        "4" "Setup Git Identity" \
+        "5" "Setup SSH Key" \
+        "6" "Setup Go (latest stable)" \
+        "7" "Setup NVM + Node.js" \
+        "8" "Setup PostgreSQL" \
+        "9" "Setup Python Dev Tools" \
+        "10" "Setup Audio Tools (ffmpeg/sox)" \
+        "11" "Setup All Dev Tools" \
+        "12" "Show Status" \
+        "13" "Clean Environment" \
+        "14" "Exit" \
         3>&1 1>&2 2>&3)
 
     exitstatus=$?
@@ -463,17 +532,25 @@ while true; do
 
     case $CHOICE in
         "1") setup_credentials ;;
-        "2") setup_ai_keys ;;
-        "3") setup_git_identity ;;
-        "4") setup_ssh_key ;;
-        "5") setup_golang ;;
-        "6") setup_nvm ;;
-        "7") setup_pgsql ;;
-        "8") setup_python_dev ;;
-        "9") setup_audio_tools ;;
-        "10") setup_all ;;
-        "11") show_status ;;
-        "12") clean_environment ;;
-        "13") exit 0 ;;
+        "2")
+            if [ -z "$NGROK_TOKEN" ]; then
+                whiptail --title "ngrok" --msgbox "NGROK_TOKEN not set.\n\nPlease run 'Setup SignalWire & NGROK Credentials' first." 10 55
+            else
+                start_ngrok
+                whiptail --title "ngrok" --msgbox "ngrok tunnel: $NGROK_URL" 8 60
+            fi
+            ;;
+        "3") setup_ai_keys ;;
+        "4") setup_git_identity ;;
+        "5") setup_ssh_key ;;
+        "6") setup_golang ;;
+        "7") setup_nvm ;;
+        "8") setup_pgsql ;;
+        "9") setup_python_dev ;;
+        "10") setup_audio_tools ;;
+        "11") setup_all ;;
+        "12") show_status ;;
+        "13") clean_environment ;;
+        "14") exit 0 ;;
     esac
 done
