@@ -592,6 +592,22 @@ setup_freeswitch() {
     read -p "Press Enter to continue..."
 }
 
+toggle_swsh() {
+    if [ -f "/workdir/.noswsh" ]; then
+        # Currently disabled, offer to enable
+        if whiptail --title "SignalWire Shell" --yesno "swsh is currently DISABLED on login.\n\nEnable swsh to start automatically?" 10 55; then
+            rm -f /workdir/.noswsh
+            whiptail --title "swsh Enabled" --msgbox "swsh will now start on login.\n\nRun 'exec bash' to test." 10 50
+        fi
+    else
+        # Currently enabled, offer to disable
+        if whiptail --title "SignalWire Shell" --yesno "swsh is currently ENABLED on login.\n\nDisable swsh auto-start?\n\n(You can still run 'swsh' manually)" 12 55; then
+            touch /workdir/.noswsh
+            whiptail --title "swsh Disabled" --msgbox "swsh will no longer start on login.\n\nRun 'swsh' manually when needed." 10 50
+        fi
+    fi
+}
+
 clean_environment() {
     CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 16 60 6 \
         "1" "Clean all Python venvs" \
@@ -838,7 +854,13 @@ while true; do
         ngrok_status="ngrok Running (restart)"
     fi
 
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 24 60 15 \
+    # Check swsh status for menu
+    swsh_status="Disable swsh on Login"
+    if [ -f "/workdir/.noswsh" ]; then
+        swsh_status="Enable swsh on Login"
+    fi
+
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 26 60 16 \
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "$ngrok_status" \
         "3" "Setup AI API Keys (Claude/Gemini)" \
@@ -851,8 +873,9 @@ while true; do
         "10" "Setup Python Dev Tools" \
         "11" "Setup Audio Tools (ffmpeg/sox)" \
         "12" "Setup All Dev Tools" \
-        "13" "Show Status" \
-        "14" "Clean Environment" \
+        "13" "$swsh_status" \
+        "14" "Show Status" \
+        "15" "Clean Environment" \
         3>&1 1>&2 2>&3)
 
     # Cancel button or ESC exits
@@ -871,7 +894,8 @@ while true; do
         "10") setup_python_dev ;;
         "11") setup_audio_tools ;;
         "12") setup_all ;;
-        "13") show_status ;;
-        "14") clean_environment ;;
+        "13") toggle_swsh ;;
+        "14") show_status ;;
+        "15") clean_environment ;;
     esac
 done
