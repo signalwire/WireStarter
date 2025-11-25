@@ -749,27 +749,32 @@ remove_mcp() {
 }
 
 setup_freeswitch() {
-    # Show loading while checking tokens
-    loading_screen "FreeSWITCH" "Checking available tokens..." 1
-
-    # Determine which token to use - SIGNALWIRE_TOKEN first (Enterprise), then FREESWITCH_PAT (OSS)
-    local token=""
-    local token_type=""
-
-    if [ -n "$SIGNALWIRE_TOKEN" ]; then
-        token="$SIGNALWIRE_TOKEN"
-        token_type="SIGNALWIRE_TOKEN (Enterprise if scope enabled)"
-    elif [ -n "$FREESWITCH_PAT" ]; then
-        token="$FREESWITCH_PAT"
-        token_type="FREESWITCH_PAT (Community)"
-    else
-        whiptail --title "No Token Available" --msgbox "No FreeSWITCH token found.\n\nConfigure one of:\n- SIGNALWIRE_TOKEN (for Enterprise, requires FreeSWITCH Access scope)\n- FREESWITCH_PAT (for Community/OSS)\n\nUse option 1 to set up credentials." 14 65
-        return 1
-    fi
-
-    # Show which token will be used
-    whiptail --title "FreeSWITCH Installation" --yesno "Token detected: $token_type\n\nThe installer will automatically detect:\n- PT* tokens → FreeSWITCH Enterprise\n- pat_* tokens → FreeSWITCH Community\n\nContinue with installation?" 14 65
+    # Choose edition first
+    local edition=$(whiptail --title "FreeSWITCH Edition" --menu "Select FreeSWITCH edition:" 14 70 2 \
+        "enterprise" "FreeSWITCH Enterprise (requires SignalWire token)" \
+        "community" "FreeSWITCH Community/OSS" \
+        3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
+
+    local token=""
+
+    if [ "$edition" = "enterprise" ]; then
+        if [ -z "$SIGNALWIRE_TOKEN" ]; then
+            whiptail --title "Token Required" --msgbox "FreeSWITCH Enterprise requires SIGNALWIRE_TOKEN.\n\nYour token needs 'FreeSWITCH Access' scope enabled.\nContact sales@signalwire.com for more info.\n\nUse option 1 to set up credentials." 14 65
+            return 1
+        fi
+        token="$SIGNALWIRE_TOKEN"
+    else
+        if [ -n "$FREESWITCH_PAT" ]; then
+            token="$FREESWITCH_PAT"
+        elif [ -n "$SIGNALWIRE_TOKEN" ]; then
+            # Can use SW token for community too
+            token="$SIGNALWIRE_TOKEN"
+        else
+            whiptail --title "Token Required" --msgbox "FreeSWITCH Community requires a token.\n\nConfigure one of:\n- FREESWITCH_PAT (from SignalWire dashboard)\n- SIGNALWIRE_TOKEN\n\nUse option 1 to set up credentials." 14 65
+            return 1
+        fi
+    fi
 
     # Choose release channel
     local channel=$(whiptail --title "FreeSWITCH Channel" --menu "Select release channel:" 12 50 2 \
@@ -789,12 +794,67 @@ setup_freeswitch() {
     local status=$?
 
     echo ""
-    echo "========================================"
     if [ $status -eq 0 ]; then
-        echo "Installation completed!"
+        echo "Starting FreeSWITCH..."
+        # No systemd in container, start manually in background
+        freeswitch -nonat -nocal -nc
+        sleep 2
+        if pgrep -x freeswitch > /dev/null; then
+            echo ""
+            echo "========================================"
+            echo "Installation completed! FreeSWITCH is running."
+            echo "========================================"
+        else
+            echo ""
+            echo "========================================"
+            echo "Installation completed but FreeSWITCH failed to start."
+            echo "Try running: freeswitch -nonat -nocal -nc"
+            echo "========================================"
+        fi
     else
+        echo "========================================"
         echo "Installation finished with exit code: $status"
+        echo "========================================"
     fi
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+uninstall_freeswitch() {
+    # Check if FreeSWITCH is installed
+    if ! command -v freeswitch &>/dev/null && [ ! -d "/usr/share/freeswitch" ] && [ ! -d "/etc/freeswitch" ]; then
+        whiptail --title "Not Installed" --msgbox "FreeSWITCH does not appear to be installed." 8 50
+        return
+    fi
+
+    if ! whiptail --title "Uninstall FreeSWITCH" --yesno "This will completely remove FreeSWITCH including:\n\n- All packages (freeswitch*)\n- Configuration files (/etc/freeswitch)\n- Data files (/usr/share/freeswitch)\n- Log files (/var/log/freeswitch)\n\nAre you sure?" 16 60; then
+        return
+    fi
+
+    clear
+    echo "========================================"
+    echo "Uninstalling FreeSWITCH"
+    echo "========================================"
+    echo ""
+
+    echo "Stopping FreeSWITCH..."
+    pkill -x freeswitch 2>/dev/null || killall freeswitch 2>/dev/null || true
+    sleep 2
+
+    echo "Removing packages..."
+    apt-get purge -y 'freeswitch*' 2>/dev/null || yum remove -y 'freeswitch*' 2>/dev/null || true
+    apt-get autoremove -y 2>/dev/null || true
+
+    echo "Removing configuration and data files..."
+    rm -rf /etc/freeswitch
+    rm -rf /usr/share/freeswitch
+    rm -rf /var/log/freeswitch
+    rm -rf /var/lib/freeswitch
+    rm -rf /var/run/freeswitch
+
+    echo ""
+    echo "========================================"
+    echo "FreeSWITCH has been uninstalled."
     echo "========================================"
     echo ""
     read -p "Press Enter to continue..."
@@ -1079,7 +1139,7 @@ while true; do
         swsh_status="Enable swsh on Login"
     fi
 
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 28 60 19 \
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 30 60 20 \
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "$ngrok_status" \
         "3" "Setup AI API Keys (Claude/Gemini)" \
@@ -1091,12 +1151,13 @@ while true; do
         "9" "Setup NVM + Node.js" \
         "10" "Setup PostgreSQL" \
         "11" "Setup FreeSWITCH" \
-        "12" "Setup Python Dev Tools" \
-        "13" "Setup Audio Tools (ffmpeg/sox)" \
-        "14" "Setup All Dev Tools" \
-        "15" "$swsh_status" \
-        "16" "Show Status" \
-        "17" "Clean Environment" \
+        "12" "Uninstall FreeSWITCH" \
+        "13" "Setup Python Dev Tools" \
+        "14" "Setup Audio Tools (ffmpeg/sox)" \
+        "15" "Setup All Dev Tools" \
+        "16" "$swsh_status" \
+        "17" "Show Status" \
+        "18" "Clean Environment" \
         3>&1 1>&2 2>&3)
 
     # Cancel button or ESC exits
@@ -1114,11 +1175,12 @@ while true; do
         "9") setup_nvm ;;
         "10") setup_pgsql ;;
         "11") setup_freeswitch ;;
-        "12") setup_python_dev ;;
-        "13") setup_audio_tools ;;
-        "14") setup_all ;;
-        "15") toggle_swsh ;;
-        "16") show_status ;;
-        "17") clean_environment ;;
+        "12") uninstall_freeswitch ;;
+        "13") setup_python_dev ;;
+        "14") setup_audio_tools ;;
+        "15") setup_all ;;
+        "16") toggle_swsh ;;
+        "17") show_status ;;
+        "18") clean_environment ;;
     esac
 done
