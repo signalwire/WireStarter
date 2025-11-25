@@ -534,26 +534,12 @@ setup_ai_keys() {
         oauth_msg+="Gemini CLI: OAuth logged in\n"
     fi
 
-    # If both are OAuth, don't allow setting keys
-    if [ "$claude_oauth" = true ] && [ "$gemini_oauth" = true ]; then
-        whiptail --title "OAuth Active" --msgbox "Both tools are logged in via OAuth:\n\n${oauth_msg}\nAPI keys are not needed.\n\nTo use API keys instead:\n- Claude: run 'claude logout'\n- Gemini: remove /workdir/.gemini/oauth_creds.json" 16 60
-        return
-    fi
-
-    # If one is OAuth, show which one and only prompt for the other
-    if [ "$claude_oauth" = true ]; then
-        whiptail --title "Claude OAuth Active" --msgbox "Claude Code is logged in via OAuth.\n\nOnly Gemini API key can be configured." 10 55
-    fi
-    if [ "$gemini_oauth" = true ]; then
-        whiptail --title "Gemini OAuth Active" --msgbox "Gemini CLI is logged in via OAuth.\n\nOnly Claude API key can be configured." 10 55
-    fi
-
     local anthropic_key="${ANTHROPIC_API_KEY:-}"
     local gemini_key="${GEMINI_API_KEY:-}"
     local slack_token="${SLACK_BOT_TOKEN:-}"
     local brave_key="${BRAVE_API_KEY:-}"
 
-    # Only prompt for keys if not using OAuth for that service
+    # Only prompt for AI keys if not using OAuth for that service
     if [ "$claude_oauth" = false ]; then
         anthropic_key=$(whiptail --inputbox "Anthropic API Key (for Claude Code):" 8 70 "$anthropic_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
         [ $? -ne 0 ] && return
@@ -564,7 +550,7 @@ setup_ai_keys() {
         [ $? -ne 0 ] && return
     fi
 
-    # MCP server API keys (optional)
+    # MCP server API keys (always prompt - not related to OAuth)
     slack_token=$(whiptail --inputbox "Slack Bot Token (optional, for MCP):" 8 70 "$slack_token" --title "MCP API Keys" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
