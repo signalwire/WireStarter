@@ -5,6 +5,7 @@ server {
 
     location /public {
         alias /workdir/public; # Alias /public to /workdir/public
+        autoindex on; # Enable directory listing
         try_files $uri $uri/ =404; # Return 404 if file not found
     }
 
