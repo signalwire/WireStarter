@@ -352,6 +352,9 @@ NETWORKING
 LOGS & DEBUGGING
   logs                  Tail nginx access log
   reqs                  Tail nginx access log (formatted)
+  webhook               Start webhook catcher (dumps requests to console)
+                        Available at $NGROK_URL/webhook
+                        XML responses at $NGROK_URL/webhook/xml
 
 REDIS
   redis                 Redis CLI
@@ -666,6 +669,15 @@ tunnel() {
 # Tail nginx access log with formatted output
 reqs() {
     tail -f /var/log/nginx/access.log | awk '{print $4, $6, $7, $9}'
+}
+
+# Webhook catcher - dumps all incoming requests to console
+webhook() {
+    echo ""
+    echo "Webhook URL: ${NGROK_URL:-http://localhost:9080}/webhook"
+    echo "XML endpoint: ${NGROK_URL:-http://localhost:9080}/webhook/xml"
+    echo ""
+    python3 /usr/bin/webhook-catcher.py "${1:-5002}"
 }
 
 # Python REPL with SignalWire client pre-loaded
