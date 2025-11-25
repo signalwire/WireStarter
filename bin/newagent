@@ -197,8 +197,8 @@ cat > skills/__init__.py << 'EOF'
 EOF
 print_success "skills/__init__.py"
 
-# Create main.py entry point
-cat > main.py << 'EOF'
+# Create app.py entry point
+cat > app.py << 'EOF'
 #!/usr/bin/env python3
 """Main entry point for the agent server."""
 
@@ -227,17 +227,6 @@ def main():
 
     agent.run()
 
-
-if __name__ == "__main__":
-    main()
-EOF
-print_success "main.py"
-
-# Create app.py (alias for compatibility with 'up' command)
-cat > app.py << 'EOF'
-#!/usr/bin/env python3
-"""Alias for main.py - for compatibility with 'up' command."""
-from main import main
 
 if __name__ == "__main__":
     main()
@@ -380,7 +369,7 @@ cd /workdir/${NAME}
 up
 
 # Or run directly
-python main.py
+python app.py
 \`\`\`
 
 ## Project Structure
@@ -396,8 +385,7 @@ ${NAME}/
 │   └── test_agent.py    # Test suite
 ├── web/
 │   └── index.html       # Static files
-├── main.py              # Entry point
-├── app.py               # Alias for 'up' command
+├── app.py               # Entry point (run with 'up')
 ├── .env                 # Environment configuration
 └── requirements.txt     # Python dependencies
 \`\`\`
