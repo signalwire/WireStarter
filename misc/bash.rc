@@ -342,7 +342,7 @@ RUNNING APPS
   serve [port]          Run Flask app on port (default: 5000)
 
 PROCESS MANAGEMENT
-  ports                 Show what's running on ports 5000, 5001, 9080
+  ports                 Show what's running on ports 5000, 5002, 9080
   killport <port>       Kill process on specified port
   reload                Reload nginx configuration
 
@@ -423,7 +423,7 @@ logs() {
 
 urls() {
     echo "Main app:  ${NGROK_URL:-<not set>}/"
-    echo "SWAIG:     ${NGROK_URL:-<not set>}/swaig"
+    echo "Webhook:   ${NGROK_URL:-<not set>}/webhook"
     echo "Public:    ${NGROK_URL:-<not set>}/public/"
 }
 
@@ -450,8 +450,8 @@ killport() {
 ports() {
     echo "Port 5000 (Flask app):"
     fuser 5000/tcp 2>/dev/null || echo "  (nothing)"
-    echo "Port 5001 (SWAIG):"
-    fuser 5001/tcp 2>/dev/null || echo "  (nothing)"
+    echo "Port 5002 (Webhook):"
+    fuser 5002/tcp 2>/dev/null || echo "  (nothing)"
     echo "Port 9080 (nginx):"
     fuser 9080/tcp 2>/dev/null || echo "  (nothing)"
 }
