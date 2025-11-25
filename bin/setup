@@ -1,19 +1,13 @@
 #!/bin/bash
 # WireStarter Environment Setup
 
-# Ensure we have a proper terminal
-if [ ! -t 0 ] || [ ! -t 1 ]; then
-    echo "Error: setup requires an interactive terminal"
-    exit 1
-fi
-
 # Set TERM if not set (needed for whiptail)
 export TERM="${TERM:-xterm}"
 
-# Load existing .env if present
+# Load existing .env if present (use . instead of source for POSIX compatibility)
 if [ -f "/workdir/.env" ]; then
     set -a
-    source /workdir/.env
+    . /workdir/.env 2>/dev/null || true
     set +a
 fi
 
@@ -446,22 +440,20 @@ show_status() {
 
 # Main menu
 while true; do
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 24 60 15 \
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 22 60 13 \
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "Setup AI API Keys (Claude/Gemini)" \
         "3" "Setup Git Identity" \
         "4" "Setup SSH Key" \
-        "5" "---" \
-        "6" "Setup Go (latest stable)" \
-        "7" "Setup NVM + Node.js" \
-        "8" "Setup PostgreSQL" \
-        "9" "Setup Python Dev Tools" \
-        "10" "Setup Audio Tools (ffmpeg/sox)" \
-        "11" "Setup All Dev Tools" \
-        "12" "---" \
-        "13" "Show Status" \
-        "14" "Clean Environment" \
-        "15" "Exit" \
+        "5" "Setup Go (latest stable)" \
+        "6" "Setup NVM + Node.js" \
+        "7" "Setup PostgreSQL" \
+        "8" "Setup Python Dev Tools" \
+        "9" "Setup Audio Tools (ffmpeg/sox)" \
+        "10" "Setup All Dev Tools" \
+        "11" "Show Status" \
+        "12" "Clean Environment" \
+        "13" "Exit" \
         3>&1 1>&2 2>&3)
 
     exitstatus=$?
@@ -474,14 +466,14 @@ while true; do
         "2") setup_ai_keys ;;
         "3") setup_git_identity ;;
         "4") setup_ssh_key ;;
-        "6") setup_golang ;;
-        "7") setup_nvm ;;
-        "8") setup_pgsql ;;
-        "9") setup_python_dev ;;
-        "10") setup_audio_tools ;;
-        "11") setup_all ;;
-        "13") show_status ;;
-        "14") clean_environment ;;
-        "15") exit 0 ;;
+        "5") setup_golang ;;
+        "6") setup_nvm ;;
+        "7") setup_pgsql ;;
+        "8") setup_python_dev ;;
+        "9") setup_audio_tools ;;
+        "10") setup_all ;;
+        "11") show_status ;;
+        "12") clean_environment ;;
+        "13") exit 0 ;;
     esac
 done

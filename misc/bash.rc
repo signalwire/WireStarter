@@ -29,7 +29,7 @@ __venv_info() {
 }
 
 __short_pwd() {
-    echo "${PWD/#\/workdir/\~}"
+    echo "$PWD"
 }
 
 __exit_status() {
@@ -511,10 +511,13 @@ fi
 # Install packages with a spinner animation
 _install_with_spinner() {
     local packages="$1"
-    local spinner='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local spinner='|/-\'
     local i=0
 
     printf "Installing base packages... "
+
+    # Disable job control messages
+    set +m
 
     # Run pip install in background
     pip install $packages > /dev/null 2>&1 &
@@ -522,18 +525,22 @@ _install_with_spinner() {
 
     # Show spinner while pip runs
     while kill -0 $pid 2>/dev/null; do
-        printf "\b${spinner:i++%${#spinner}:1}"
+        printf "\b%c" "${spinner:i%4:1}"
+        i=$((i+1))
         sleep 0.1
     done
 
     # Check exit status
-    wait $pid
+    wait $pid 2>/dev/null
     local status=$?
 
+    # Re-enable job control
+    set -m
+
     if [ $status -eq 0 ]; then
-        printf "\b done\n"
+        printf "\bdone\n"
     else
-        printf "\b failed\n"
+        printf "\bfailed\n"
     fi
 
     return $status
@@ -604,10 +611,8 @@ venv() {
                 # Install default packages with spinner
                 _install_with_spinner "flask requests signalwire-agents"
                 if [ -f "requirements.txt" ]; then
-                    read -p "requirements.txt found. Install dependencies? (y/n): " choice
-                    if [ "$choice" = "y" ]; then
-                        pip install -r requirements.txt
-                    fi
+                    echo "Installing requirements.txt..."
+                    pip install -r requirements.txt > /dev/null 2>&1
                 fi
             fi
             ;;
