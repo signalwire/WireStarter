@@ -623,13 +623,14 @@ venv() {
     local action="$1"
     local venv_path=$(_get_venv_path)
 
-    # Ensure we're in /workdir
-    if [[ "$PWD" != /workdir/* ]]; then
-        echo "Error: venv only works in /workdir directories"
-        return 1
-    fi
-
     case "$action" in
+        init|delete|path)
+            # These commands require being in /workdir
+            if [[ "$PWD" != /workdir/* ]]; then
+                echo "Error: venv $action only works in /workdir directories"
+                return 1
+            fi
+            ;;&
         init)
             if [ -d "$venv_path" ]; then
                 echo "Venv already exists: $venv_path"
