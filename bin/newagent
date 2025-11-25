@@ -182,13 +182,26 @@ class MainAgent(AgentBase):
         """Set up debug and post-prompt webhooks."""
         proxy_url = os.getenv("SWML_PROXY_URL_BASE", "")
         debug_level = int(os.getenv("DEBUG_WEBHOOK_LEVEL", "1"))
+        auth_user = os.getenv("SWML_BASIC_AUTH_USER", "")
+        auth_pass = os.getenv("SWML_BASIC_AUTH_PASSWORD", "")
 
         if proxy_url and debug_level > 0:
+            # Build URL with basic auth credentials
+            if auth_user and auth_pass:
+                # Insert credentials into URL: https://user:pass@host/path
+                if "://" in proxy_url:
+                    scheme, rest = proxy_url.split("://", 1)
+                    auth_proxy_url = f"{scheme}://{auth_user}:{auth_pass}@{rest}"
+                else:
+                    auth_proxy_url = f"{auth_user}:{auth_pass}@{proxy_url}"
+            else:
+                auth_proxy_url = proxy_url
+
             self.set_params({
-                "debug_webhook_url": f"{proxy_url}/debug",
+                "debug_webhook_url": f"{auth_proxy_url}/debug",
                 "debug_webhook_level": debug_level,
             })
-            self.set_post_prompt_url(f"{proxy_url}/post_prompt")
+            self.set_post_prompt_url(f"{auth_proxy_url}/post_prompt")
 
     def on_summary(self, summary):
         """Handle call summary."""
@@ -213,7 +226,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import request
+from starlette.requests import Request
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -332,26 +346,234 @@ def main():
         server.serve_static_files(str(web_dir))
 
     # Add debug webhook endpoint
-    @server.app.route('/debug', methods=['POST'])
-    def debug_webhook():
+    @server.app.post('/debug')
+    async def debug_webhook(request: Request):
         """Receive and display debug webhook data."""
         try:
-            data = request.get_json(force=True)
+            data = await request.json()
         except:
-            data = request.form.to_dict() or request.data.decode('utf-8', errors='ignore')
+            body = await request.body()
+            data = body.decode('utf-8', errors='ignore')
         print_debug_data(data)
-        return {'status': 'received'}, 200
+        return {'status': 'received'}
 
     # Add post-prompt webhook endpoint
-    @server.app.route('/post_prompt', methods=['POST'])
-    def post_prompt_webhook():
+    @server.app.post('/post_prompt')
+    async def post_prompt_webhook(request: Request):
         """Receive and display post-prompt summary data."""
         try:
-            data = request.get_json(force=True)
+            data = await request.json()
         except:
-            data = request.form.to_dict() or request.data.decode('utf-8', errors='ignore')
+            body = await request.body()
+            data = body.decode('utf-8', errors='ignore')
         print_post_prompt_data(data)
-        return {'status': 'received'}, 200
+        return {'status': 'received'}
+
+    # Store the SWML handler info for reuse
+    swml_handler_info = {"id": None, "address_id": None, "address": None}
+
+    def get_signalwire_host():
+        """Get the full SignalWire host from space name."""
+        space = os.getenv("SIGNALWIRE_SPACE_NAME", "")
+        if not space:
+            return None
+        # If it's already a full domain, use it as-is
+        if "." in space:
+            return space
+        # Otherwise append .signalwire.com
+        return f"{space}.signalwire.com"
+
+    def setup_swml_handler():
+        """Set up SWML handler on startup."""
+        sw_host = get_signalwire_host()
+        project = os.getenv("SIGNALWIRE_PROJECT_ID", "")
+        token = os.getenv("SIGNALWIRE_TOKEN", "")
+        agent_name = os.getenv("AGENT_NAME", "agent")
+        auth_user = os.getenv("SWML_BASIC_AUTH_USER", "")
+        auth_pass = os.getenv("SWML_BASIC_AUTH_PASSWORD", "")
+
+        if not all([sw_host, project, token]):
+            print(f"{YELLOW}SignalWire credentials not configured - skipping SWML handler setup{RESET}")
+            return
+
+        if not proxy_url:
+            print(f"{YELLOW}SWML_PROXY_URL_BASE not set - skipping SWML handler setup{RESET}")
+            return
+
+        # Build SWML URL with basic auth credentials
+        if auth_user and auth_pass and "://" in proxy_url:
+            scheme, rest = proxy_url.split("://", 1)
+            swml_url = f"{scheme}://{auth_user}:{auth_pass}@{rest}/swml"
+        else:
+            swml_url = proxy_url + "/swml"
+
+        auth = (project, token)
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+        # Look for an existing handler by name
+        existing = find_existing_handler(sw_host, auth, agent_name)
+        if existing:
+            swml_handler_info["id"] = existing["id"]
+            swml_handler_info["address_id"] = existing["address_id"]
+            swml_handler_info["address"] = existing["address"]
+
+            # Check if the URL needs updating
+            if existing.get("url") != swml_url:
+                try:
+                    update_resp = requests.put(
+                        f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{existing['id']}",
+                        json={
+                            "primary_request_url": swml_url,
+                            "primary_request_method": "POST"
+                        },
+                        auth=auth,
+                        headers=headers
+                    )
+                    update_resp.raise_for_status()
+                    print(f"{GREEN}Updated SWML handler:{RESET} {existing['name']}")
+                    print(f"{GREEN}New URL:{RESET} {swml_url}")
+                except Exception as e:
+                    print(f"{YELLOW}Failed to update handler URL:{RESET} {e}")
+            else:
+                print(f"{GREEN}Using existing SWML handler:{RESET} {existing['name']}")
+
+            print(f"{GREEN}Call address:{RESET} {existing['address']}")
+        else:
+            # Create a new external SWML handler with the agent name
+            try:
+                handler_resp = requests.post(
+                    f"https://{sw_host}/api/fabric/resources/external_swml_handlers",
+                    json={
+                        "name": agent_name,
+                        "used_for": "calling",
+                        "primary_request_url": swml_url,
+                        "primary_request_method": "POST"
+                    },
+                    auth=auth,
+                    headers=headers
+                )
+                handler_resp.raise_for_status()
+                handler_id = handler_resp.json().get("id")
+                swml_handler_info["id"] = handler_id
+
+                # Get the address for this handler
+                addr_resp = requests.get(
+                    f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{handler_id}/addresses",
+                    auth=auth,
+                    headers={"Accept": "application/json"}
+                )
+                addr_resp.raise_for_status()
+                addresses = addr_resp.json().get("data", [])
+                if addresses:
+                    swml_handler_info["address_id"] = addresses[0]["id"]
+                    swml_handler_info["address"] = addresses[0]["channels"]["audio"]
+                    print(f"{GREEN}Created SWML handler:{RESET} {agent_name}")
+                    print(f"{GREEN}Call address:{RESET} {swml_handler_info['address']}")
+                else:
+                    print(f"{YELLOW}No address found for handler{RESET}")
+            except Exception as e:
+                print(f"{YELLOW}Failed to create SWML handler:{RESET} {e}")
+
+    def find_existing_handler(sw_host, auth, agent_name):
+        """Find an existing SWML handler by name."""
+        try:
+            # List all external SWML handlers
+            resp = requests.get(
+                f"https://{sw_host}/api/fabric/resources/external_swml_handlers",
+                auth=auth,
+                headers={"Accept": "application/json"}
+            )
+            if resp.status_code != 200:
+                print(f"{YELLOW}Failed to list handlers:{RESET} {resp.status_code}")
+                return None
+
+            handlers = resp.json().get("data", [])
+
+            for handler in handlers:
+                # The name is nested in swml_webhook object
+                swml_webhook = handler.get("swml_webhook", {})
+                handler_name = swml_webhook.get("name") or handler.get("display_name")
+
+                # Check if this handler matches our agent name
+                if handler_name == agent_name:
+                    handler_id = handler.get("id")
+                    handler_url = swml_webhook.get("primary_request_url", "")
+                    # Get the address for this handler
+                    addr_resp = requests.get(
+                        f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{handler_id}/addresses",
+                        auth=auth,
+                        headers={"Accept": "application/json"}
+                    )
+                    if addr_resp.status_code == 200:
+                        addresses = addr_resp.json().get("data", [])
+                        if addresses:
+                            return {
+                                "id": handler_id,
+                                "name": handler_name,
+                                "url": handler_url,
+                                "address_id": addresses[0]["id"],
+                                "address": addresses[0]["channels"]["audio"]
+                            }
+        except Exception as e:
+            print(f"{YELLOW}Error checking existing handlers:{RESET} {e}")
+        return None
+
+    @server.app.get('/get_token')
+    def get_token():
+        """Get a guest token for the web client to call the agent."""
+        from starlette.responses import JSONResponse
+
+        sw_host = get_signalwire_host()
+        project = os.getenv("SIGNALWIRE_PROJECT_ID", "")
+        token = os.getenv("SIGNALWIRE_TOKEN", "")
+
+        if not all([sw_host, project, token]):
+            return JSONResponse({"error": "SignalWire credentials not configured"}, status_code=500)
+
+        if not swml_handler_info["address_id"]:
+            return JSONResponse({"error": "SWML handler not configured - check startup logs"}, status_code=500)
+
+        auth = (project, token)
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+        try:
+            # Create a guest token with access to this address
+            import time
+            expire_at = int(time.time()) + 3600 * 24  # 24 hours
+
+            guest_resp = requests.post(
+                f"https://{sw_host}/api/fabric/guests/tokens",
+                json={
+                    "allowed_addresses": [swml_handler_info["address_id"]],
+                    "expire_at": expire_at
+                },
+                auth=auth,
+                headers=headers
+            )
+            guest_resp.raise_for_status()
+            guest_token = guest_resp.json().get("token", "")
+
+            return {
+                "token": guest_token,
+                "address": swml_handler_info["address"]
+            }
+
+        except requests.exceptions.RequestException as e:
+            print(f"{YELLOW}Token request failed:{RESET} {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"{YELLOW}Response:{RESET} {e.response.text}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @server.app.get('/get_credentials')
+    def get_credentials():
+        """Get basic auth credentials for the web UI."""
+        return {
+            "user": os.getenv("SWML_BASIC_AUTH_USER", ""),
+            "password": os.getenv("SWML_BASIC_AUTH_PASSWORD", "")
+        }
+
+    # Set up SWML handler on startup
+    setup_swml_handler()
 
     # Print startup banner
     print()
@@ -369,6 +591,11 @@ def main():
         print(f"  SWML:        {proxy_url}/swml")
         print(f"  Debug:       {proxy_url}/debug")
         print(f"  Post-prompt: {proxy_url}/post_prompt")
+
+    if swml_handler_info["address"]:
+        print()
+        print(f"{BOLD}{YELLOW}WebRTC Call Address:{RESET}")
+        print(f"  {swml_handler_info['address']}")
 
     print()
     print(f"{DIM}Debug level: {debug_level} (0=off, 1=basic, 2=verbose){RESET}")
@@ -429,6 +656,9 @@ SIGNALWIRE_TOKEN=${SW_TOKEN}
 HOST=0.0.0.0
 PORT=5000
 
+# Agent name (used for SWML handler - keeps the same handler across restarts)
+AGENT_NAME=${NAME}
+
 # Basic Auth for SWML webhooks
 SWML_BASIC_AUTH_USER=signalwire
 SWML_BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASS}
@@ -451,6 +681,9 @@ SIGNALWIRE_TOKEN=your-api-token
 # Agent Server Configuration
 HOST=0.0.0.0
 PORT=5000
+
+# Agent name (used for SWML handler - keeps the same handler across restarts)
+AGENT_NAME=myagent
 
 # Basic Auth for SWML webhooks
 SWML_BASIC_AUTH_USER=signalwire
@@ -690,6 +923,77 @@ cat > web/index.html << 'HTMLEOF'
             border-radius: 8px;
             margin: 20px 0;
         }
+        .call-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            color: white;
+            text-align: center;
+        }
+        .call-section h2 {
+            color: white;
+            border: none;
+            margin-top: 0;
+        }
+        .call-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .call-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .call-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .call-btn.connect {
+            background: #10b981;
+            color: white;
+        }
+        .call-btn.connect:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+        .call-btn.disconnect {
+            background: #ef4444;
+            color: white;
+        }
+        .call-btn.disconnect:hover:not(:disabled) {
+            background: #dc2626;
+        }
+        .call-status {
+            margin-top: 15px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .destination-input {
+            padding: 12px 15px;
+            font-size: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            width: 250px;
+        }
+        .destination-input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        .destination-input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.2);
+        }
         .endpoint {
             background: white;
             border: 1px solid #ddd;
@@ -728,14 +1032,14 @@ cat > web/index.html << 'HTMLEOF'
         pre {
             background: #1e1e1e;
             color: #d4d4d4;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             overflow-x: auto;
             font-size: 13px;
             line-height: 1.5;
+            margin: 0;
         }
         pre .comment { color: #6a9955; }
-        pre .string { color: #ce9178; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -754,13 +1058,167 @@ cat > web/index.html << 'HTMLEOF'
             color: #666;
             font-size: 14px;
         }
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-top: 15px;
+        }
+        .tab {
+            padding: 8px 16px;
+            background: #e9ecef;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .tab:hover { background: #dee2e6; }
+        .tab.active {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-color: #1e1e1e;
+        }
+        .tab-content {
+            display: none;
+            border-radius: 0 8px 8px 8px;
+        }
+        .tab-content.active { display: block; }
+        /* Browser tab */
+        .browser-panel {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 0 8px 8px 8px;
+            padding: 15px;
+        }
+        .try-btn {
+            padding: 10px 20px;
+            background: #044cf6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .try-btn:hover { background: #0339c2; }
+        .try-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .response-area {
+            margin-top: 15px;
+            display: none;
+        }
+        .response-area.visible { display: block; }
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .response-status {
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .response-status.success { color: #10b981; }
+        .response-status.error { color: #ef4444; }
+        .response-time {
+            font-size: 12px;
+            color: #666;
+        }
+        .response-body {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        /* Curl tab */
+        .curl-panel {
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.1);
+            color: #999;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        /* Audio settings */
+        .audio-settings {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .audio-setting {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.9);
+        }
+        .audio-setting input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .audio-setting label {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <h1>SignalWire Agent</h1>
+    <h1>SignalWire Agents SDK</h1>
 
     <div class="status">
-        ✅ Your agent is running and ready to receive calls!
+        Your agent is running and ready to receive calls!
+    </div>
+
+    <div class="call-section">
+        <h2>Call Your Agent</h2>
+        <p>Test your agent directly from the browser using WebRTC.</p>
+        <div class="call-controls">
+            <input type="text" id="destination" class="destination-input" placeholder="Address will be auto-filled" />
+            <button id="connectBtn" class="call-btn connect">Call Agent</button>
+            <button id="disconnectBtn" class="call-btn disconnect" disabled>Hang Up</button>
+        </div>
+        <div class="audio-settings">
+            <div class="audio-setting">
+                <input type="checkbox" id="echoCancellation" checked>
+                <label for="echoCancellation">Echo Cancellation</label>
+            </div>
+            <div class="audio-setting">
+                <input type="checkbox" id="noiseSuppression">
+                <label for="noiseSuppression">Noise Suppression</label>
+            </div>
+            <div class="audio-setting">
+                <input type="checkbox" id="autoGainControl">
+                <label for="autoGainControl">Auto Gain Control</label>
+            </div>
+        </div>
+        <div id="callStatus" class="call-status"></div>
     </div>
 
     <h2>Endpoints</h2>
@@ -768,31 +1226,98 @@ cat > web/index.html << 'HTMLEOF'
     <div class="endpoint">
         <h3><span class="method post">POST</span> <span class="path">/swml</span></h3>
         <p>Main SWML endpoint for SignalWire to fetch agent configuration. Point your SignalWire phone number here.</p>
-        <p><strong>Test it:</strong></p>
-        <pre><span class="comment"># Get the SWML configuration</span>
-curl -X POST http://localhost:5000/swml \
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'swml-browser')">Browser</div>
+            <div class="tab" onclick="switchTab(this, 'swml-curl')">curl</div>
+        </div>
+        <div id="swml-browser" class="tab-content active">
+            <div class="browser-panel">
+                <button class="try-btn" onclick="tryEndpoint('POST', '/swml', {}, 'swml-response', true)">Try it</button>
+                <div id="swml-response" class="response-area"></div>
+            </div>
+        </div>
+        <div id="swml-curl" class="tab-content">
+            <div class="curl-panel">
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><span class="comment"># Get the SWML configuration</span>
+curl -X POST <span class="base-url"></span>/swml \
+  -u <span class="auth-creds"></span> \
   -H "Content-Type: application/json" \
   -d '{}'</pre>
+            </div>
+        </div>
     </div>
 
     <div class="endpoint">
         <h3><span class="method post">POST</span> <span class="path">/debug</span></h3>
         <p>Debug webhook endpoint. Receives real-time debug data during calls and displays it in the console.</p>
-        <p><strong>Test it:</strong></p>
-        <pre><span class="comment"># Simulate a debug webhook</span>
-curl -X POST http://localhost:5000/debug \
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'debug-browser')">Browser</div>
+            <div class="tab" onclick="switchTab(this, 'debug-curl')">curl</div>
+        </div>
+        <div id="debug-browser" class="tab-content active">
+            <div class="browser-panel">
+                <button class="try-btn" onclick="tryEndpoint('POST', '/debug', {event_type: 'test', call_id: 'test-123'}, 'debug-response', true)">Try it</button>
+                <div id="debug-response" class="response-area"></div>
+            </div>
+        </div>
+        <div id="debug-curl" class="tab-content">
+            <div class="curl-panel">
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><span class="comment"># Simulate a debug webhook</span>
+curl -X POST <span class="base-url"></span>/debug \
+  -u <span class="auth-creds"></span> \
   -H "Content-Type: application/json" \
   -d '{"event_type": "test", "call_id": "test-123"}'</pre>
+            </div>
+        </div>
     </div>
 
     <div class="endpoint">
         <h3><span class="method post">POST</span> <span class="path">/post_prompt</span></h3>
         <p>Post-prompt webhook endpoint. Receives call summary data when calls end.</p>
-        <p><strong>Test it:</strong></p>
-        <pre><span class="comment"># Simulate a post-prompt webhook</span>
-curl -X POST http://localhost:5000/post_prompt \
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'postprompt-browser')">Browser</div>
+            <div class="tab" onclick="switchTab(this, 'postprompt-curl')">curl</div>
+        </div>
+        <div id="postprompt-browser" class="tab-content active">
+            <div class="browser-panel">
+                <button class="try-btn" onclick="tryEndpoint('POST', '/post_prompt', {post_prompt_data: {summary: 'Test call completed'}}, 'postprompt-response', true)">Try it</button>
+                <div id="postprompt-response" class="response-area"></div>
+            </div>
+        </div>
+        <div id="postprompt-curl" class="tab-content">
+            <div class="curl-panel">
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><span class="comment"># Simulate a post-prompt webhook</span>
+curl -X POST <span class="base-url"></span>/post_prompt \
+  -u <span class="auth-creds"></span> \
   -H "Content-Type: application/json" \
   -d '{"post_prompt_data": {"summary": "Test call completed"}}'</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method get">GET</span> <span class="path">/get_token</span></h3>
+        <p>Get a guest token for WebRTC calls. Creates an external SWML handler and returns a token to call your agent.</p>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'token-browser')">Browser</div>
+            <div class="tab" onclick="switchTab(this, 'token-curl')">curl</div>
+        </div>
+        <div id="token-browser" class="tab-content active">
+            <div class="browser-panel">
+                <button class="try-btn" onclick="tryEndpoint('GET', '/get_token', null, 'token-response')">Try it</button>
+                <div id="token-response" class="response-area"></div>
+            </div>
+        </div>
+        <div id="token-curl" class="tab-content">
+            <div class="curl-panel">
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><span class="comment"># Get a guest token</span>
+curl <span class="base-url"></span>/get_token</pre>
+            </div>
+        </div>
     </div>
 
     <div class="endpoint">
@@ -846,6 +1371,205 @@ testapp</pre>
         Powered by <a href="https://signalwire.com">SignalWire</a> and the
         <a href="https://github.com/signalwire/signalwire-agents">SignalWire Agents SDK</a>
     </div>
+
+    <script src="https://cdn.signalwire.com/@signalwire/client"></script>
+    <script>
+        // Store auth credentials
+        let authCreds = null;
+
+        // Tab switching
+        function switchTab(tabEl, contentId) {
+            const endpoint = tabEl.closest('.endpoint');
+            endpoint.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            endpoint.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            tabEl.classList.add('active');
+            document.getElementById(contentId).classList.add('active');
+        }
+
+        // Copy curl command
+        function copyCode(btn) {
+            const pre = btn.parentElement.querySelector('pre');
+            const text = pre.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const orig = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = orig, 1500);
+            });
+        }
+
+        // Try endpoint in browser
+        async function tryEndpoint(method, path, body, responseId, requiresAuth) {
+            const responseArea = document.getElementById(responseId);
+            responseArea.classList.add('visible');
+            responseArea.innerHTML = '<div class="response-status">Loading...</div>';
+
+            const startTime = performance.now();
+            try {
+                const options = {
+                    method: method,
+                    headers: {}
+                };
+                if (body) {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(body);
+                }
+                if (requiresAuth && authCreds) {
+                    options.headers['Authorization'] = 'Basic ' + btoa(authCreds.user + ':' + authCreds.password);
+                }
+
+                const resp = await fetch(path, options);
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+
+                let data;
+                const contentType = resp.headers.get('content-type') || '';
+                if (contentType.includes('json')) {
+                    data = await resp.json();
+                    data = JSON.stringify(data, null, 2);
+                } else {
+                    data = await resp.text();
+                }
+
+                const statusClass = resp.ok ? 'success' : 'error';
+                responseArea.innerHTML = `
+                    <div class="response-header">
+                        <span class="response-status ${statusClass}">${resp.status} ${resp.statusText}</span>
+                        <span class="response-time">${duration}ms</span>
+                    </div>
+                    <div class="response-body">${escapeHtml(data)}</div>
+                `;
+            } catch (err) {
+                responseArea.innerHTML = `
+                    <div class="response-header">
+                        <span class="response-status error">Error</span>
+                    </div>
+                    <div class="response-body">${escapeHtml(err.message)}</div>
+                `;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // WebRTC calling
+        let client = null;
+        let roomSession = null;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const destinationInput = document.getElementById('destination');
+        const callStatus = document.getElementById('callStatus');
+
+        function updateCallStatus(message) {
+            callStatus.textContent = message;
+        }
+
+        async function connect() {
+            try {
+                connectBtn.disabled = true;
+                updateCallStatus('Getting token...');
+
+                const tokenResp = await fetch('/get_token');
+                const tokenData = await tokenResp.json();
+
+                if (tokenData.error) {
+                    throw new Error(tokenData.error);
+                }
+
+                if (tokenData.address) {
+                    destinationInput.value = tokenData.address;
+                }
+
+                updateCallStatus('Connecting...');
+
+                client = await window.SignalWire.SignalWire({
+                    token: tokenData.token
+                });
+
+                const destination = tokenData.address || destinationInput.value;
+                roomSession = await client.dial({
+                    to: destination,
+                    audio: {
+                        echoCancellation: document.getElementById('echoCancellation').checked,
+                        noiseSuppression: document.getElementById('noiseSuppression').checked,
+                        autoGainControl: document.getElementById('autoGainControl').checked
+                    },
+                    video: false
+                });
+
+                roomSession.on('call.joined', () => {
+                    updateCallStatus('Connected');
+                    disconnectBtn.disabled = false;
+                });
+
+                roomSession.on('call.left', () => {
+                    updateCallStatus('Call ended');
+                    cleanup();
+                });
+
+                roomSession.on('destroy', () => {
+                    updateCallStatus('Call ended');
+                    cleanup();
+                });
+
+                // Start the call
+                await roomSession.start();
+
+            } catch (err) {
+                console.error('Connection error:', err);
+                updateCallStatus('Error: ' + err.message);
+                cleanup();
+            }
+        }
+
+        async function disconnect() {
+            try {
+                if (roomSession) {
+                    await roomSession.hangup();
+                }
+            } catch (err) {
+                console.error('Disconnect error:', err);
+            }
+            cleanup();
+        }
+
+        function cleanup() {
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            roomSession = null;
+            client = null;
+        }
+
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+
+        // Update base URLs and fetch credentials on load
+        document.addEventListener('DOMContentLoaded', async function() {
+            const baseUrl = window.location.origin;
+            document.querySelectorAll('.base-url').forEach(function(el) {
+                el.textContent = baseUrl;
+            });
+
+            // Fetch auth credentials for curl examples
+            try {
+                const credsResp = await fetch('/get_credentials');
+                if (credsResp.ok) {
+                    authCreds = await credsResp.json();
+                    document.querySelectorAll('.auth-creds').forEach(function(el) {
+                        el.textContent = authCreds.user + ':' + authCreds.password;
+                    });
+                }
+            } catch (e) {
+                console.log('Could not fetch credentials:', e);
+                document.querySelectorAll('.auth-creds').forEach(function(el) {
+                    el.textContent = 'user:password';
+                });
+            }
+        });
+    </script>
 </body>
 </html>
 HTMLEOF
