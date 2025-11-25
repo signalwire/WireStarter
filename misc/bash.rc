@@ -579,7 +579,11 @@ cd() {
     else
         # Deactivate if leaving a venv-enabled directory
         if [ -n "$VIRTUAL_ENV" ]; then
-            deactivate
+            if type deactivate &>/dev/null; then
+                deactivate
+            else
+                unset VIRTUAL_ENV
+            fi
             echo "Deactivated venv"
         fi
     fi
