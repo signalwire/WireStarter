@@ -114,11 +114,7 @@ class MainAgent(AgentBase):
     def __init__(self):
         super().__init__(
             name="main-agent",
-            route="/swml",
-            host=os.getenv("HOST", "0.0.0.0"),
-            port=int(os.getenv("PORT", "5000")),
-            static_folder="web",
-            static_url_path="/"
+            route="/swml"
         )
 
         # Set basic auth if configured
@@ -184,12 +180,6 @@ class MainAgent(AgentBase):
     def on_summary(self, summary):
         """Handle call summary."""
         print(f"Call summary: {summary}")
-
-
-# Allow running directly for testing
-if __name__ == "__main__":
-    agent = MainAgent()
-    agent.run()
 EOF
 print_success "agents/main_agent.py"
 
@@ -205,19 +195,28 @@ cat > app.py << 'EOF'
 """Main entry point for the agent server."""
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
+from signalwire_agents import AgentServer
 from agents import MainAgent
 
 
 def main():
-    agent = MainAgent()
-
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "5000"))
+
+    # Create server and register agent
+    server = AgentServer(host=host, port=port)
+    server.register(MainAgent())
+
+    # Serve static files from web/ directory at /
+    web_dir = Path(__file__).parent / "web"
+    if web_dir.exists():
+        server.serve_static_files(str(web_dir))
 
     print(f"Starting agent server on {host}:{port}")
     print(f"SWML endpoint: http://{host}:{port}/swml")
@@ -228,7 +227,7 @@ def main():
     if proxy_url:
         print(f"Public SWML: {proxy_url}/swml")
 
-    agent.run()
+    server.run()
 
 
 if __name__ == "__main__":
