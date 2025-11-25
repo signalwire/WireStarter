@@ -618,12 +618,19 @@ venv() {
             ;;
         delete)
             if [ -d "$venv_path" ]; then
-                if [ "$VIRTUAL_ENV" = "$venv_path" ]; then
-                    deactivate
-                    echo "Deactivated venv"
+                echo "This will delete the venv for the CURRENT DIRECTORY:"
+                echo "  $venv_path"
+                read -p "Are you sure? (y/n): " confirm
+                if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+                    if [ "$VIRTUAL_ENV" = "$venv_path" ]; then
+                        deactivate
+                        echo "Deactivated venv"
+                    fi
+                    rm -rf "$venv_path"
+                    echo "Deleted venv: $venv_path"
+                else
+                    echo "Cancelled"
                 fi
-                rm -rf "$venv_path"
-                echo "Deleted venv: $venv_path"
             else
                 echo "No venv found for this directory"
             fi
@@ -637,11 +644,18 @@ venv() {
             ;;
         nuke)
             if [ -n "$VIRTUAL_ENV" ]; then
-                local active_venv="$VIRTUAL_ENV"
-                deactivate
-                echo "Deactivated venv"
-                rm -rf "$active_venv"
-                echo "Deleted venv: $active_venv"
+                echo "This will delete the CURRENTLY ACTIVE venv:"
+                echo "  $VIRTUAL_ENV"
+                read -p "Are you sure? (y/n): " confirm
+                if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+                    local active_venv="$VIRTUAL_ENV"
+                    deactivate
+                    echo "Deactivated venv"
+                    rm -rf "$active_venv"
+                    echo "Deleted venv: $active_venv"
+                else
+                    echo "Cancelled"
+                fi
             else
                 echo "No active venv to nuke"
             fi
