@@ -135,20 +135,42 @@ start_ngrok() {
 
 setup_credentials() {
     # Reload .env to get latest values (in case file was modified externally)
+    # Use a safer method that handles both quoted and unquoted values
+    local sw_space="" project_id="" api_token="" freeswitch_pat="" ngrok_token="" ngrok_args="" visual="vim"
     if [ -f "/workdir/.env" ]; then
-        set -a
-        . /workdir/.env 2>/dev/null || true
-        set +a
+        # Parse each line manually to handle unquoted values with spaces
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip comments and empty lines
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$line" ]] && continue
+            # Extract key and value, stripping quotes if present
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+                local key="${BASH_REMATCH[1]}"
+                local val="${BASH_REMATCH[2]}"
+                # Remove surrounding quotes if present
+                val="${val#\"}" ; val="${val%\"}"
+                val="${val#\'}" ; val="${val%\'}"
+                case "$key" in
+                    SIGNALWIRE_SPACE_NAME) sw_space="$val" ;;
+                    SIGNALWIRE_PROJECT_ID) project_id="$val" ;;
+                    SIGNALWIRE_TOKEN) api_token="$val" ;;
+                    FREESWITCH_PAT) freeswitch_pat="$val" ;;
+                    NGROK_TOKEN) ngrok_token="$val" ;;
+                    NGROK_ARGS) ngrok_args="$val" ;;
+                    VISUAL) visual="$val" ;;
+                esac
+            fi
+        done < /workdir/.env
     fi
 
-    # Prepopulate with existing values
-    local sw_space="${SIGNALWIRE_SPACE_NAME:-}"
-    local project_id="${SIGNALWIRE_PROJECT_ID:-}"
-    local api_token="${SIGNALWIRE_TOKEN:-}"
-    local freeswitch_pat="${FREESWITCH_PAT:-}"
-    local ngrok_token="${NGROK_TOKEN:-}"
-    local ngrok_args="${NGROK_ARGS:-}"
-    local visual="${VISUAL:-vim}"
+    # Fall back to environment if not found in file
+    sw_space="${sw_space:-${SIGNALWIRE_SPACE_NAME:-}}"
+    project_id="${project_id:-${SIGNALWIRE_PROJECT_ID:-}}"
+    api_token="${api_token:-${SIGNALWIRE_TOKEN:-}}"
+    freeswitch_pat="${freeswitch_pat:-${FREESWITCH_PAT:-}}"
+    ngrok_token="${ngrok_token:-${NGROK_TOKEN:-}}"
+    ngrok_args="${ngrok_args:-${NGROK_ARGS:-}}"
+    visual="${visual:-vim}"
 
     sw_space=$(whiptail --inputbox "SignalWire Space Domain:" 8 60 "$sw_space" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
