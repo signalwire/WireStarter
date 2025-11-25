@@ -1326,17 +1326,32 @@ curl <span class="base-url"></span>/get_token</pre>
     </div>
 
     <h2>SWAIG Functions</h2>
-    <p>This agent has the following tools available:</p>
-    <table>
-        <tr>
-            <th>Function</th>
-            <th>Description</th>
-        </tr>
-        <tr>
-            <td><code>get_info</code></td>
-            <td>Get information about a topic</td>
-        </tr>
-    </table>
+    <p>Test the agent's SWAIG functions directly.</p>
+
+    <div class="endpoint">
+        <h3><span class="method post">POST</span> <span class="path">/swaig</span> - get_info</h3>
+        <p>Get information about a topic. This is a sample SWAIG function you can customize.</p>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'swaig-browser')">Browser</div>
+            <div class="tab" onclick="switchTab(this, 'swaig-curl')">curl</div>
+        </div>
+        <div id="swaig-browser" class="tab-content active">
+            <div class="browser-panel">
+                <button class="try-btn" onclick="tryEndpoint('POST', '/swaig', {function: 'get_info', argument: {parsed: [{topic: 'SignalWire'}]}}, 'swaig-response', true)">Try it</button>
+                <div id="swaig-response" class="response-area"></div>
+            </div>
+        </div>
+        <div id="swaig-curl" class="tab-content">
+            <div class="curl-panel">
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><span class="comment"># Call the get_info SWAIG function</span>
+curl -X POST <span class="base-url"></span>/swaig \
+  -u <span class="auth-creds"></span> \
+  -H "Content-Type: application/json" \
+  -d '{"function": "get_info", "argument": {"parsed": [{"topic": "SignalWire"}]}}'</pre>
+            </div>
+        </div>
+    </div>
 
     <h2>Configuration</h2>
     <table>
