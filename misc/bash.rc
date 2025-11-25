@@ -4,8 +4,87 @@ export HISTFILESIZE=20000
 export HISTCONTROL=ignoredups:erasedups
 shopt -s histappend
 
-export PROMPT_COMMAND='echo -en "\033[m\033[38;5;2m"$(( `sed -n "s/MemFree:[\t ]\+\([0-9]\+\) kB/\1/p" /proc/meminfo`/1024))"\033[38;5;22m/"$((`sed -n "s/MemTotal:[\t ]\+\([0-9]\+\) kB/\1/Ip" /proc/meminfo`/1024 ))MB"\t\033[m\033[38;5;55m$(< /proc/loadavg)\033[m"'
-export PS1='\[\e[m\n\e[32m\][$$:$PPID\j:\!\[\e[32m\]]\[\e[0;36m\] \T \d \[\e[1;30m\][\[\e[1;34m\]\u@\H\[\e[1;30m\]:\[\e[0;37m\]${SSH_TTY} \[\e[0;32m\]+${SHLVL}\[\e[1;30m\]] \[\e[1;37m\]\w\[\e[0;37m\] \n($SHLVL:\!)\$ '
+# Colors
+_C_RESET='\[\e[0m\]'
+_C_BOLD='\[\e[1m\]'
+_C_DIM='\[\e[2m\]'
+_C_RED='\[\e[31m\]'
+_C_GREEN='\[\e[32m\]'
+_C_YELLOW='\[\e[33m\]'
+_C_BLUE='\[\e[34m\]'
+_C_MAGENTA='\[\e[35m\]'
+_C_CYAN='\[\e[36m\]'
+_C_WHITE='\[\e[37m\]'
+
+# Git branch/status for prompt
+_git_prompt() {
+    local branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+    if [ -n "$branch" ]; then
+        local status=""
+        # Check for uncommitted changes
+        if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+            status="*"
+        fi
+        # Check for untracked files
+        if [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
+            status="${status}+"
+        fi
+        echo " ($branch$status)"
+    fi
+}
+
+# Python venv indicator
+_venv_prompt() {
+    if [ -n "$VIRTUAL_ENV" ]; then
+        local venv_name=$(basename "$VIRTUAL_ENV")
+        echo " [py:$venv_name]"
+    fi
+}
+
+# Shorten path: /workdir/foo/bar -> ~/foo/bar
+_short_pwd() {
+    echo "${PWD/#\/workdir/\~}"
+}
+
+# Build the prompt
+_build_prompt() {
+    local exit_code=$?
+    local prompt=""
+
+    # Newline for breathing room
+    prompt+="\n"
+
+    # Exit code indicator (red if non-zero)
+    if [ $exit_code -ne 0 ]; then
+        prompt+="${_C_RED}[$exit_code]${_C_RESET} "
+    fi
+
+    # Time in dim
+    prompt+="${_C_DIM}\t${_C_RESET} "
+
+    # Directory in bold cyan
+    prompt+="${_C_BOLD}${_C_CYAN}$(_short_pwd)${_C_RESET}"
+
+    # Git info in yellow
+    prompt+="${_C_YELLOW}$(_git_prompt)${_C_RESET}"
+
+    # Venv info in magenta
+    prompt+="${_C_MAGENTA}$(_venv_prompt)${_C_RESET}"
+
+    # Newline and prompt char
+    prompt+="\n"
+
+    # Green $ for normal, red # for root
+    if [ $EUID -eq 0 ]; then
+        prompt+="${_C_RED}#${_C_RESET} "
+    else
+        prompt+="${_C_GREEN}\$${_C_RESET} "
+    fi
+
+    PS1="$prompt"
+}
+
+PROMPT_COMMAND=_build_prompt
 
 if [ -f "/workdir/.env" ]; then
     set -a
