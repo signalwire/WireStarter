@@ -95,6 +95,7 @@ setup_credentials() {
     local sw_space="${SIGNALWIRE_SPACE_NAME:-}"
     local project_id="${SIGNALWIRE_PROJECT_ID:-}"
     local api_token="${SIGNALWIRE_TOKEN:-}"
+    local freeswitch_pat="${FREESWITCH_PAT:-}"
     local ngrok_token="${NGROK_TOKEN:-}"
     local ngrok_args="${NGROK_ARGS:-}"
     local visual="${VISUAL:-vim}"
@@ -106,6 +107,9 @@ setup_credentials() {
     [ $? -ne 0 ] && return
 
     api_token=$(whiptail --inputbox "REST API Token:" 8 60 "$api_token" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    freeswitch_pat=$(whiptail --inputbox "FreeSWITCH PAT (optional):" 8 60 "$freeswitch_pat" --title "FreeSWITCH Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     ngrok_token=$(whiptail --inputbox "NGROK Token (optional):" 8 60 "$ngrok_token" --title "NGROK Setup" 3>&1 1>&2 2>&3)
@@ -128,6 +132,7 @@ setup_credentials() {
 SIGNALWIRE_SPACE_NAME=$sw_space
 SIGNALWIRE_PROJECT_ID=$project_id
 SIGNALWIRE_TOKEN=$api_token
+FREESWITCH_PAT=$freeswitch_pat
 NGROK_TOKEN=$ngrok_token
 NGROK_ARGS=$ngrok_args
 VISUAL=$visual

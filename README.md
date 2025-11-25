@@ -249,6 +249,7 @@ make enter
 | `SIGNALWIRE_SPACE_NAME` | Yes | Your SignalWire space (without .signalwire.com) |
 | `SIGNALWIRE_PROJECT_ID` | Yes | SignalWire project ID |
 | `SIGNALWIRE_TOKEN` | Yes | SignalWire API token |
+| `FREESWITCH_PAT` | No | FreeSWITCH package access token |
 | `NGROK_TOKEN` | No | ngrok auth token for tunneling |
 | `NGROK_ARGS` | No | Additional ngrok arguments (e.g., `--url yourdomain.ngrok.io`) |
 | `WORKDIR` | Yes | Host directory to mount as /workdir |
