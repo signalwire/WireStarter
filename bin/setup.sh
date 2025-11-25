@@ -68,9 +68,9 @@ ENVEOF
     local response_code=$(curl -s -o /dev/null -w "%{http_code}" "$test_url" -u "${project_id}:${api_token}")
 
     if [ "$response_code" = "200" ]; then
-        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n✅ SignalWire API test successful!" 10 50
+        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n[OK] SignalWire API test successful!" 10 50
     else
-        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n⚠️ SignalWire API test failed (HTTP $response_code)\nPlease verify your credentials." 12 50
+        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n[!!] SignalWire API test failed (HTTP $response_code)\nPlease verify your credentials." 12 50
     fi
 }
 
@@ -185,50 +185,50 @@ show_status() {
 
     # Credentials status
     if [ -n "$SIGNALWIRE_SPACE" ] && [ -n "$PROJECT_ID" ] && [ -n "$REST_API_TOKEN" ]; then
-        STATUS+="SignalWire: ✅ ${SIGNALWIRE_SPACE}\n"
+        STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE}\n"
     else
-        STATUS+="SignalWire: ❌ Not configured\n"
+        STATUS+="SignalWire: [--] Not configured\n"
     fi
 
     if [ -n "$NGROK_TOKEN" ]; then
-        STATUS+="NGROK: ✅ Configured\n"
+        STATUS+="NGROK: [OK] Configured\n"
     else
-        STATUS+="NGROK: ❌ Not configured\n"
+        STATUS+="NGROK: [--] Not configured\n"
     fi
 
     STATUS+="\n"
 
     if [ -d "/workdir/.go" ]; then
         GO_VER=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}')
-        STATUS+="Go: ✅ ${GO_VER}\n"
+        STATUS+="Go: [OK] ${GO_VER}\n"
     else
-        STATUS+="Go: ❌ Not installed\n"
+        STATUS+="Go: [--] Not installed\n"
     fi
 
     if [ -d "/workdir/.nvm" ]; then
-        STATUS+="NVM: ✅ Installed\n"
+        STATUS+="NVM: [OK] Installed\n"
     else
-        STATUS+="NVM: ❌ Not installed\n"
+        STATUS+="NVM: [--] Not installed\n"
     fi
 
     if [ -f "/workdir/.setuppgsql" ]; then
-        STATUS+="PostgreSQL: ✅ Configured\n"
+        STATUS+="PostgreSQL: [OK] Configured\n"
     else
-        STATUS+="PostgreSQL: ❌ Not configured\n"
+        STATUS+="PostgreSQL: [--] Not configured\n"
     fi
 
     if [ -d "/workdir/.npm" ]; then
-        STATUS+="NPM Cache: ✅ Persistent\n"
+        STATUS+="NPM Cache: [OK] Persistent\n"
     else
-        STATUS+="NPM Cache: ❌ Default\n"
+        STATUS+="NPM Cache: [--] Default\n"
     fi
 
     # Count venvs
     if [ -d "/workdir/.venvs" ]; then
         VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l)
-        STATUS+="Python venvs: ✅ ${VENV_COUNT} environments\n"
+        STATUS+="Python venvs: [OK] ${VENV_COUNT} environments\n"
     else
-        STATUS+="Python venvs: ❌ None\n"
+        STATUS+="Python venvs: [--] None\n"
     fi
 
     STATUS+="\nPersistent directories:\n"
