@@ -748,6 +748,58 @@ venv() {
     esac
 }
 
+# Wrapper for rm to auto-clean venvs when removing /workdir directories
+rm() {
+    local has_rf=false
+    local dirs_to_check=()
+
+    # Parse args to find directories being removed with -rf or -r
+    for arg in "$@"; do
+        case "$arg" in
+            -rf|-fr|-r) has_rf=true ;;
+            -*) ;;  # Skip other flags
+            *)
+                # Check if it's a directory under /workdir
+                if [ -d "$arg" ]; then
+                    # Get absolute path
+                    local abs_path
+                    if [[ "$arg" = /* ]]; then
+                        abs_path="$arg"
+                    else
+                        abs_path="$(cd "$(dirname "$arg")" 2>/dev/null && pwd)/$(basename "$arg")"
+                    fi
+
+                    if [[ "$abs_path" == /workdir/* ]] && [[ "$abs_path" != /workdir/.venvs* ]]; then
+                        dirs_to_check+=("$abs_path")
+                    fi
+                fi
+                ;;
+        esac
+    done
+
+    # Run the actual rm command
+    command rm "$@"
+    local rm_status=$?
+
+    # If rm succeeded and we had directories, clean up their venvs
+    if [ $rm_status -eq 0 ] && [ ${#dirs_to_check[@]} -gt 0 ]; then
+        for dir in "${dirs_to_check[@]}"; do
+            # Only if directory was actually removed
+            if [ ! -d "$dir" ]; then
+                local venv_name=$(echo "$dir" | sed 's|^/workdir/||' | tr '/' '_')
+                local venv_path="/workdir/.venvs/$venv_name"
+
+                if [ -d "$venv_path" ]; then
+                    command rm -rf "$venv_path"
+                    echo "Cleaned up venv: $venv_name"
+                fi
+            fi
+        done
+    fi
+
+    return $rm_status
+}
+
 up() {
     local script="${1:-app.py}"
     if [ ! -f "./$script" ]; then
