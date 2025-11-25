@@ -9,13 +9,13 @@ FROM debian:12.11-slim
 ARG python_version=python3.11
 
 # Install the basic packages
-RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server 
+RUN apt update && apt install -y screen jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools 
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox
 
-# Install Python
-RUN apt update && apt install -y python3 python3-pip python3.11-venv && pip3 install --upgrade --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh flask signalwire-agents signalwire-swml signalwire-swaig signalwire-pom
+# Install Python and dev tools
+RUN apt update && apt install -y python3 python3-pip python3.11-venv && pip3 install --upgrade --break-system-packages signalwire requests python-dotenv cmd2 setuptools pygments swsh flask signalwire-agents signalwire-swml signalwire-swaig signalwire-pom ipython httpie watchdog black build twine
 
 # Install Docker
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | tee /etc/apt/trusted.gpg.d/docker.asc > /dev/null \
@@ -32,6 +32,13 @@ RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc |  tee /etc/apt/tr
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/trusted.gpg.d/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list > /dev/null \
     && apt update \
     && apt install -y ngrok
+
+# Install Node.js 20 for AI CLI tools
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt install -y nodejs
+
+# Install Claude Code and Gemini CLI
+RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli
 
 RUN pwd
 COPY misc/foo_laml.xml.orig /tmp/.foo_laml.xml.orig

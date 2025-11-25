@@ -1,8 +1,16 @@
+# Better history settings
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTCONTROL=ignoredups:erasedups
+shopt -s histappend
+
 export PROMPT_COMMAND='echo -en "\033[m\033[38;5;2m"$(( `sed -n "s/MemFree:[\t ]\+\([0-9]\+\) kB/\1/p" /proc/meminfo`/1024))"\033[38;5;22m/"$((`sed -n "s/MemTotal:[\t ]\+\([0-9]\+\) kB/\1/Ip" /proc/meminfo`/1024 ))MB"\t\033[m\033[38;5;55m$(< /proc/loadavg)\033[m"'
 export PS1='\[\e[m\n\e[32m\][$$:$PPID\j:\!\[\e[32m\]]\[\e[0;36m\] \T \d \[\e[1;30m\][\[\e[1;34m\]\u@\H\[\e[1;30m\]:\[\e[0;37m\]${SSH_TTY} \[\e[0;32m\]+${SHLVL}\[\e[1;30m\]] \[\e[1;37m\]\w\[\e[0;37m\] \n($SHLVL:\!)\$ '
 
 if [ -f "/workdir/.env" ]; then
+    set -a
     . /workdir/.env
+    set +a
 fi
 
 SW_TEST_URL="https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts -u ${PROJECT_ID}:${REST_API_TOKEN}"
@@ -11,17 +19,20 @@ response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 # Define the output file
 ENV_FILE="/workdir/.env"
 
-if [[ $response_code  -eq 200 ]]; then
+if [[ $response_code -eq 200 ]]; then
     echo "INFO: SignalWire Credentials work ✅"
 elif [[ $response_code -eq 404 ]]; then
     echo "ERROR: SignalWire Space NOT FOUND 🧐"
     rm -f /workdir/.env
 elif [[ $response_code -eq 401 ]]; then
-    echo "ERROR: Signalwire Credentials DO NOT WORK 🤨"
+    echo "ERROR: SignalWire Credentials DO NOT WORK 🤨"
     rm -f /workdir/.env
+elif [[ $response_code -eq 000 ]]; then
+    echo "WARNING: Network unreachable, skipping validation ⚠️"
+    # Don't delete .env - network might just be down
 else
-    echo  "WARNING: SignalWire setup incomplete 🛑"
-    rm -f /workdir/.env
+    echo "WARNING: Unexpected response ($response_code), keeping credentials ⚠️"
+    # Don't delete .env for unknown errors - could be temporary
 fi
 
 
@@ -58,60 +69,54 @@ if [ ! -f "/workdir/.env" ]; then
     exitstatus=$?
     if [ $exitstatus != 0 ]; then exit; fi
 
-    # Write to .env file
+    # Write to .env file (no quotes, no export - compatible with Docker --env-file)
     {
-	echo "export SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
-	echo "export PROJECT_ID=$PROJECT_ID"
-	echo "export REST_API_TOKEN=$REST_API_TOKEN"
-	echo "export NGROK_TOKEN=$NGROK_TOKEN"
-	echo "export NGROK_ARGS='$NGROK_ARGS'"
-	echo "export VISUAL=$VISUAL"
-	echo "export WORKDIR=/workdir"
+	echo "SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
+	echo "PROJECT_ID=$PROJECT_ID"
+	echo "REST_API_TOKEN=$REST_API_TOKEN"
+	echo "NGROK_TOKEN=$NGROK_TOKEN"
+	echo "NGROK_ARGS=$NGROK_ARGS"
+	echo "VISUAL=$VISUAL"
+	echo "WORKDIR=/workdir"
     } > $ENV_FILE
 
     sed -i~ 's/\.signalwire.com//g' $ENV_FILE
 
+    set -a
     source $ENV_FILE
+    set +a
 
     # Confirmation message
     whiptail --title "Confirmation" --msgbox "Details saved to $ENV_FILE." 8 78
 
 fi
 
-if [ ! -z $NGROK_TOKEN ]; then
-    # Check if ngrok tunnel is already running
+# Wait for ngrok tunnel (started by start_services.sh)
+if [ -n "$NGROK_TOKEN" ]; then
     NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
-    
+
     if [ "$NGROK_URL" = "null" ] || [ -z "$NGROK_URL" ]; then
-        echo "Starting ngrok tunnel...";
-        /usr/local/bin/ngrok config add-authtoken $NGROK_TOKEN > /dev/null 2>&1
-        /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080
-        
-        # Wait for ngrok to start up
+        echo "Waiting for ngrok tunnel..."
         RETRY_COUNT=0
-        MAX_RETRIES=10
-        
+        MAX_RETRIES=5
+
         while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             sleep 2
             NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
-            
-            if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
-                echo "ngrok tunnel is up: $NGROK_URL"
-                export HOSTNAME=$(echo "$NGROK_URL" | sed 's/https:\/\///')
+
+            if [ "$NGROK_URL" != "null" ] && [ -n "$NGROK_URL" ]; then
                 break
-            else
-                echo "Waiting for ngrok tunnel to be up... Attempt $((RETRY_COUNT+1))/$MAX_RETRIES"
-                RETRY_COUNT=$((RETRY_COUNT+1))
             fi
+            RETRY_COUNT=$((RETRY_COUNT+1))
         done
-        
-        if [ "$NGROK_URL" = "null" ] || [ -z "$NGROK_URL" ]; then
-            echo "Failed to establish ngrok tunnel after $MAX_RETRIES attempts."
-            NGROK_URL=""
-        fi
-    else
-        echo "ngrok tunnel is already running: $NGROK_URL"
+    fi
+
+    if [ -n "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
+        echo "ngrok tunnel: $NGROK_URL"
         export HOSTNAME=$(echo "$NGROK_URL" | sed 's/https:\/\///')
+    else
+        echo "ngrok tunnel not available"
+        NGROK_URL=""
     fi
 fi
 
@@ -129,12 +134,12 @@ echo -e "\n\n";
 echo -e "Welcome to WireStarter!";
 echo -e "\n"
 
-if [ ! -z $NGROK_URL ]; then
+if [ -n "$NGROK_URL" ]; then
     echo -e "NGROK Tunnel: $NGROK_URL";
     echo -e "/workdir/public -> $NGROK_URL/public\n";
 fi
 
-if [ ! -z $WORKDIR ]; then
+if [ -n "$WORKDIR" ]; then
     echo -e "Persistent host directory is /workdir -> $WORKDIR\n";
 fi
 
@@ -158,13 +163,34 @@ if [  -d "/workdir/.ssh" ]; then
     ln -f -s /workdir/.ssh ~
 fi
 
-if [  -f "/workdir/.setuppgsql" ]; then
-   /usr/bin/setuppgsql
+# Claude Code config persistence
+if [ -d "/workdir/.claude" ]; then
+    rm -rf ~/.claude
+    ln -f -s /workdir/.claude ~
+else
+    mkdir -p /workdir/.claude
+    ln -f -s /workdir/.claude ~
 fi
 
-# This is where the copilot token is stored
-if [  -d "/workdir/github-copilot" ]; then
-    cp -drp /workdir/github-copilot ~/.config/
+# Gemini CLI config persistence
+if [ -d "/workdir/.gemini" ]; then
+    rm -rf ~/.gemini
+    ln -f -s /workdir/.gemini ~
+else
+    mkdir -p /workdir/.gemini
+    ln -f -s /workdir/.gemini ~
+fi
+
+# Start PostgreSQL if previously configured via setup.sh
+if [ -f "/workdir/.setuppgsql" ] && [ -d "/workdir/postgres" ]; then
+    sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start 2>/dev/null
+fi
+
+# GitHub Copilot config persistence (symlink instead of copy)
+if [ -d "/workdir/github-copilot" ]; then
+    mkdir -p ~/.config
+    rm -rf ~/.config/github-copilot
+    ln -f -s /workdir/github-copilot ~/.config/github-copilot
 fi
 
 if [  -f "/workdir/cpanfile" ]; then
@@ -180,7 +206,7 @@ if [  -f "/workdir/cpanfile" ]; then
 fi
 
 # Common typos when using emacs, so things just work.
-if [ $VISUAL == "emacs" ]; then
+if [ "$VISUAL" = "emacs" ]; then
     alias e='emacs'
     alias eamcs='emacs'
     alias emcas='emacs'
@@ -188,17 +214,193 @@ if [ $VISUAL == "emacs" ]; then
     alias mecas='emacs'
 fi
 
+# Navigation aliases
+alias ..='cd ..'
+alias ...='cd ../..'
+alias work='cd /workdir'
+alias public='cd /workdir/public'
+
+# Help command
+help() {
+    cat << 'HELPEOF'
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         WireStarter Development Environment                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+SETUP & STATUS
+  setup.sh              Interactive environment setup (Go, NVM, PostgreSQL, npm)
+
+NAVIGATION
+  work                  cd /workdir
+  public                cd /workdir/public
+  ..                    cd ..
+  ...                   cd ../..
+
+PYTHON VIRTUAL ENVIRONMENTS (persistent in /workdir/.venvs/)
+  venv init             Create and activate venv for current directory
+  venv delete           Delete venv for current directory
+  venv list             List all persistent venvs
+  venv path             Show venv path for current directory
+  venv nuke             Deactivate and delete currently active venv
+  (auto-activates when cd'ing into /workdir/* directories with venvs)
+
+PROJECT SCAFFOLDING
+  newproject [name]     Create new Flask project with venv
+  newagent [name]       Create new SignalWire agent project with venv
+
+RUNNING APPS
+  up [script]           Run Python script in loop (default: app.py), Ctrl+C to stop
+  watch [script]        Run script, auto-restart on .py file changes
+  serve [port]          Run Flask app on port (default: 5000)
+
+PROCESS MANAGEMENT
+  ports                 Show what's running on ports 5000, 5001, 9080
+  killport <port>       Kill process on specified port
+  reload                Reload nginx configuration
+
+SIGNALWIRE
+  sw_test               Test SignalWire API credentials
+  sw_numbers            List SignalWire phone numbers
+  swpy                  Python REPL with SignalWire client pre-loaded
+  swsh                  SignalWire Shell (interactive CLI)
+
+NETWORKING
+  urls                  Show ngrok tunnel URLs (main app, public)
+  tunnel                Print current ngrok URL
+  testapp               Test local and public endpoints
+  ngrok_url             Get raw ngrok URL
+
+LOGS & DEBUGGING
+  logs                  Tail nginx access log
+  reqs                  Tail nginx access log (formatted)
+
+REDIS
+  redis                 Redis CLI
+  rkeys                 List all Redis keys
+  rget <key>            Get Redis value
+  rclear                Flush all Redis data
+
+GIT
+  gs                    git status
+  gd                    git diff
+  gl                    git log --oneline -20
+  gp                    git pull
+
+AI ASSISTANTS
+  claude                Claude Code CLI
+  gemini                Gemini CLI
+
+PERSISTENT STORAGE (survives container rebuilds)
+  /workdir/.venvs/      Python virtual environments
+  /workdir/.go/         Go installation
+  /workdir/.nvm/        NVM + Node.js versions
+  /workdir/.npm/        NPM cache
+  /workdir/.claude/     Claude Code auth & config
+  /workdir/.gemini/     Gemini CLI auth & config
+  /workdir/.ssh/        SSH keys
+  /workdir/postgres/    PostgreSQL data
+  /workdir/public/      Static files (served at $NGROK_URL/public/)
+  /workdir/.env         Environment variables
+
+HELPEOF
+}
+
+alias h='help'
+
 alias ngrok_url="curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'"
 
-export NVM_DIR="/opt/.nvm"
+# Git shortcuts
+alias gs='git status'
+alias gd='git diff'
+alias gl='git log --oneline -20'
+alias gp='git pull'
 
+# SignalWire development helpers
+sw_test() {
+    curl -s "https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts" \
+        -u "${PROJECT_ID}:${REST_API_TOKEN}" | jq .
+}
+
+sw_numbers() {
+    curl -s "https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts/${PROJECT_ID}/IncomingPhoneNumbers" \
+        -u "${PROJECT_ID}:${REST_API_TOKEN}" | jq '.incoming_phone_numbers[] | {sid, phone_number, friendly_name}'
+}
+
+logs() {
+    tail -f /var/log/nginx/access.log
+}
+
+urls() {
+    echo "Main app:  ${NGROK_URL:-<not set>}/"
+    echo "SWAIG:     ${NGROK_URL:-<not set>}/swaig"
+    echo "Public:    ${NGROK_URL:-<not set>}/public/"
+}
+
+# Process management
+serve() {
+    local port="${1:-5000}"
+    if [ -f "./app.py" ]; then
+        FLASK_APP=app.py flask run --host=0.0.0.0 --port="$port"
+    else
+        echo "No app.py found"
+    fi
+}
+
+killport() {
+    local port="$1"
+    if [ -z "$port" ]; then
+        echo "Usage: killport <port>"
+        return 1
+    fi
+    fuser -k "$port/tcp" 2>/dev/null
+    echo "Killed processes on port $port"
+}
+
+ports() {
+    echo "Port 5000 (Flask app):"
+    fuser 5000/tcp 2>/dev/null || echo "  (nothing)"
+    echo "Port 5001 (SWAIG):"
+    fuser 5001/tcp 2>/dev/null || echo "  (nothing)"
+    echo "Port 9080 (nginx):"
+    fuser 9080/tcp 2>/dev/null || echo "  (nothing)"
+}
+
+# Project scaffolding
+newproject() {
+    local name="${1:-myproject}"
+    mkdir -p "/workdir/$name"
+    cd "/workdir/$name" || return
+    venv init
+    cat > app.py << 'APPEOF'
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return 'Hello from WireStarter!'
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+APPEOF
+    echo "Created /workdir/$name with app.py"
+    echo "Run 'up' to start the server"
+}
+
+# NVM setup (persistent in /workdir/.nvm)
+export NVM_DIR="/workdir/.nvm"
 if [ -f "$NVM_DIR/nvm.sh" ]; then
     source "$NVM_DIR/nvm.sh"
 fi
 
-if [ -f "/opt/go/bin/go" ]; then
-    export PATH=/opt/go/bin:${PATH}
-    export GOPATH=/opt/go
+# Go setup (persistent in /workdir/.go)
+if [ -d "/workdir/.go" ]; then
+    export PATH=/workdir/.go/bin:${PATH}
+    export GOPATH=/workdir/.go
+fi
+
+# NPM cache persistence
+if [ -d "/workdir/.npm" ]; then
+    npm config set cache /workdir/.npm 2>/dev/null
 fi
 
 if [ -z $VISUAL ]; then
@@ -207,81 +409,229 @@ fi
 
 export PATH=$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 
-if [ ! -z $SIGNALWIRE_SPACE ] && [ ! -z $PROJECT_ID ] && [ ! -z $REST_API_TOKEN ] && [ ! -f /workdir/.noswsh ]; then
+if [ -n "$SIGNALWIRE_SPACE" ] && [ -n "$PROJECT_ID" ] && [ -n "$REST_API_TOKEN" ] && [ ! -f /workdir/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
+
+# Persistent venv storage in /workdir/.venvs/
+# Converts directory path to venv name: /workdir/myproject -> myproject
+#                                       /workdir/foo/bar -> foo_bar
+_get_venv_path() {
+    local dir="${1:-$(pwd)}"
+    # Strip /workdir/ prefix and replace / with _
+    local venv_name=$(echo "$dir" | sed 's|^/workdir/||' | tr '/' '_')
+    echo "/workdir/.venvs/${venv_name}"
+}
+
+_get_venv_for_pwd() {
+    # Only auto-activate for directories under /workdir
+    if [[ "$PWD" == /workdir/* ]]; then
+        _get_venv_path "$PWD"
+    fi
+}
 
 cd() {
     builtin cd "$@" || return
 
-    # Check if a 'venv' directory exists in the new directory
-    if [ -d "./venv" ]; then
-        # Avoid reactivating if the same virtual environment is already active
-        if [ "$VIRTUAL_ENV" != "$(pwd)/venv" ]; then
-            source ./venv/bin/activate
-            echo "Activated virtual environment in $(pwd)/venv"
+    local venv_path=$(_get_venv_for_pwd)
+
+    if [ -n "$venv_path" ] && [ -d "$venv_path" ]; then
+        # Activate if not already active
+        if [ "$VIRTUAL_ENV" != "$venv_path" ]; then
+            # Deactivate current venv first if any
+            if [ -n "$VIRTUAL_ENV" ]; then
+                deactivate 2>/dev/null
+            fi
+            source "$venv_path/bin/activate"
+            echo "Activated venv: $venv_path"
         fi
     else
-        # Deactivate if moving out of the virtual environment directory
-        if [ -n "$VIRTUAL_ENV" ] && [[ "$PWD" != "$VIRTUAL_ENV"* ]]; then
+        # Deactivate if leaving a venv-enabled directory
+        if [ -n "$VIRTUAL_ENV" ]; then
             deactivate
-            echo "Deactivated virtual environment"
+            echo "Deactivated venv"
         fi
     fi
 }
-venv() {
-    action="$1"
 
-    if [ "$action" = "init" ]; then
-        if [ -d "./venv" ]; then
-            echo "Virtual environment 'venv' already exists in the current directory."
-            # Optionally, activate it if not already active
-            if [ -z "$VIRTUAL_ENV" ] || [ "$VIRTUAL_ENV" != "$(pwd)/venv" ]; then
-                source "./venv/bin/activate"
-                echo "Activated existing virtual environment 'venv'."
-            fi
-        else
-            python3 -m venv "./venv"
-            echo "Virtual environment 'venv' created in the current directory."
-            source "./venv/bin/activate"
-            echo "Activated virtual environment 'venv'."
-            # Check if requirements.txt exists and prompt for installation
-            if [ -f "requirements.txt" ]; then
-                read -p "requirements.txt found. Do you want to install dependencies? (y/n): " choice
-                if [ "$choice" = "y" ]; then
-                    pip install -r requirements.txt
+venv() {
+    local action="$1"
+    local venv_path=$(_get_venv_path)
+
+    # Ensure we're in /workdir
+    if [[ "$PWD" != /workdir/* ]]; then
+        echo "Error: venv only works in /workdir directories"
+        return 1
+    fi
+
+    case "$action" in
+        init)
+            if [ -d "$venv_path" ]; then
+                echo "Venv already exists: $venv_path"
+                if [ "$VIRTUAL_ENV" != "$venv_path" ]; then
+                    source "$venv_path/bin/activate"
+                    echo "Activated venv"
+                fi
+            else
+                mkdir -p /workdir/.venvs
+                python3 -m venv "$venv_path"
+                echo "Created venv: $venv_path"
+                source "$venv_path/bin/activate"
+                echo "Activated venv"
+                if [ -f "requirements.txt" ]; then
+                    read -p "requirements.txt found. Install dependencies? (y/n): " choice
+                    if [ "$choice" = "y" ]; then
+                        pip install -r requirements.txt
+                    fi
                 fi
             fi
-        fi
-    elif [ "$action" = "delete" ]; then
-        if [ -d "./venv" ]; then
-            # Deactivate the virtual environment if it's active
-            if [ -n "$VIRTUAL_ENV" ] && [ "$VIRTUAL_ENV" = "$(pwd)/venv" ]; then
-                deactivate
-                echo "Deactivated virtual environment 'venv'."
+            ;;
+        delete)
+            if [ -d "$venv_path" ]; then
+                if [ "$VIRTUAL_ENV" = "$venv_path" ]; then
+                    deactivate
+                    echo "Deactivated venv"
+                fi
+                rm -rf "$venv_path"
+                echo "Deleted venv: $venv_path"
+            else
+                echo "No venv found for this directory"
             fi
-            rm -rf "./venv"
-            echo "Virtual environment 'venv' deleted from the current directory."
-        else
-            echo "No virtual environment named 'venv' found in the current directory."
-        fi
-    else
-        echo "Usage: venv [init|delete]"
-    fi
+            ;;
+        list)
+            echo "Persistent venvs in /workdir/.venvs/:"
+            ls -1 /workdir/.venvs/ 2>/dev/null || echo "  (none)"
+            ;;
+        path)
+            echo "$venv_path"
+            ;;
+        nuke)
+            if [ -n "$VIRTUAL_ENV" ]; then
+                local active_venv="$VIRTUAL_ENV"
+                deactivate
+                echo "Deactivated venv"
+                rm -rf "$active_venv"
+                echo "Deleted venv: $active_venv"
+            else
+                echo "No active venv to nuke"
+            fi
+            ;;
+        *)
+            echo "Usage: venv [init|delete|list|path|nuke]"
+            echo ""
+            echo "Commands:"
+            echo "  init   - Create and activate venv for current directory"
+            echo "  delete - Delete venv for current directory"
+            echo "  list   - List all persistent venvs"
+            echo "  path   - Show venv path for current directory"
+            echo "  nuke   - Deactivate and delete currently active venv"
+            ;;
+    esac
 }
 
 up() {
-    # Check if app.py exists in the current directory
-    if [ -f "./app.py" ]; then
-        echo "Starting app.py in an infinite loop..."
-        # Infinite loop to run app.py, restarting after a 1-second delay if it exits
-        while true; do
-            python3 app.py
-            echo "app.py exited, restarting after 1 second..."
-            sleep 1
-        done
-    else
-        echo "Error: app.py not found in the current directory."
+    local script="${1:-app.py}"
+    if [ ! -f "./$script" ]; then
+        echo "Error: $script not found in current directory."
+        return 1
     fi
+
+    echo "Starting $script (Ctrl+C to stop)..."
+    trap 'echo " Stopped."; trap - INT; return 0' INT
+    while true; do
+        python3 "$script"
+        local exit_code=$?
+        echo "$script exited (code: $exit_code), restarting in 1s..."
+        sleep 1
+    done
+}
+
+# Reload nginx configuration
+reload() {
+    nginx -t && nginx -s reload && echo "nginx reloaded"
+}
+
+# Watch for file changes and auto-restart app
+watch() {
+    local script="${1:-app.py}"
+    if [ ! -f "./$script" ]; then
+        echo "Error: $script not found in current directory."
+        return 1
+    fi
+
+    echo "Watching for changes (Ctrl+C to stop)..."
+    trap 'kill $PID 2>/dev/null; echo " Stopped."; trap - INT; return 0' INT
+    while true; do
+        python3 "$script" &
+        PID=$!
+        inotifywait -q -e modify -r . --include '\.py$' 2>/dev/null
+        kill $PID 2>/dev/null
+        wait $PID 2>/dev/null
+        echo "Change detected, restarting..."
+        sleep 0.5
+    done
+}
+
+# Redis helpers
+alias redis='redis-cli'
+rclear() { redis-cli FLUSHALL && echo "Redis flushed"; }
+rkeys() { redis-cli KEYS '*'; }
+rget() { redis-cli GET "$1"; }
+
+# Get ngrok tunnel URL
+tunnel() {
+    local url=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+    echo "$url"
+}
+
+# Tail nginx access log with formatted output
+reqs() {
+    tail -f /var/log/nginx/access.log | awk '{print $4, $6, $7, $9}'
+}
+
+# Python REPL with SignalWire client pre-loaded
+swpy() {
+    python3 -i -c "
+from signalwire.rest import Client
+client = Client('$PROJECT_ID', '$REST_API_TOKEN', signalwire_space_url='$SIGNALWIRE_SPACE.signalwire.com')
+print('SignalWire client ready as: client')
+print('Example: client.incoming_phone_numbers.list()')
+"
+}
+
+# Test app endpoints
+testapp() {
+    echo "Local (localhost:5000):"
+    curl -s -o /dev/null -w "  Status: %{http_code}\n" "http://localhost:5000/" 2>/dev/null || echo "  Not running"
+    if [ -n "$NGROK_URL" ]; then
+        echo "Public ($NGROK_URL):"
+        curl -s -o /dev/null -w "  Status: %{http_code}\n" "${NGROK_URL}/" 2>/dev/null || echo "  Not reachable"
+    fi
+}
+
+# Create new SignalWire agent project
+newagent() {
+    local name="${1:-myagent}"
+    mkdir -p "/workdir/$name"
+    cd "/workdir/$name" || return
+    venv init
+    pip install signalwire-agents flask
+    cat > app.py << 'AGENTEOF'
+from signalwire_agents import AgentBase
+
+class MyAgent(AgentBase):
+    def __init__(self):
+        super().__init__(name="My Agent", route="/")
+
+    def on_summary(self, summary):
+        print(f"Call summary: {summary}")
+
+agent = MyAgent()
+
+if __name__ == '__main__':
+    agent.run()
+AGENTEOF
+    echo "Created SignalWire agent in /workdir/$name"
+    echo "Run 'up' to start the agent"
 }
 

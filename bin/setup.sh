@@ -1,67 +1,182 @@
 #!/bin/bash
-# Dynammically build the install menu for AI Agent examples
+# WireStarter Environment Setup
 
-build_install_menu() {
+setup_golang() {
+    echo "Installing Go to /workdir/.go..."
+    ARCH=$(uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/amd64/g')
 
-    declare -a FILES=$( ls $1 )
-    declare -a MENU
-    COUNTER=0
-    INSTALL=0
-    for FILE in $FILES; do
-        COUNTER=$((COUNTER+1))
-        FILENAME=$(echo $FILE |  tr - " " | sed 's/\b\(.\)/\u\1/g')
-        MENU+=("$COUNTER" "$FILENAME")
-    done
-    INSTALL=$( whiptail --title "Which AI Agent Example Shall I Install?" --menu "Select Installation" 25 60 10 \
-         "${MENU[@]}"  3>&1 1>&2 2>&3 )
+    # Get latest stable version
+    GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1)
 
-    INSTALL=$((INSTALL-1))  # Decrease by 1 since we start the array at 0
-    if (( $INSTALL >= 0 )); then
-        OIFS=$IFS
-        IFS=$'\n'
-        FILES=($FILES)
-        IFS=$OIFS
-
-        ${FILES[$INSTALL]}  # Install the selection!
-    else
-        # No selection was made.  Exit and do nothing.
-        exit 1
+    if [ -d "/workdir/.go" ]; then
+        whiptail --title "Go Already Installed" --yesno "Go is already installed. Reinstall?" 8 50
+        if [ $? -ne 0 ]; then
+            return
+        fi
+        rm -rf /workdir/.go
     fi
 
+    cd /tmp
+    wget -q --show-progress "https://go.dev/dl/${GO_VERSION}.linux-${ARCH}.tar.gz"
+    mkdir -p /workdir/.go
+    tar -zxf "${GO_VERSION}.linux-${ARCH}.tar.gz" -C /workdir/.go --strip-components=1
+    rm -f "${GO_VERSION}.linux-${ARCH}.tar.gz"
+
+    whiptail --title "Go Installed" --msgbox "Go ${GO_VERSION} installed to /workdir/.go\n\nRun 'exec bash' to update your environment." 10 50
 }
 
+setup_nvm() {
+    echo "Installing NVM to /workdir/.nvm..."
 
-LANG=$( whiptail --title "Select the Peferred Programming Language" --menu "Select Language:" 15 60 3 \
-        "1" "NodeJs" \
-        "2" "Python" \
-        "3" "Perl"    3>&1 1>&2 2>&3 )
+    if [ -d "/workdir/.nvm" ]; then
+        whiptail --title "NVM Already Installed" --yesno "NVM is already installed. Reinstall?" 8 50
+        if [ $? -ne 0 ]; then
+            return
+        fi
+        rm -rf /workdir/.nvm
+    fi
 
-case $LANG in
+    mkdir -p /workdir/.nvm
+    export NVM_DIR="/workdir/.nvm"
+    curl -s -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
 
-    "1" )
-        dir="nodejs.d"
-        ;;
+    # Install latest LTS node
+    source /workdir/.nvm/nvm.sh
+    nvm install --lts
 
-    "2" )
-        dir="python.d"
-        ;;
+    whiptail --title "NVM Installed" --msgbox "NVM installed to /workdir/.nvm\nNode LTS installed.\n\nRun 'exec bash' to update your environment." 10 50
+}
 
-    "3" )
-        dir="perl.d"
-        ;;
+setup_pgsql() {
+    PG_VERSION="15"
+    NEW_PGDATA="/workdir/postgres"
 
-    * )
-        echo "That is not a valid option.  Exiting"
-        exit 1
-        ;;
+    # Check if already setup
+    if [ -d "$NEW_PGDATA" ] && [ -f "/workdir/.setuppgsql" ]; then
+        whiptail --title "PostgreSQL Already Setup" --yesno "PostgreSQL data directory already exists. Reinitialize?\n\nWARNING: This will delete existing data!" 10 50
+        if [ $? -ne 0 ]; then
+            return
+        fi
+        sudo /etc/init.d/postgresql stop 2>/dev/null
+        rm -rf "$NEW_PGDATA"
+        rm -f /workdir/.setuppgsql
+    fi
 
-esac
+    echo "Setting up PostgreSQL with data in /workdir/postgres..."
 
-if [ ! -z $dir ]; then
-    build_install_menu "/usr/bin/$dir"
-else
-    echo "ERROR:  Something has gone wrong.  Exiting gracefully"
-    exit 1
-fi
+    # Stop PostgreSQL if running
+    sudo /etc/init.d/postgresql stop 2>/dev/null
 
-exit 0
+    # Create and initialize data directory
+    mkdir -p "$NEW_PGDATA"
+    sudo chown postgres:postgres "$NEW_PGDATA"
+    sudo chmod 700 "$NEW_PGDATA"
+
+    echo "Initializing database cluster..."
+    sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/initdb -D "$NEW_PGDATA"
+
+    # Start PostgreSQL
+    echo "Starting PostgreSQL..."
+    sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl -D "$NEW_PGDATA" -l /workdir/postgres/logfile start
+
+    touch /workdir/.setuppgsql
+
+    whiptail --title "PostgreSQL Setup" --msgbox "PostgreSQL initialized in /workdir/postgres\n\nService is running." 10 50
+}
+
+setup_npm() {
+    echo "Setting up npm cache persistence..."
+
+    mkdir -p /workdir/.npm
+    npm config set cache /workdir/.npm
+
+    whiptail --title "NPM Cache" --msgbox "NPM cache set to /workdir/.npm" 8 50
+}
+
+setup_all() {
+    whiptail --title "Setup All" --yesno "This will setup:\n\n- Go (latest)\n- NVM + Node LTS\n- PostgreSQL\n- NPM cache\n\nContinue?" 14 50
+    if [ $? -ne 0 ]; then
+        return
+    fi
+
+    setup_golang
+    setup_nvm
+    setup_pgsql
+    setup_npm
+
+    whiptail --title "Setup Complete" --msgbox "All development tools installed!\n\nRun 'exec bash' to update your environment." 10 50
+}
+
+show_status() {
+    STATUS=""
+
+    if [ -d "/workdir/.go" ]; then
+        GO_VER=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}')
+        STATUS+="Go: ✅ ${GO_VER}\n"
+    else
+        STATUS+="Go: ❌ Not installed\n"
+    fi
+
+    if [ -d "/workdir/.nvm" ]; then
+        STATUS+="NVM: ✅ Installed\n"
+    else
+        STATUS+="NVM: ❌ Not installed\n"
+    fi
+
+    if [ -f "/workdir/.setuppgsql" ]; then
+        STATUS+="PostgreSQL: ✅ Configured\n"
+    else
+        STATUS+="PostgreSQL: ❌ Not configured\n"
+    fi
+
+    if [ -d "/workdir/.npm" ]; then
+        STATUS+="NPM Cache: ✅ Persistent\n"
+    else
+        STATUS+="NPM Cache: ❌ Default\n"
+    fi
+
+    # Count venvs
+    if [ -d "/workdir/.venvs" ]; then
+        VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l)
+        STATUS+="Python venvs: ✅ ${VENV_COUNT} environments\n"
+    else
+        STATUS+="Python venvs: ❌ None\n"
+    fi
+
+    STATUS+="\nPersistent directories:\n"
+    STATUS+="- /workdir/.venvs (Python venvs)\n"
+    STATUS+="- /workdir/.claude (Claude Code)\n"
+    STATUS+="- /workdir/.gemini (Gemini CLI)\n"
+    STATUS+="- /workdir/.ssh (SSH keys)\n"
+    STATUS+="- /workdir/public (Static files)\n"
+
+    whiptail --title "Environment Status" --msgbox "$STATUS" 24 50
+}
+
+# Main menu
+while true; do
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 18 60 8 \
+        "1" "Setup Go (latest stable)" \
+        "2" "Setup NVM + Node.js" \
+        "3" "Setup PostgreSQL" \
+        "4" "Setup NPM cache persistence" \
+        "5" "Setup All" \
+        "6" "Show Status" \
+        "7" "Exit" \
+        3>&1 1>&2 2>&3)
+
+    exitstatus=$?
+    if [ $exitstatus -ne 0 ]; then
+        exit 0
+    fi
+
+    case $CHOICE in
+        "1") setup_golang ;;
+        "2") setup_nvm ;;
+        "3") setup_pgsql ;;
+        "4") setup_npm ;;
+        "5") setup_all ;;
+        "6") show_status ;;
+        "7") exit 0 ;;
+    esac
+done
