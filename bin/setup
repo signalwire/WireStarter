@@ -453,12 +453,35 @@ setup_audio_tools() {
 }
 
 setup_ssh_key() {
-    if [ -f "/workdir/.ssh/id_ed25519" ]; then
-        whiptail --title "SSH Key Exists" --yesno "SSH key already exists.\n\nRegenerate? (This will overwrite!)" 10 55
+    if [ -f "/workdir/.ssh/id_ed25519.pub" ]; then
+        local pubkey=$(cat /workdir/.ssh/id_ed25519.pub)
+
+        # Show existing key in a textbox for easy copying
+        local tmpfile=$(mktemp)
+        {
+            echo "Your current SSH public key:"
+            echo ""
+            echo "============================================================================"
+            echo "$pubkey"
+            echo "============================================================================"
+            echo ""
+            echo "Copy this key and add it to GitHub/GitLab/Bitbucket."
+            echo ""
+            echo "GitHub:    https://github.com/settings/keys"
+            echo "GitLab:    https://gitlab.com/-/user_settings/ssh_keys"
+            echo "Bitbucket: https://bitbucket.org/account/settings/ssh-keys/"
+        } > "$tmpfile"
+
+        whiptail --title " SSH Public Key " --textbox "$tmpfile" 18 80
+        rm -f "$tmpfile"
+
+        # Ask if they want to regenerate
+        whiptail --title "Regenerate?" --yesno "Do you want to generate a NEW SSH key?\n\nThis will OVERWRITE your existing key!" 10 50
         [ $? -ne 0 ] && return
     fi
 
-    local email=$(whiptail --inputbox "Email for SSH key:" 8 60 "" --title "SSH Key Setup" 3>&1 1>&2 2>&3)
+    local current_email=$(git config --global user.email 2>/dev/null)
+    local email=$(whiptail --inputbox "Email for SSH key:" 8 60 "$current_email" --title "SSH Key Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     mkdir -p /workdir/.ssh
@@ -469,7 +492,25 @@ setup_ssh_key() {
     ln -s /workdir/.ssh ~/.ssh
 
     local pubkey=$(cat /workdir/.ssh/id_ed25519.pub)
-    whiptail --title "SSH Key Generated" --msgbox "SSH key generated!\n\nPublic key:\n${pubkey}\n\nAdd this to GitHub/GitLab." 16 70
+
+    # Show new key in a textbox for easy copying
+    local tmpfile=$(mktemp)
+    {
+        echo "SSH key generated! Here is your public key:"
+        echo ""
+        echo "============================================================================"
+        echo "$pubkey"
+        echo "============================================================================"
+        echo ""
+        echo "Copy this key and add it to GitHub/GitLab/Bitbucket."
+        echo ""
+        echo "GitHub:    https://github.com/settings/keys"
+        echo "GitLab:    https://gitlab.com/-/user_settings/ssh_keys"
+        echo "Bitbucket: https://bitbucket.org/account/settings/ssh-keys/"
+    } > "$tmpfile"
+
+    whiptail --title " SSH Key Generated " --textbox "$tmpfile" 18 80
+    rm -f "$tmpfile"
 }
 
 setup_git_identity() {
@@ -1014,178 +1055,115 @@ setup_all() {
 }
 
 show_status() {
-    # Gather status in background while showing spinner
-    gather_status() {
-        local STATUS="=== Services ===\n"
+    # Gather data first
+    local ngrok_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url // empty' 2>/dev/null)
+    local py_ver=$(python3 --version 2>/dev/null | awk '{print $2}')
+    local go_ver="" node_ver=""
+    [ -d "/workdir/.go" ] && go_ver=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
+    [ -f "/workdir/.nvm/nvm.sh" ] && node_ver=$(source /workdir/.nvm/nvm.sh 2>/dev/null && node --version 2>/dev/null)
+    local git_name=$(git config --global user.name 2>/dev/null)
+    local uptime=$(awk '{printf "%dd %dh %dm", $1/86400, ($1%86400)/3600, ($1%3600)/60}' /proc/uptime 2>/dev/null)
 
-        # Redis status
-        if pgrep -x redis-server > /dev/null 2>&1; then
-            STATUS+="Redis: [OK] Running\n"
-        else
-            STATUS+="Redis: [--] Not running\n"
-        fi
+    # Claude MCP servers
+    local claude_mcp=""
+    if [ -f "/root/.claude.json" ]; then
+        claude_mcp=$(jq -r '.mcpServers // {} | keys | join(", ")' /root/.claude.json 2>/dev/null)
+    fi
+    [ -z "$claude_mcp" ] && claude_mcp="(none)"
 
-        # nginx status
-        if pgrep -x nginx > /dev/null 2>&1; then
-            STATUS+="nginx: [OK] Running\n"
-        else
-            STATUS+="nginx: [--] Not running\n"
-        fi
+    # Gemini MCP servers
+    local gemini_mcp=""
+    if [ -f "/workdir/.gemini/settings.json" ]; then
+        gemini_mcp=$(jq -r '.mcpServers // {} | keys | join(", ")' /workdir/.gemini/settings.json 2>/dev/null)
+    fi
+    [ -z "$gemini_mcp" ] && gemini_mcp="(none)"
 
-        # ngrok status
+    # Build status using a temp file for reliable whiptail display
+    local tmpfile=$(mktemp)
+    {
+        # Public URL header if available
+        [ -n "$ngrok_url" ] && echo "  Public URL: ${ngrok_url}" && echo ""
+
+        echo "  SERVICES                              AUTHENTICATION"
+        echo "  ====================================  ===================================="
+
+        # Services column data
+        local svc1="  " svc2="  " svc3="  " svc4="  " svc5="  " svc6="  "
+        pgrep -x redis-server >/dev/null 2>&1 && svc1+="[*] Redis" || svc1+="[ ] Redis"
+        pgrep -x nginx >/dev/null 2>&1 && svc2+="[*] nginx" || svc2+="[ ] nginx"
         if [ -n "$NGROK_TOKEN" ]; then
-            local ngrok_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
-            if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
-                STATUS+="ngrok: [OK] $ngrok_url\n"
-            else
-                STATUS+="ngrok: [!!] Token set but not running\n"
-            fi
+            [ -n "$ngrok_url" ] && svc3+="[*] ngrok" || svc3+="[!] ngrok (stopped)"
         else
-            STATUS+="ngrok: [--] Not configured\n"
+            svc3+="[ ] ngrok"
         fi
+        pgrep -x freeswitch >/dev/null 2>&1 && svc4+="[*] FreeSWITCH" || svc4+="[ ] FreeSWITCH"
+        pgrep -x postgres >/dev/null 2>&1 && svc5+="[*] PostgreSQL" || svc5+="[ ] PostgreSQL"
+        [ -S /var/run/docker.sock ] && svc6+="[*] Docker" || svc6+="[ ] Docker"
 
-        # Docker socket
-        if [ -S /var/run/docker.sock ]; then
-            STATUS+="Docker: [OK] Socket available\n"
-        else
-            STATUS+="Docker: [--] No socket\n"
-        fi
-
-        STATUS+="\n=== Credentials ===\n"
-
-        if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ]; then
-            STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE_NAME}\n"
-        else
-            STATUS+="SignalWire: [--] Not configured\n"
-        fi
-
-        # Check Claude Code auth - OAuth credentials file or API key
+        # Auth column data
+        local auth1="" auth2="" auth3="" auth4="" auth5="" auth6=""
         if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
-            STATUS+="Claude Code: [OK] OAuth logged in\n"
+            auth1="[*] Claude (OAuth)"
         elif [ -n "$ANTHROPIC_API_KEY" ]; then
-            STATUS+="Claude Code: [OK] API key configured\n"
+            auth1="[*] Claude (API Key)"
         else
-            STATUS+="Claude Code: [--] Not configured\n"
+            auth1="[ ] Claude"
         fi
-
-        # Check Gemini CLI auth - OAuth file or API key
         if [ -f "/workdir/.gemini/oauth_creds.json" ]; then
-            STATUS+="Gemini CLI: [OK] OAuth logged in\n"
+            auth2="[*] Gemini (OAuth)"
         elif [ -n "$GEMINI_API_KEY" ]; then
-            STATUS+="Gemini CLI: [OK] API key configured\n"
+            auth2="[*] Gemini (API Key)"
         else
-            STATUS+="Gemini CLI: [--] Not configured\n"
+            auth2="[ ] Gemini"
         fi
+        [ -n "$GITHUB_TOKEN" ] && auth3="[*] GitHub Token" || auth3="[ ] GitHub Token"
+        [ -n "$SLACK_BOT_TOKEN" ] && auth4="[*] Slack Token" || auth4="[ ] Slack Token"
+        [ -n "$BRAVE_API_KEY" ] && auth5="[*] Brave API Key" || auth5="[ ] Brave API Key"
+        [ -n "$FREESWITCH_PAT" ] && auth6="[*] FreeSWITCH PAT" || auth6="[ ] FreeSWITCH PAT"
 
-        if [ -f "/workdir/.ssh/id_ed25519" ]; then
-            STATUS+="SSH Key: [OK] Configured\n"
-        else
-            STATUS+="SSH Key: [--] Not configured\n"
-        fi
+        printf "%-40s%s\n" "$svc1" "$auth1"
+        printf "%-40s%s\n" "$svc2" "$auth2"
+        printf "%-40s%s\n" "$svc3" "$auth3"
+        printf "%-40s%s\n" "$svc4" "$auth4"
+        printf "%-40s%s\n" "$svc5" "$auth5"
+        printf "%-40s%s\n" "$svc6" "$auth6"
 
-        if [ -f "/workdir/.gitconfig" ]; then
-            local git_name=$(git config --global user.name 2>/dev/null)
-            STATUS+="Git Identity: [OK] ${git_name}\n"
-        else
-            STATUS+="Git Identity: [--] Not configured\n"
-        fi
+        echo ""
+        echo "  CONFIGURATION                         DEV TOOLS"
+        echo "  ====================================  ===================================="
 
-        STATUS+="\n=== Dev Tools ===\n"
+        # Config column
+        local cfg1="  " cfg2="  " cfg3="  " cfg4="  "
+        [ -n "$SIGNALWIRE_SPACE_NAME" ] && cfg1+="[*] SignalWire ($SIGNALWIRE_SPACE_NAME)" || cfg1+="[ ] SignalWire"
+        cfg2+="[*] Editor: ${VISUAL:-vim}"
+        [ -f "/workdir/.ssh/id_ed25519" ] && cfg3+="[*] SSH Key" || cfg3+="[ ] SSH Key"
+        [ -n "$git_name" ] && cfg4+="[*] Git ($git_name)" || cfg4+="[ ] Git Identity"
 
-        # Python version
-        local py_ver=$(python3 --version 2>/dev/null | awk '{print $2}')
-        STATUS+="Python: [OK] ${py_ver}\n"
+        # Dev tools column
+        local dev1="[*] Python $py_ver"
+        local dev2="" dev3="" dev4=""
+        [ -n "$go_ver" ] && dev2="[*] Go $go_ver" || dev2="[ ] Go"
+        [ -n "$node_ver" ] && dev3="[*] Node.js $node_ver" || dev3="[ ] Node.js"
+        [ -n "$NGROK_ARGS" ] && dev4="[*] NGROK Args" || dev4="[ ] NGROK Args"
 
-        # Active venv
-        if [ -n "$VIRTUAL_ENV" ]; then
-            STATUS+="Active venv: [OK] $(basename $VIRTUAL_ENV)\n"
-        else
-            STATUS+="Active venv: [--] None\n"
-        fi
+        printf "%-40s%s\n" "$cfg1" "$dev1"
+        printf "%-40s%s\n" "$cfg2" "$dev2"
+        printf "%-40s%s\n" "$cfg3" "$dev3"
+        printf "%-40s%s\n" "$cfg4" "$dev4"
 
-        # Venv count
-        if [ -d "/workdir/.venvs" ]; then
-            local VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l | tr -d ' ')
-            STATUS+="Python venvs: [OK] ${VENV_COUNT} saved\n"
-        else
-            STATUS+="Python venvs: [--] None\n"
-        fi
+        echo ""
+        echo "  MCP SERVERS"
+        echo "  ============================================================================"
+        echo "  Claude: $claude_mcp"
+        echo "  Gemini: $gemini_mcp"
+        echo ""
+        echo "  ============================================================================"
+        echo "  Uptime: $uptime"
 
-        if [ -d "/workdir/.go" ]; then
-            local GO_VER=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}')
-            STATUS+="Go: [OK] ${GO_VER}\n"
-        else
-            STATUS+="Go: [--] Not installed\n"
-        fi
+    } > "$tmpfile"
 
-        if [ -d "/workdir/.nvm" ]; then
-            # Try to get node version
-            local node_ver=""
-            if [ -f "/workdir/.nvm/nvm.sh" ]; then
-                node_ver=$(source /workdir/.nvm/nvm.sh 2>/dev/null && node --version 2>/dev/null)
-            fi
-            if [ -n "$node_ver" ]; then
-                STATUS+="Node.js: [OK] ${node_ver}\n"
-            else
-                STATUS+="NVM: [OK] Installed\n"
-            fi
-        else
-            STATUS+="NVM: [--] Not installed\n"
-        fi
-
-        if [ -f "/workdir/.setuppgsql" ]; then
-            if pgrep -x postgres > /dev/null 2>&1; then
-                STATUS+="PostgreSQL: [OK] Running\n"
-            else
-                STATUS+="PostgreSQL: [!!] Configured but not running\n"
-            fi
-        else
-            STATUS+="PostgreSQL: [--] Not configured\n"
-        fi
-
-        if command -v ffmpeg &>/dev/null; then
-            STATUS+="Audio Tools: [OK] Installed\n"
-        else
-            STATUS+="Audio Tools: [--] Not installed\n"
-        fi
-
-        # MCP servers
-        local mcp_count=0
-        if command -v claude >/dev/null 2>&1; then
-            mcp_count=$(claude mcp list 2>/dev/null | grep -c "^\s" || echo "0")
-        fi
-        if [ "$mcp_count" -gt 0 ]; then
-            STATUS+="MCP Servers: [OK] ${mcp_count} configured\n"
-        else
-            STATUS+="MCP Servers: [--] Not configured\n"
-        fi
-
-        # Container uptime
-        local uptime=$(cat /proc/uptime 2>/dev/null | awk '{printf "%dd %dh %dm", $1/86400, ($1%86400)/3600, ($1%3600)/60}')
-        STATUS+="\nUptime: ${uptime}\n"
-
-        echo "$STATUS"
-    }
-
-    # Run gather_status in background and show spinner
-    gather_status > /tmp/status_output.txt &
-    local pid=$!
-
-    local spinner='|/-\'
-    local i=0
-    while kill -0 $pid 2>/dev/null; do
-        local spin_char="${spinner:i%4:1}"
-        whiptail --title "Status" --infobox "Gathering system information... $spin_char" 7 50
-        sleep 0.2
-        i=$((i+1))
-    done
-    wait $pid
-
-    # Display the gathered status
-    local STATUS=$(cat /tmp/status_output.txt)
-    rm -f /tmp/status_output.txt
-
-    whiptail --title "Environment Status" --msgbox "$STATUS" 38 60
+    whiptail --title " WireStarter Environment Status " --scrolltext --textbox "$tmpfile" 30 90
+    rm -f "$tmpfile"
 }
 
 # Main menu loop - Cancel button exits
