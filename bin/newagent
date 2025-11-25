@@ -201,6 +201,11 @@ class MainAgent(AgentBase):
                 "debug_webhook_url": f"{auth_proxy_url}/debug",
                 "debug_webhook_level": debug_level,
             })
+            self.set_post_prompt(
+                "Summarize the conversation including: "
+                "the caller's main request, any actions taken, "
+                "and the outcome of the call."
+            )
             self.set_post_prompt_url(f"{auth_proxy_url}/post_prompt")
 
     def on_summary(self, summary):
