@@ -507,6 +507,38 @@ fi
 # Persistent venv storage in /workdir/.venvs/
 # Converts directory path to venv name: /workdir/myproject -> myproject
 #                                       /workdir/foo/bar -> foo_bar
+
+# Install packages with a spinner animation
+_install_with_spinner() {
+    local packages="$1"
+    local spinner='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+
+    printf "Installing base packages... "
+
+    # Run pip install in background
+    pip install $packages > /dev/null 2>&1 &
+    local pid=$!
+
+    # Show spinner while pip runs
+    while kill -0 $pid 2>/dev/null; do
+        printf "\b${spinner:i++%${#spinner}:1}"
+        sleep 0.1
+    done
+
+    # Check exit status
+    wait $pid
+    local status=$?
+
+    if [ $status -eq 0 ]; then
+        printf "\b done\n"
+    else
+        printf "\b failed\n"
+    fi
+
+    return $status
+}
+
 _get_venv_path() {
     local dir="${1:-$(pwd)}"
     # Strip /workdir/ prefix and replace / with _
@@ -569,6 +601,8 @@ venv() {
                 echo "Created venv: $venv_path"
                 source "$venv_path/bin/activate"
                 echo "Activated venv"
+                # Install default packages with spinner
+                _install_with_spinner "flask requests signalwire-agents"
                 if [ -f "requirements.txt" ]; then
                     read -p "requirements.txt found. Install dependencies? (y/n): " choice
                     if [ "$choice" = "y" ]; then
@@ -715,7 +749,6 @@ newagent() {
     mkdir -p "/workdir/$name"
     cd "/workdir/$name" || return
     venv init
-    pip install signalwire-agents flask
     cat > app.py << 'AGENTEOF'
 from signalwire_agents import AgentBase
 
