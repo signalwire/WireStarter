@@ -528,6 +528,39 @@ up
 python app.py
 \`\`\`
 
+## Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| \`/swml\` | POST | Main SWML endpoint - point your SignalWire phone number here |
+| \`/debug\` | POST | Debug webhook - receives real-time call data |
+| \`/post_prompt\` | POST | Post-prompt webhook - receives call summaries |
+| \`/\` | GET | Static files from \`web/\` directory |
+
+### Testing Endpoints
+
+\`\`\`bash
+# Get SWML configuration
+curl -X POST http://localhost:5000/swml \\
+  -H "Content-Type: application/json" \\
+  -d '{}'
+
+# Test debug webhook
+curl -X POST http://localhost:5000/debug \\
+  -H "Content-Type: application/json" \\
+  -d '{"event_type": "test", "call_id": "test-123"}'
+
+# Test post-prompt webhook
+curl -X POST http://localhost:5000/post_prompt \\
+  -H "Content-Type: application/json" \\
+  -d '{"post_prompt_data": {"summary": "Test call"}}'
+
+# With ngrok (replace with your URL)
+curl -X POST \${NGROK_URL}/swml \\
+  -H "Content-Type: application/json" \\
+  -d '{}'
+\`\`\`
+
 ## Project Structure
 
 \`\`\`
@@ -540,7 +573,7 @@ ${NAME}/
 ├── tests/
 │   └── test_agent.py    # Test suite
 ├── web/
-│   └── index.html       # Static files
+│   └── index.html       # Static files & documentation
 ├── app.py               # Entry point (run with 'up')
 ├── .env                 # Environment configuration
 └── requirements.txt     # Python dependencies
@@ -550,12 +583,27 @@ ${NAME}/
 
 Edit \`.env\` to configure:
 
-- **SIGNALWIRE_SPACE_NAME** - Your SignalWire space name
-- **SIGNALWIRE_PROJECT_ID** - Your SignalWire project ID
-- **SIGNALWIRE_TOKEN** - Your SignalWire API token
-- **HOST/PORT** - Server binding (default: 0.0.0.0:5000)
-- **SWML_BASIC_AUTH_USER/PASSWORD** - Basic auth for SWML webhooks
-- **SWML_PROXY_URL_BASE** - Public URL for webhooks (ngrok URL)
+| Variable | Description |
+|----------|-------------|
+| \`SIGNALWIRE_SPACE_NAME\` | Your SignalWire space name |
+| \`SIGNALWIRE_PROJECT_ID\` | Your SignalWire project ID |
+| \`SIGNALWIRE_TOKEN\` | Your SignalWire API token |
+| \`HOST\` | Server host (default: 0.0.0.0) |
+| \`PORT\` | Server port (default: 5000) |
+| \`SWML_BASIC_AUTH_USER\` | Basic auth username |
+| \`SWML_BASIC_AUTH_PASSWORD\` | Basic auth password |
+| \`SWML_PROXY_URL_BASE\` | Public URL (ngrok URL) |
+| \`DEBUG_WEBHOOK_LEVEL\` | Debug verbosity: 0=off, 1=basic, 2=verbose |
+
+## Debug Webhooks
+
+This agent includes built-in debug webhook support:
+
+- **Level 0**: Disabled - no debug output
+- **Level 1**: Basic - event types, call IDs, conversation snippets
+- **Level 2**: Verbose - full JSON data for each event
+
+Debug data and post-prompt summaries are pretty-printed to the console in real-time.
 
 ## Adding Tools
 
@@ -581,38 +629,226 @@ def my_tool(self, args, raw_data):
 ## Testing
 
 \`\`\`bash
+# Run unit tests
 pytest tests/ -v
+
+# Test endpoints are reachable
+testapp
 \`\`\`
 
 ## Useful Commands
 
 \`\`\`bash
-urls          # Show ngrok tunnel URL
+up            # Run agent (auto-restarts on crash)
+urls          # Show ngrok tunnel URLs
 testapp       # Test local and public endpoints
-webhook       # Start webhook catcher for debugging
+webhook       # Start standalone webhook catcher
 \`\`\`
+
+## Connecting to SignalWire
+
+1. Run \`urls\` to get your public ngrok URL
+2. In SignalWire Dashboard, go to Phone Numbers
+3. Set the "Handle Calls Using" to "a]SWML Script"
+4. Set the SWML URL to: \`https://your-ngrok-url/swml\`
+5. Save and make a test call!
 READMEEOF
 print_success "README.md"
 
-# Create sample static file
-cat > web/index.html << 'EOF'
+# Create sample static file with endpoint documentation
+cat > web/index.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html>
 <head>
     <title>SignalWire Agent</title>
     <style>
-        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-        h1 { color: #044cf6; }
-        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        h1 {
+            color: #044cf6;
+            border-bottom: 3px solid #044cf6;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #333;
+            margin-top: 40px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+        .status {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .endpoint {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .endpoint h3 {
+            margin-top: 0;
+            color: #044cf6;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .method.get { background: #61affe; color: white; }
+        .method.post { background: #49cc90; color: white; }
+        .path {
+            font-family: monospace;
+            font-size: 16px;
+            color: #333;
+        }
+        code, pre {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        pre .comment { color: #6a9955; }
+        pre .string { color: #ce9178; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        th { background: #f1f3f4; }
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <h1>SignalWire Agent</h1>
-    <p>Your agent is running!</p>
-    <p>SWML endpoint: <code>/swml</code></p>
+
+    <div class="status">
+        ✅ Your agent is running and ready to receive calls!
+    </div>
+
+    <h2>Endpoints</h2>
+
+    <div class="endpoint">
+        <h3><span class="method post">POST</span> <span class="path">/swml</span></h3>
+        <p>Main SWML endpoint for SignalWire to fetch agent configuration. Point your SignalWire phone number here.</p>
+        <p><strong>Test it:</strong></p>
+        <pre><span class="comment"># Get the SWML configuration</span>
+curl -X POST http://localhost:5000/swml \
+  -H "Content-Type: application/json" \
+  -d '{}'</pre>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method post">POST</span> <span class="path">/debug</span></h3>
+        <p>Debug webhook endpoint. Receives real-time debug data during calls and displays it in the console.</p>
+        <p><strong>Test it:</strong></p>
+        <pre><span class="comment"># Simulate a debug webhook</span>
+curl -X POST http://localhost:5000/debug \
+  -H "Content-Type: application/json" \
+  -d '{"event_type": "test", "call_id": "test-123"}'</pre>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method post">POST</span> <span class="path">/post_prompt</span></h3>
+        <p>Post-prompt webhook endpoint. Receives call summary data when calls end.</p>
+        <p><strong>Test it:</strong></p>
+        <pre><span class="comment"># Simulate a post-prompt webhook</span>
+curl -X POST http://localhost:5000/post_prompt \
+  -H "Content-Type: application/json" \
+  -d '{"post_prompt_data": {"summary": "Test call completed"}}'</pre>
+    </div>
+
+    <div class="endpoint">
+        <h3><span class="method get">GET</span> <span class="path">/</span></h3>
+        <p>Static files. This page and any other files in the <code>web/</code> directory.</p>
+    </div>
+
+    <h2>SWAIG Functions</h2>
+    <p>This agent has the following tools available:</p>
+    <table>
+        <tr>
+            <th>Function</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><code>get_info</code></td>
+            <td>Get information about a topic</td>
+        </tr>
+    </table>
+
+    <h2>Configuration</h2>
+    <table>
+        <tr>
+            <th>Setting</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>Debug Level</td>
+            <td>Set <code>DEBUG_WEBHOOK_LEVEL</code> in .env (0=off, 1=basic, 2=verbose)</td>
+        </tr>
+        <tr>
+            <td>Basic Auth</td>
+            <td>Configure <code>SWML_BASIC_AUTH_USER</code> and <code>SWML_BASIC_AUTH_PASSWORD</code></td>
+        </tr>
+    </table>
+
+    <h2>Quick Commands</h2>
+    <pre><span class="comment"># Start the agent</span>
+up
+
+<span class="comment"># Run tests</span>
+pytest tests/ -v
+
+<span class="comment"># Check ngrok URLs</span>
+urls
+
+<span class="comment"># Test the endpoint</span>
+testapp</pre>
+
+    <div class="footer">
+        Powered by <a href="https://signalwire.com">SignalWire</a> and the
+        <a href="https://github.com/signalwire/signalwire-agents">SignalWire Agents SDK</a>
+    </div>
 </body>
 </html>
-EOF
+HTMLEOF
 print_success "web/index.html"
 
 # Initialize venv with spinner
