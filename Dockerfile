@@ -69,4 +69,4 @@ RUN apt clean
 WORKDIR /workdir
 
 # Start ngrok on container start
-ENTRYPOINT /start_services.sh
+ENTRYPOINT ["/start_services.sh"]
