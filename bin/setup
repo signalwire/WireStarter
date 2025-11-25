@@ -572,8 +572,8 @@ setup_mcp() {
     }'
     fi
 
-    # Claude Code config
-    cat > /workdir/.claude/mcp.json << MCPEOF
+    # Claude Code config (settings.local.json for user scope)
+    cat > /workdir/.claude/settings.local.json << MCPEOF
 {
   "mcpServers": {
     "filesystem": {
@@ -686,7 +686,7 @@ GEMINIEOF
         servers_list="$servers_list\n- github"
     fi
 
-    whiptail --title "MCP Servers Configured" --msgbox "MCP servers installed and configured!\n\nServers enabled:\n${servers_list}\n\nConfigs saved to:\n- /workdir/.claude/mcp.json\n- /workdir/.gemini/settings.json\n\nRestart Claude/Gemini to use MCP tools." 20 55
+    whiptail --title "MCP Servers Configured" --msgbox "MCP servers installed and configured!\n\nServers enabled:\n${servers_list}\n\nConfigs saved to:\n- /workdir/.claude/settings.local.json\n- /workdir/.gemini/settings.json\n\nRestart Claude/Gemini to use MCP tools." 20 55
 }
 
 setup_freeswitch() {
@@ -968,7 +968,7 @@ show_status() {
         fi
 
         # MCP servers
-        if [ -f "/workdir/.claude/mcp.json" ] && [ -f "/workdir/.gemini/settings.json" ]; then
+        if [ -f "/workdir/.claude/settings.local.json" ] && [ -f "/workdir/.gemini/settings.json" ]; then
             STATUS+="MCP Servers: [OK] Configured\n"
         else
             STATUS+="MCP Servers: [--] Not configured\n"
