@@ -603,21 +603,6 @@ show_status() {
         STATUS+="Audio Tools: [--] Not installed\n"
     fi
 
-    STATUS+="\n=== Storage ===\n"
-
-    # Disk usage
-    local disk_used=$(du -sh /workdir 2>/dev/null | awk '{print $1}')
-    local disk_avail=$(df -h /workdir 2>/dev/null | tail -1 | awk '{print $4}')
-    STATUS+="Workdir: ${disk_used} used, ${disk_avail} free\n"
-
-    # Public folder
-    if [ -d "/workdir/public" ]; then
-        local pub_count=$(find /workdir/public -type f 2>/dev/null | wc -l | tr -d ' ')
-        STATUS+="Public files: ${pub_count} files\n"
-    else
-        STATUS+="Public: [--] No folder\n"
-    fi
-
     # Container uptime
     local uptime=$(cat /proc/uptime 2>/dev/null | awk '{printf "%dd %dh %dm", $1/86400, ($1%86400)/3600, ($1%3600)/60}')
     STATUS+="\nUptime: ${uptime}\n"
