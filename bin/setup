@@ -11,6 +11,49 @@ if [ -f "/workdir/.env" ]; then
     set +a
 fi
 
+# Show loading screen with spinner while running a command
+# Usage: show_loading "Title" "Message" command args...
+show_loading() {
+    local title="$1"
+    local message="$2"
+    shift 2
+
+    # Start the command in background
+    "$@" &
+    local pid=$!
+
+    # Show spinner using whiptail infobox in a loop
+    local spinner='|/-\'
+    local i=0
+    while kill -0 $pid 2>/dev/null; do
+        local spin_char="${spinner:i%4:1}"
+        whiptail --title "$title" --infobox "$message $spin_char" 7 50
+        sleep 0.2
+        i=$((i+1))
+    done
+
+    wait $pid
+    return $?
+}
+
+# Quick loading screen (just shows message, no command)
+# Usage: loading_screen "Title" "Message" seconds
+loading_screen() {
+    local title="$1"
+    local message="$2"
+    local duration="${3:-1}"
+
+    local spinner='|/-\'
+    local i=0
+    local end=$((SECONDS + duration))
+    while [ $SECONDS -lt $end ]; do
+        local spin_char="${spinner:i%4:1}"
+        whiptail --title "$title" --infobox "$message $spin_char" 7 50
+        sleep 0.2
+        i=$((i+1))
+    done
+}
+
 # Run command with whiptail progress gauge
 run_with_progress() {
     local title="$1"
@@ -106,7 +149,7 @@ setup_credentials() {
     project_id=$(whiptail --inputbox "Project ID:" 8 60 "$project_id" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    api_token=$(whiptail --inputbox "REST API Token:" 8 60 "$api_token" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    api_token=$(whiptail --inputbox "SignalWire Token:" 8 60 "$api_token" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     freeswitch_pat=$(whiptail --inputbox "FreeSWITCH PAT (optional):" 8 60 "$freeswitch_pat" --title "FreeSWITCH Credentials" 3>&1 1>&2 2>&3)
@@ -127,6 +170,12 @@ setup_credentials() {
     # Strip .signalwire.com if included
     sw_space=$(echo "$sw_space" | sed 's/\.signalwire\.com//g')
 
+    # Preserve existing extra variables from .env (like AI keys)
+    local existing_extra=""
+    if [ -f /workdir/.env ]; then
+        existing_extra=$(grep -v -E "^(SIGNALWIRE_SPACE_NAME|SIGNALWIRE_PROJECT_ID|SIGNALWIRE_TOKEN|FREESWITCH_PAT|NGROK_TOKEN|NGROK_ARGS|VISUAL|WORKDIR)=" /workdir/.env 2>/dev/null | grep -v "^#" | grep -v "^$")
+    fi
+
     # Write .env file
     cat > /workdir/.env << ENVEOF
 SIGNALWIRE_SPACE_NAME=$sw_space
@@ -139,10 +188,25 @@ VISUAL=$visual
 WORKDIR=/workdir
 ENVEOF
 
+    # Append any existing extra variables
+    if [ -n "$existing_extra" ]; then
+        echo "" >> /workdir/.env
+        echo "# Additional settings" >> /workdir/.env
+        echo "$existing_extra" >> /workdir/.env
+    fi
+
     # Export for current session
-    set -a
-    source /workdir/.env
-    set +a
+    export SIGNALWIRE_SPACE_NAME="$sw_space"
+    export SIGNALWIRE_PROJECT_ID="$project_id"
+    export SIGNALWIRE_TOKEN="$api_token"
+    export FREESWITCH_PAT="$freeswitch_pat"
+    export NGROK_TOKEN="$ngrok_token"
+    export NGROK_ARGS="$ngrok_args"
+    export VISUAL="$visual"
+    export WORKDIR="/workdir"
+
+    # Show loading while preparing to test
+    loading_screen "Saving" "Saving credentials..." 1
 
     # Test credentials with progress
     local response_code
@@ -401,30 +465,77 @@ GITEOF
 }
 
 setup_ai_keys() {
+    # Show loading while checking OAuth status
+    loading_screen "AI Setup" "Checking authentication status..." 1
+
+    # Check if logged in via OAuth
+    local claude_oauth=false
+    local gemini_oauth=false
+    local oauth_msg=""
+
+    # Check Claude OAuth - credentials file with claudeAiOauth key
+    if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
+        claude_oauth=true
+        oauth_msg+="Claude Code: OAuth logged in\n"
+    fi
+
+    # Check Gemini OAuth
+    if [ -f "/workdir/.gemini/oauth_creds.json" ]; then
+        gemini_oauth=true
+        oauth_msg+="Gemini CLI: OAuth logged in\n"
+    fi
+
+    # If both are OAuth, don't allow setting keys
+    if [ "$claude_oauth" = true ] && [ "$gemini_oauth" = true ]; then
+        whiptail --title "OAuth Active" --msgbox "Both tools are logged in via OAuth:\n\n${oauth_msg}\nAPI keys are not needed.\n\nTo use API keys instead:\n- Claude: run 'claude logout'\n- Gemini: remove /workdir/.gemini/oauth_creds.json" 16 60
+        return
+    fi
+
+    # If one is OAuth, show which one and only prompt for the other
+    if [ "$claude_oauth" = true ]; then
+        whiptail --title "Claude OAuth Active" --msgbox "Claude Code is logged in via OAuth.\n\nOnly Gemini API key can be configured." 10 55
+    fi
+    if [ "$gemini_oauth" = true ]; then
+        whiptail --title "Gemini OAuth Active" --msgbox "Gemini CLI is logged in via OAuth.\n\nOnly Claude API key can be configured." 10 55
+    fi
+
     local anthropic_key="${ANTHROPIC_API_KEY:-}"
     local gemini_key="${GEMINI_API_KEY:-}"
 
-    anthropic_key=$(whiptail --inputbox "Anthropic API Key (for Claude Code):" 8 70 "$anthropic_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
-    [ $? -ne 0 ] && return
+    # Only prompt for keys if not using OAuth for that service
+    if [ "$claude_oauth" = false ]; then
+        anthropic_key=$(whiptail --inputbox "Anthropic API Key (for Claude Code):" 8 70 "$anthropic_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
+        [ $? -ne 0 ] && return
+    fi
 
-    gemini_key=$(whiptail --inputbox "Google Gemini API Key:" 8 70 "$gemini_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
-    [ $? -ne 0 ] && return
+    if [ "$gemini_oauth" = false ]; then
+        gemini_key=$(whiptail --inputbox "Google Gemini API Key:" 8 70 "$gemini_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
+        [ $? -ne 0 ] && return
+    fi
 
+    # Save non-OAuth keys to .env
     if [ -f "/workdir/.env" ]; then
         sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
         sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
     fi
 
-    echo "ANTHROPIC_API_KEY=$anthropic_key" >> /workdir/.env
-    echo "GEMINI_API_KEY=$gemini_key" >> /workdir/.env
+    if [ "$claude_oauth" = false ] && [ -n "$anthropic_key" ]; then
+        echo "ANTHROPIC_API_KEY=$anthropic_key" >> /workdir/.env
+        export ANTHROPIC_API_KEY="$anthropic_key"
+    fi
 
-    export ANTHROPIC_API_KEY="$anthropic_key"
-    export GEMINI_API_KEY="$gemini_key"
+    if [ "$gemini_oauth" = false ] && [ -n "$gemini_key" ]; then
+        echo "GEMINI_API_KEY=$gemini_key" >> /workdir/.env
+        export GEMINI_API_KEY="$gemini_key"
+    fi
 
-    whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env\n\nClaude Code and Gemini CLI ready." 10 55
+    whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env" 8 50
 }
 
 setup_freeswitch() {
+    # Show loading while checking tokens
+    loading_screen "FreeSWITCH" "Checking available tokens..." 1
+
     # Determine which token to use - SIGNALWIRE_TOKEN first (Enterprise), then FREESWITCH_PAT (OSS)
     local token=""
     local token_type=""
@@ -474,12 +585,13 @@ setup_freeswitch() {
 }
 
 clean_environment() {
-    CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 15 60 5 \
+    CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 16 60 6 \
         "1" "Clean all Python venvs" \
         "2" "Clean NPM cache" \
         "3" "Clean pip cache" \
         "4" "Clean all caches" \
-        "5" "Full reset (remove all dev tools)" \
+        "5" "Clean AI configs (Claude/Gemini)" \
+        "6" "Full reset (remove all dev tools + AI)" \
         3>&1 1>&2 2>&3)
 
     [ $? -ne 0 ] && return
@@ -506,10 +618,27 @@ clean_environment() {
             whiptail --title "Cleaned" --msgbox "All caches cleared." 8 40
             ;;
         "5")
-            if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n\nCredentials and SSH keys kept.\n\nAre you SURE?" 18 50; then
+            if whiptail --title "Confirm" --yesno "This will remove:\n\n- Claude Code config (.claude/)\n- Gemini CLI config (.gemini/)\n- AI API keys from .env\n\nYou will need to re-login or re-enter API keys." 14 55; then
+                rm -rf /workdir/.claude /workdir/.gemini
+                if [ -f "/workdir/.env" ]; then
+                    sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
+                    sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
+                fi
+                unset ANTHROPIC_API_KEY GEMINI_API_KEY
+                whiptail --title "Cleaned" --msgbox "AI configs removed.\n\nRun 'claude login' or setup AI keys." 10 50
+            fi
+            ;;
+        "6")
+            if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n- Claude/Gemini configs\n- AI API keys\n\nCredentials and SSH keys kept.\n\nAre you SURE?" 20 50; then
                 rm -rf /workdir/.venvs /workdir/.go /workdir/.nvm /workdir/.npm /workdir/postgres
+                rm -rf /workdir/.claude /workdir/.gemini
                 rm -f /workdir/.setuppgsql
+                if [ -f "/workdir/.env" ]; then
+                    sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
+                    sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
+                fi
                 pip3 cache purge 2>/dev/null
+                unset ANTHROPIC_API_KEY GEMINI_API_KEY
                 whiptail --title "Reset Complete" --msgbox "Environment reset.\n\nRun 'exec bash' then 'setup' to reinstall." 10 50
             fi
             ;;
@@ -530,6 +659,9 @@ setup_all() {
 }
 
 show_status() {
+    # Show loading while gathering status
+    loading_screen "Status" "Gathering system information..." 1
+
     STATUS="=== Services ===\n"
 
     # Redis status
@@ -573,16 +705,22 @@ show_status() {
         STATUS+="SignalWire: [--] Not configured\n"
     fi
 
-    if [ -n "$ANTHROPIC_API_KEY" ]; then
-        STATUS+="Claude API: [OK] Configured\n"
+    # Check Claude Code auth - OAuth credentials file or API key
+    if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
+        STATUS+="Claude Code: [OK] OAuth logged in\n"
+    elif [ -n "$ANTHROPIC_API_KEY" ]; then
+        STATUS+="Claude Code: [OK] API key configured\n"
     else
-        STATUS+="Claude API: [--] Not configured\n"
+        STATUS+="Claude Code: [--] Not configured\n"
     fi
 
-    if [ -n "$GEMINI_API_KEY" ]; then
-        STATUS+="Gemini API: [OK] Configured\n"
+    # Check Gemini CLI auth - OAuth file or API key
+    if [ -f "/workdir/.gemini/oauth_creds.json" ]; then
+        STATUS+="Gemini CLI: [OK] OAuth logged in\n"
+    elif [ -n "$GEMINI_API_KEY" ]; then
+        STATUS+="Gemini CLI: [OK] API key configured\n"
     else
-        STATUS+="Gemini API: [--] Not configured\n"
+        STATUS+="Gemini CLI: [--] Not configured\n"
     fi
 
     if [ -f "/workdir/.ssh/id_ed25519" ]; then
