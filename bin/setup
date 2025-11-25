@@ -4,48 +4,90 @@
 # Set TERM if not set (needed for whiptail)
 export TERM="${TERM:-xterm}"
 
-# Load existing .env if present (use . instead of source for POSIX compatibility)
+# Load existing .env if present
 if [ -f "/workdir/.env" ]; then
     set -a
     . /workdir/.env 2>/dev/null || true
     set +a
 fi
 
-# Start ngrok tunnel
+# Run command with whiptail progress gauge
+run_with_progress() {
+    local title="$1"
+    local message="$2"
+    shift 2
+
+    # Run command in background and show gauge
+    (
+        echo 10
+        "$@" > /tmp/setup_output.log 2>&1
+        echo 100
+    ) | whiptail --title "$title" --gauge "$message" 8 60 0
+
+    return ${PIPESTATUS[0]}
+}
+
+# Start ngrok tunnel (matches start_services.sh)
 start_ngrok() {
     if [ -z "$NGROK_TOKEN" ]; then
-        echo "No NGROK_TOKEN set"
+        whiptail --title "ngrok" --msgbox "NGROK_TOKEN not set.\n\nPlease run 'Setup SignalWire & NGROK Credentials' first." 10 55
         return 1
     fi
 
     # Check if ngrok is already running
     if curl -s http://127.0.0.1:4040/api/tunnels > /dev/null 2>&1; then
-        echo "ngrok is already running"
+        local existing_url=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+        whiptail --title "ngrok" --msgbox "ngrok is already running!\n\nTunnel: $existing_url" 10 60
+        export NGROK_URL="$existing_url"
         return 0
     fi
 
-    echo "Configuring ngrok..."
-    ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1
+    # Start ngrok with progress
+    (
+        echo 10
+        echo "XXX"
+        echo "Configuring ngrok token..."
+        echo "XXX"
+        /usr/local/bin/ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1
 
-    echo "Starting ngrok tunnel..."
-    screen -dmS ngrok ngrok http $NGROK_ARGS 9080
+        echo 30
+        echo "XXX"
+        echo "Starting ngrok tunnel..."
+        echo "XXX"
+        /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080
 
-    # Wait for ngrok to be ready
-    local retry=0
-    while [ $retry -lt 10 ]; do
-        sleep 2
-        local url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
-        if [ -n "$url" ] && [ "$url" != "null" ]; then
-            echo "ngrok tunnel ready: $url"
-            export NGROK_URL="$url"
-            export HOSTNAME=$(echo "$url" | sed 's|https://||')
-            return 0
-        fi
-        retry=$((retry + 1))
-    done
+        # Wait for ngrok to be ready
+        retry=0
+        while [ $retry -lt 10 ]; do
+            sleep 2
+            url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
+            if [ -n "$url" ] && [ "$url" != "null" ]; then
+                echo "$url" > /tmp/ngrok_url.txt
+                echo 100
+                exit 0
+            fi
+            retry=$((retry + 1))
+            progress=$((30 + retry * 7))
+            echo $progress
+            echo "XXX"
+            echo "Waiting for tunnel... ($retry/10)"
+            echo "XXX"
+        done
+        echo 100
+        exit 1
+    ) | whiptail --title "Starting ngrok" --gauge "Initializing..." 8 60 0
 
-    echo "Failed to start ngrok tunnel"
-    return 1
+    # Check result
+    if [ -f /tmp/ngrok_url.txt ]; then
+        export NGROK_URL=$(cat /tmp/ngrok_url.txt)
+        export HOSTNAME=$(echo "$NGROK_URL" | sed 's|https://||')
+        rm -f /tmp/ngrok_url.txt
+        whiptail --title "ngrok Started" --msgbox "Tunnel ready!\n\n$NGROK_URL" 10 60
+        return 0
+    else
+        whiptail --title "ngrok Failed" --msgbox "Failed to start ngrok tunnel.\n\nCheck your token and try again." 10 50
+        return 1
+    fi
 }
 
 setup_credentials() {
@@ -57,27 +99,21 @@ setup_credentials() {
     local ngrok_args="${NGROK_ARGS:-}"
     local visual="${VISUAL:-vim}"
 
-    # SignalWire Space
     sw_space=$(whiptail --inputbox "SignalWire Space Domain:" 8 60 "$sw_space" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # Project ID
     project_id=$(whiptail --inputbox "Project ID:" 8 60 "$project_id" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # API Token
     api_token=$(whiptail --inputbox "REST API Token:" 8 60 "$api_token" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # NGROK Token
     ngrok_token=$(whiptail --inputbox "NGROK Token (optional):" 8 60 "$ngrok_token" --title "NGROK Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # NGROK Args
     ngrok_args=$(whiptail --inputbox "NGROK Args (e.g., --url yourdomain.ngrok.io):" 8 70 "$ngrok_args" --title "NGROK Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # Editor selection
     visual=$(whiptail --title "Default Editor" --menu "Choose your editor:" 12 50 3 \
         "vim" "" \
         "emacs" "" \
@@ -87,7 +123,7 @@ setup_credentials() {
     # Strip .signalwire.com if included
     sw_space=$(echo "$sw_space" | sed 's/\.signalwire\.com//g')
 
-    # Write .env file (Docker --env-file compatible format)
+    # Write .env file
     cat > /workdir/.env << ENVEOF
 SIGNALWIRE_SPACE=$sw_space
 PROJECT_ID=$project_id
@@ -103,9 +139,17 @@ ENVEOF
     source /workdir/.env
     set +a
 
-    # Test credentials
-    local test_url="https://${sw_space}.signalwire.com/api/laml/2010-04-01/Accounts"
-    local response_code=$(curl -s -o /dev/null -w "%{http_code}" "$test_url" -u "${project_id}:${api_token}")
+    # Test credentials with progress
+    local response_code
+    (
+        echo 50
+        response_code=$(curl -s -o /dev/null -w "%{http_code}" "https://${sw_space}.signalwire.com/api/laml/2010-04-01/Accounts" -u "${project_id}:${api_token}")
+        echo "$response_code" > /tmp/sw_test.txt
+        echo 100
+    ) | whiptail --title "Testing Credentials" --gauge "Validating SignalWire API..." 8 50 0
+
+    response_code=$(cat /tmp/sw_test.txt 2>/dev/null)
+    rm -f /tmp/sw_test.txt
 
     local status_msg=""
     if [ "$response_code" = "200" ]; then
@@ -124,8 +168,7 @@ ENVEOF
     if [ -n "$ngrok_token" ] && [ "$ngrok_running" = "false" ]; then
         if whiptail --title "Credentials Saved" --yesno "Credentials saved to /workdir/.env\n\n$status_msg\n\nngrok is not running. Start ngrok tunnel now?" 14 55; then
             start_ngrok
-            whiptail --title "Setup Complete" --yesno "ngrok tunnel started!\n\nReload shell to apply all changes?" 10 50
-            if [ $? -eq 0 ]; then
+            if whiptail --title "Setup Complete" --yesno "Reload shell to apply all changes?" 8 50; then
                 exec bash
             fi
         fi
@@ -135,135 +178,181 @@ ENVEOF
 }
 
 setup_golang() {
-    echo "Installing Go to /workdir/.go..."
     ARCH=$(uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/amd64/g')
-
-    # Get latest stable version
-    GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1)
 
     if [ -d "/workdir/.go" ]; then
         whiptail --title "Go Already Installed" --yesno "Go is already installed. Reinstall?" 8 50
-        if [ $? -ne 0 ]; then
-            return
-        fi
+        [ $? -ne 0 ] && return
         rm -rf /workdir/.go
     fi
 
-    cd /tmp
-    wget -q --show-progress "https://go.dev/dl/${GO_VERSION}.linux-${ARCH}.tar.gz"
-    mkdir -p /workdir/.go
-    tar -zxf "${GO_VERSION}.linux-${ARCH}.tar.gz" -C /workdir/.go --strip-components=1
-    rm -f "${GO_VERSION}.linux-${ARCH}.tar.gz"
+    (
+        echo 10
+        echo "XXX"
+        echo "Fetching latest Go version..."
+        echo "XXX"
+        GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -1)
+        echo "$GO_VERSION" > /tmp/go_version.txt
 
-    whiptail --title "Go Installed" --msgbox "Go ${GO_VERSION} installed to /workdir/.go\n\nRun 'exec bash' to update your environment." 10 50
+        echo 30
+        echo "XXX"
+        echo "Downloading ${GO_VERSION}..."
+        echo "XXX"
+        cd /tmp
+        wget -q "https://go.dev/dl/${GO_VERSION}.linux-${ARCH}.tar.gz"
+
+        echo 70
+        echo "XXX"
+        echo "Extracting..."
+        echo "XXX"
+        mkdir -p /workdir/.go
+        tar -zxf "${GO_VERSION}.linux-${ARCH}.tar.gz" -C /workdir/.go --strip-components=1
+        rm -f "${GO_VERSION}.linux-${ARCH}.tar.gz"
+
+        echo 100
+    ) | whiptail --title "Installing Go" --gauge "Preparing..." 8 60 0
+
+    GO_VERSION=$(cat /tmp/go_version.txt 2>/dev/null)
+    rm -f /tmp/go_version.txt
+    whiptail --title "Go Installed" --msgbox "Go ${GO_VERSION} installed to /workdir/.go\n\nRun 'exec bash' to update PATH." 10 50
 }
 
 setup_nvm() {
-    echo "Installing NVM to /workdir/.nvm..."
-
     if [ -d "/workdir/.nvm" ]; then
         whiptail --title "NVM Already Installed" --yesno "NVM is already installed. Reinstall?" 8 50
-        if [ $? -ne 0 ]; then
-            return
-        fi
+        [ $? -ne 0 ] && return
         rm -rf /workdir/.nvm
     fi
 
-    mkdir -p /workdir/.nvm
-    export NVM_DIR="/workdir/.nvm"
-    curl -s -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+    (
+        echo 10
+        echo "XXX"
+        echo "Downloading NVM..."
+        echo "XXX"
+        mkdir -p /workdir/.nvm
+        export NVM_DIR="/workdir/.nvm"
+        curl -s -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash > /dev/null 2>&1
 
-    # Install latest LTS node
-    source /workdir/.nvm/nvm.sh
-    nvm install --lts
+        echo 50
+        echo "XXX"
+        echo "Installing Node.js LTS..."
+        echo "XXX"
+        source /workdir/.nvm/nvm.sh
+        nvm install --lts > /dev/null 2>&1
 
-    whiptail --title "NVM Installed" --msgbox "NVM installed to /workdir/.nvm\nNode LTS installed.\n\nRun 'exec bash' to update your environment." 10 50
+        echo 100
+    ) | whiptail --title "Installing NVM + Node.js" --gauge "Preparing..." 8 60 0
+
+    whiptail --title "NVM Installed" --msgbox "NVM installed to /workdir/.nvm\nNode LTS installed.\n\nRun 'exec bash' to update PATH." 10 50
 }
 
 setup_pgsql() {
     PG_VERSION="15"
     NEW_PGDATA="/workdir/postgres"
 
-    # Check if already setup
     if [ -d "$NEW_PGDATA" ] && [ -f "/workdir/.setuppgsql" ]; then
-        whiptail --title "PostgreSQL Already Setup" --yesno "PostgreSQL data directory already exists. Reinitialize?\n\nWARNING: This will delete existing data!" 10 50
-        if [ $? -ne 0 ]; then
-            return
-        fi
+        whiptail --title "PostgreSQL Already Setup" --yesno "PostgreSQL data directory exists. Reinitialize?\n\nWARNING: This will delete existing data!" 10 50
+        [ $? -ne 0 ] && return
         sudo /etc/init.d/postgresql stop 2>/dev/null
         rm -rf "$NEW_PGDATA"
         rm -f /workdir/.setuppgsql
     fi
 
-    echo "Setting up PostgreSQL with data in /workdir/postgres..."
+    (
+        echo 10
+        echo "XXX"
+        echo "Stopping existing PostgreSQL..."
+        echo "XXX"
+        sudo /etc/init.d/postgresql stop 2>/dev/null
 
-    # Stop PostgreSQL if running
-    sudo /etc/init.d/postgresql stop 2>/dev/null
+        echo 30
+        echo "XXX"
+        echo "Creating data directory..."
+        echo "XXX"
+        mkdir -p "$NEW_PGDATA"
+        sudo chown postgres:postgres "$NEW_PGDATA"
+        sudo chmod 700 "$NEW_PGDATA"
 
-    # Create and initialize data directory
-    mkdir -p "$NEW_PGDATA"
-    sudo chown postgres:postgres "$NEW_PGDATA"
-    sudo chmod 700 "$NEW_PGDATA"
+        echo 50
+        echo "XXX"
+        echo "Initializing database cluster..."
+        echo "XXX"
+        sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/initdb -D "$NEW_PGDATA" > /dev/null 2>&1
 
-    echo "Initializing database cluster..."
-    sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/initdb -D "$NEW_PGDATA"
+        echo 80
+        echo "XXX"
+        echo "Starting PostgreSQL..."
+        echo "XXX"
+        sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl -D "$NEW_PGDATA" -l /workdir/postgres/logfile start > /dev/null 2>&1
+        touch /workdir/.setuppgsql
 
-    # Start PostgreSQL
-    echo "Starting PostgreSQL..."
-    sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl -D "$NEW_PGDATA" -l /workdir/postgres/logfile start
-
-    touch /workdir/.setuppgsql
+        echo 100
+    ) | whiptail --title "Setting up PostgreSQL" --gauge "Preparing..." 8 60 0
 
     whiptail --title "PostgreSQL Setup" --msgbox "PostgreSQL initialized in /workdir/postgres\n\nService is running." 10 50
 }
 
 setup_npm() {
-    echo "Setting up npm cache persistence..."
-
     mkdir -p /workdir/.npm
-    npm config set cache /workdir/.npm
-
+    npm config set cache /workdir/.npm 2>/dev/null
     whiptail --title "NPM Cache" --msgbox "NPM cache set to /workdir/.npm" 8 50
 }
 
 setup_python_dev() {
-    whiptail --title "Python Dev Tools" --yesno "Install Python development packages?\n\n- pdb++ (better debugger)\n- icecream (debug printing)\n- rich (beautiful output)\n- pytest + pytest-asyncio\n- uvicorn (ASGI server)\n- websockets\n- pydantic\n- loguru (logging)\n- aiohttp, httpx" 18 55
-    if [ $? -ne 0 ]; then
-        return
-    fi
+    whiptail --title "Python Dev Tools" --yesno "Install Python development packages?\n\n- pdb++ (better debugger)\n- icecream (debug printing)\n- rich (beautiful output)\n- pytest + pytest-asyncio\n- uvicorn (ASGI server)\n- websockets, pydantic, loguru" 16 55
+    [ $? -ne 0 ] && return
 
-    echo "Installing Python dev packages..."
-    pip3 install --break-system-packages \
-        pdbpp icecream rich \
-        pytest pytest-asyncio \
-        uvicorn gunicorn \
-        websockets websocket-client \
-        pydantic pyyaml \
-        loguru structlog \
-        aiohttp httpx
+    (
+        echo 0
+        pip3 install --break-system-packages \
+            pdbpp icecream rich \
+            pytest pytest-asyncio \
+            uvicorn gunicorn \
+            websockets websocket-client \
+            pydantic pyyaml \
+            loguru structlog \
+            aiohttp httpx > /dev/null 2>&1 &
+        pid=$!
+
+        while kill -0 $pid 2>/dev/null; do
+            echo $((RANDOM % 40 + 30))
+            sleep 1
+        done
+        wait $pid
+        echo 100
+    ) | whiptail --title "Installing Python Dev Tools" --gauge "Installing packages..." 8 60 0
 
     whiptail --title "Python Dev Tools" --msgbox "Python development packages installed!" 8 50
 }
 
 setup_audio_tools() {
-    whiptail --title "Audio Tools" --yesno "Install audio/media tools for SignalWire voice apps?\n\n- ffmpeg (audio/video processing)\n- sox (sound processing)\n- pydub (Python audio)" 12 55
-    if [ $? -ne 0 ]; then
-        return
-    fi
+    whiptail --title "Audio Tools" --yesno "Install audio/media tools?\n\n- ffmpeg (audio/video processing)\n- sox (sound processing)\n- pydub (Python audio)" 12 55
+    [ $? -ne 0 ] && return
 
-    echo "Installing audio tools..."
-    apt-get update && apt-get install -y ffmpeg sox
-    pip3 install --break-system-packages pydub soundfile
+    (
+        echo 20
+        echo "XXX"
+        echo "Installing ffmpeg and sox..."
+        echo "XXX"
+        apt-get update > /dev/null 2>&1
+        apt-get install -y ffmpeg sox > /dev/null 2>&1
+
+        echo 70
+        echo "XXX"
+        echo "Installing Python audio packages..."
+        echo "XXX"
+        pip3 install --break-system-packages pydub soundfile > /dev/null 2>&1
+
+        echo 100
+    ) | whiptail --title "Installing Audio Tools" --gauge "Preparing..." 8 60 0
 
     whiptail --title "Audio Tools" --msgbox "Audio tools installed!\n\nffmpeg, sox, pydub ready to use." 10 50
 }
 
 setup_ssh_key() {
     if [ -f "/workdir/.ssh/id_ed25519" ]; then
-        whiptail --title "SSH Key Exists" --yesno "SSH key already exists at /workdir/.ssh/id_ed25519\n\nRegenerate? (This will overwrite!)" 10 55
-        if [ $? -ne 0 ]; then
-            return
-        fi
+        whiptail --title "SSH Key Exists" --yesno "SSH key already exists.\n\nRegenerate? (This will overwrite!)" 10 55
+        [ $? -ne 0 ] && return
     fi
 
     local email=$(whiptail --inputbox "Email for SSH key:" 8 60 "" --title "SSH Key Setup" 3>&1 1>&2 2>&3)
@@ -271,15 +360,12 @@ setup_ssh_key() {
 
     mkdir -p /workdir/.ssh
     chmod 700 /workdir/.ssh
+    ssh-keygen -t ed25519 -C "$email" -f /workdir/.ssh/id_ed25519 -N "" > /dev/null 2>&1
 
-    ssh-keygen -t ed25519 -C "$email" -f /workdir/.ssh/id_ed25519 -N ""
-
-    # Link to home
     rm -rf ~/.ssh
     ln -s /workdir/.ssh ~/.ssh
 
     local pubkey=$(cat /workdir/.ssh/id_ed25519.pub)
-
     whiptail --title "SSH Key Generated" --msgbox "SSH key generated!\n\nPublic key:\n${pubkey}\n\nAdd this to GitHub/GitLab." 16 70
 }
 
@@ -293,7 +379,6 @@ setup_git_identity() {
     local email=$(whiptail --inputbox "Git email:" 8 60 "$current_email" --title "Git Identity" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # Write to /workdir/.gitconfig for persistence
     cat > /workdir/.gitconfig << GITEOF
 [user]
     name = $name
@@ -306,14 +391,11 @@ setup_git_identity() {
     rebase = false
 GITEOF
 
-    # Link to home
     ln -sf /workdir/.gitconfig ~/.gitconfig
-
-    whiptail --title "Git Identity" --msgbox "Git configured!\n\nName: $name\nEmail: $email\n\nSaved to /workdir/.gitconfig" 12 50
+    whiptail --title "Git Identity" --msgbox "Git configured!\n\nName: $name\nEmail: $email" 10 50
 }
 
 setup_ai_keys() {
-    # Load current values
     local anthropic_key="${ANTHROPIC_API_KEY:-}"
     local gemini_key="${GEMINI_API_KEY:-}"
 
@@ -323,32 +405,27 @@ setup_ai_keys() {
     gemini_key=$(whiptail --inputbox "Google Gemini API Key:" 8 70 "$gemini_key" --title "AI API Keys" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # Append to .env if not already there, or update
     if [ -f "/workdir/.env" ]; then
-        # Remove old keys if present
         sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
         sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
     fi
 
-    # Append new keys
     echo "ANTHROPIC_API_KEY=$anthropic_key" >> /workdir/.env
     echo "GEMINI_API_KEY=$gemini_key" >> /workdir/.env
 
-    # Export for current session
     export ANTHROPIC_API_KEY="$anthropic_key"
     export GEMINI_API_KEY="$gemini_key"
 
-    whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env\n\nClaude Code and Gemini CLI are ready to use." 10 55
+    whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env\n\nClaude Code and Gemini CLI ready." 10 55
 }
 
 clean_environment() {
-    CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 16 60 6 \
-        "1" "Clean all Python venvs (/workdir/.venvs/)" \
-        "2" "Clean NPM cache (/workdir/.npm/)" \
+    CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 15 60 5 \
+        "1" "Clean all Python venvs" \
+        "2" "Clean NPM cache" \
         "3" "Clean pip cache" \
-        "4" "Clean all caches (npm + pip)" \
+        "4" "Clean all caches" \
         "5" "Full reset (remove all dev tools)" \
-        "6" "Back to main menu" \
         3>&1 1>&2 2>&3)
 
     [ $? -ne 0 ] && return
@@ -375,15 +452,11 @@ clean_environment() {
             whiptail --title "Cleaned" --msgbox "All caches cleared." 8 40
             ;;
         "5")
-            if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n\nCredentials and SSH keys will be kept.\n\nAre you SURE?" 18 50; then
-                rm -rf /workdir/.venvs
-                rm -rf /workdir/.go
-                rm -rf /workdir/.nvm
-                rm -rf /workdir/.npm
-                rm -rf /workdir/postgres
+            if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n\nCredentials and SSH keys kept.\n\nAre you SURE?" 18 50; then
+                rm -rf /workdir/.venvs /workdir/.go /workdir/.nvm /workdir/.npm /workdir/postgres
                 rm -f /workdir/.setuppgsql
                 pip3 cache purge 2>/dev/null
-                whiptail --title "Reset Complete" --msgbox "Environment reset.\n\nRun 'exec bash' and then 'setup' to reinstall." 10 50
+                whiptail --title "Reset Complete" --msgbox "Environment reset.\n\nRun 'exec bash' then 'setup' to reinstall." 10 50
             fi
             ;;
     esac
@@ -391,9 +464,7 @@ clean_environment() {
 
 setup_all() {
     whiptail --title "Setup All" --yesno "This will setup:\n\n- Go (latest)\n- NVM + Node LTS\n- PostgreSQL\n- NPM cache\n- Python dev tools\n\nContinue?" 16 50
-    if [ $? -ne 0 ]; then
-        return
-    fi
+    [ $? -ne 0 ] && return
 
     setup_golang
     setup_nvm
@@ -401,13 +472,12 @@ setup_all() {
     setup_npm
     setup_python_dev
 
-    whiptail --title "Setup Complete" --msgbox "All development tools installed!\n\nRun 'exec bash' to update your environment." 10 50
+    whiptail --title "Setup Complete" --msgbox "All development tools installed!\n\nRun 'exec bash' to update environment." 10 50
 }
 
 show_status() {
     STATUS=""
 
-    # Credentials status
     if [ -n "$SIGNALWIRE_SPACE" ] && [ -n "$PROJECT_ID" ] && [ -n "$REST_API_TOKEN" ]; then
         STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE}\n"
     else
@@ -452,7 +522,6 @@ show_status() {
         STATUS+="NPM Cache: [--] Default\n"
     fi
 
-    # Count venvs
     if [ -d "/workdir/.venvs" ]; then
         VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l)
         STATUS+="Python venvs: [OK] ${VENV_COUNT} environments\n"
@@ -462,14 +531,12 @@ show_status() {
 
     STATUS+="\n"
 
-    # SSH key
     if [ -f "/workdir/.ssh/id_ed25519" ]; then
         STATUS+="SSH Key: [OK] Configured\n"
     else
         STATUS+="SSH Key: [--] Not configured\n"
     fi
 
-    # Git identity
     if [ -f "/workdir/.gitconfig" ]; then
         local git_name=$(git config --global user.name 2>/dev/null)
         STATUS+="Git Identity: [OK] ${git_name}\n"
@@ -477,7 +544,6 @@ show_status() {
         STATUS+="Git Identity: [--] Not configured\n"
     fi
 
-    # AI keys
     if [ -n "$ANTHROPIC_API_KEY" ]; then
         STATUS+="Claude API: [OK] Configured\n"
     else
@@ -490,7 +556,6 @@ show_status() {
         STATUS+="Gemini API: [--] Not configured\n"
     fi
 
-    # Audio tools
     if command -v ffmpeg &>/dev/null; then
         STATUS+="Audio Tools: [OK] Installed\n"
     else
@@ -500,7 +565,7 @@ show_status() {
     whiptail --title "Environment Status" --msgbox "$STATUS" 28 55
 }
 
-# Main menu
+# Main menu loop - Cancel button exits
 while true; do
     # Check ngrok status for menu
     ngrok_status="Start ngrok Tunnel"
@@ -508,7 +573,7 @@ while true; do
         ngrok_status="ngrok Running (restart)"
     fi
 
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option:" 24 60 15 \
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 22 60 13 \
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "$ngrok_status" \
         "3" "Setup AI API Keys (Claude/Gemini)" \
@@ -522,24 +587,14 @@ while true; do
         "11" "Setup All Dev Tools" \
         "12" "Show Status" \
         "13" "Clean Environment" \
-        "14" "Exit" \
         3>&1 1>&2 2>&3)
 
-    exitstatus=$?
-    if [ $exitstatus -ne 0 ]; then
-        exit 0
-    fi
+    # Cancel button or ESC exits
+    [ $? -ne 0 ] && exit 0
 
     case $CHOICE in
         "1") setup_credentials ;;
-        "2")
-            if [ -z "$NGROK_TOKEN" ]; then
-                whiptail --title "ngrok" --msgbox "NGROK_TOKEN not set.\n\nPlease run 'Setup SignalWire & NGROK Credentials' first." 10 55
-            else
-                start_ngrok
-                whiptail --title "ngrok" --msgbox "ngrok tunnel: $NGROK_URL" 8 60
-            fi
-            ;;
+        "2") start_ngrok ;;
         "3") setup_ai_keys ;;
         "4") setup_git_identity ;;
         "5") setup_ssh_key ;;
@@ -551,6 +606,5 @@ while true; do
         "11") setup_all ;;
         "12") show_status ;;
         "13") clean_environment ;;
-        "14") exit 0 ;;
     esac
 done
