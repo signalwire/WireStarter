@@ -9,10 +9,34 @@ Default port: 5002
 
 import sys
 import json
+import os
 from datetime import datetime
 from flask import Flask, request
 
+try:
+    import requests
+except ImportError:
+    requests = None
+
 app = Flask(__name__)
+
+
+def get_ngrok_url():
+    """Get the current ngrok public URL"""
+    if requests is None:
+        return None
+    try:
+        resp = requests.get('http://127.0.0.1:4040/api/tunnels', timeout=2)
+        tunnels = resp.json().get('tunnels', [])
+        for tunnel in tunnels:
+            if tunnel.get('public_url', '').startswith('https://'):
+                return tunnel['public_url']
+        # Fall back to first tunnel
+        if tunnels:
+            return tunnels[0].get('public_url')
+    except:
+        pass
+    return None
 
 # ANSI colors
 RESET = "\033[0m"
@@ -124,14 +148,27 @@ def catch_webhook_xml(subpath=''):
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5002
 
+    # Get ngrok URL for display
+    ngrok_url = get_ngrok_url()
+
     print(f"""
 {BOLD}{CYAN}╔══════════════════════════════════════════════════════════════╗
 ║                    Webhook Catcher                           ║
 ╚══════════════════════════════════════════════════════════════╝{RESET}
 
 Listening on port {BOLD}{port}{RESET}
+""")
 
-Endpoints:
+    if ngrok_url:
+        print(f"""{BOLD}{YELLOW}Public URLs (copy these):{RESET}
+  {GREEN}{ngrok_url}/webhook{RESET}
+  {GREEN}{ngrok_url}/webhook/xml{RESET}
+""")
+    else:
+        print(f"""{DIM}(ngrok not detected - showing local endpoints){RESET}
+""")
+
+    print(f"""Endpoints:
   {GREEN}/webhook{RESET}         - Returns JSON response
   {GREEN}/webhook/xml{RESET}     - Returns XML/LaML response
   {GREEN}/webhook/*{RESET}       - Catch-all for any subpath
