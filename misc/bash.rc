@@ -762,28 +762,335 @@ testapp() {
     fi
 }
 
-# Create new SignalWire agent project
+# Create new SignalWire agent project with full structure
 newagent() {
     local name="${1:-myagent}"
-    mkdir -p "/workdir/$name"
-    cd "/workdir/$name" || return
-    venv init
-    cat > app.py << 'AGENTEOF'
-from signalwire_agents import AgentBase
+    local project_dir="/workdir/$name"
 
-class MyAgent(AgentBase):
+    if [ -d "$project_dir" ]; then
+        echo "Directory $project_dir already exists"
+        read -p "Overwrite? (y/n): " confirm
+        [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && return
+        rm -rf "$project_dir"
+    fi
+
+    echo "Creating SignalWire agent project: $name"
+
+    # Create directory structure
+    mkdir -p "$project_dir"/{agents,skills,tests,web}
+    cd "$project_dir" || return
+
+    # Initialize venv
+    venv init
+
+    # Create agents/__init__.py
+    cat > agents/__init__.py << 'EOF'
+from .main_agent import MainAgent
+
+__all__ = ["MainAgent"]
+EOF
+
+    # Create main agent module
+    cat > agents/main_agent.py << 'EOF'
+#!/usr/bin/env python3
+"""Main Agent - SignalWire AI Agent"""
+
+import os
+from signalwire_agents import AgentBase, SwaigFunctionResult
+
+
+class MainAgent(AgentBase):
+    """Main voice AI agent."""
+
     def __init__(self):
-        super().__init__(name="My Agent", route="/")
+        super().__init__(
+            name="main-agent",
+            route="/",
+            host="0.0.0.0",
+            port=int(os.getenv("AGENT_PORT", "5000"))
+        )
+
+        self._configure_voice()
+        self._configure_prompts()
+
+    def _configure_voice(self):
+        """Set up voice and language."""
+        self.add_language("English", "en-US", "rime.spore")
+
+        self.set_params({
+            "end_of_speech_timeout": 500,
+            "attention_timeout": 15000,
+        })
+
+    def _configure_prompts(self):
+        """Set up AI prompts."""
+        self.prompt_add_section(
+            "Role",
+            "You are a helpful AI assistant. "
+            "Help callers with their questions and requests."
+        )
+
+        self.prompt_add_section(
+            "Guidelines",
+            body="Follow these guidelines:",
+            bullets=[
+                "Be professional and courteous",
+                "Ask clarifying questions when needed",
+                "Keep responses concise and helpful",
+                "If you cannot help, offer to transfer to a human"
+            ]
+        )
+
+    @AgentBase.tool(
+        name="get_info",
+        description="Get information about a topic",
+        parameters={
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "description": "The topic to get information about"
+                }
+            },
+            "required": ["topic"]
+        }
+    )
+    def get_info(self, args, raw_data):
+        """Get information about a topic."""
+        topic = args.get("topic", "")
+        # TODO: Implement your logic here
+        return SwaigFunctionResult(f"Information about {topic}: This is a placeholder response.")
 
     def on_summary(self, summary):
+        """Handle call summary."""
         print(f"Call summary: {summary}")
 
-agent = MyAgent()
 
-if __name__ == '__main__':
+# Allow running directly for testing
+if __name__ == "__main__":
+    agent = MainAgent()
     agent.run()
-AGENTEOF
-    echo "Created SignalWire agent in /workdir/$name"
-    echo "Run 'up' to start the agent"
+EOF
+
+    # Create main.py entry point
+    cat > main.py << 'EOF'
+#!/usr/bin/env python3
+"""Main entry point for the agent server."""
+
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+from agents import MainAgent
+
+
+def main():
+    agent = MainAgent()
+
+    host = os.getenv("AGENT_HOST", "0.0.0.0")
+    port = int(os.getenv("AGENT_PORT", "5000"))
+
+    print(f"Starting agent on {host}:{port}")
+    agent.run(host=host, port=port)
+
+
+if __name__ == "__main__":
+    main()
+EOF
+
+    # Create tests/__init__.py
+    touch tests/__init__.py
+
+    # Create test file
+    cat > tests/test_agent.py << 'EOF'
+#!/usr/bin/env python3
+"""Tests for main agent."""
+
+import pytest
+from agents import MainAgent
+
+
+class TestMainAgent:
+    """Test main agent."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.agent = MainAgent()
+
+    def test_agent_name(self):
+        """Test agent has correct name."""
+        assert self.agent.name == "main-agent"
+
+    def test_has_functions(self):
+        """Test agent has expected functions."""
+        functions = self.agent._tool_registry.get_function_names()
+        assert "get_info" in functions
+EOF
+
+    # Create .env.example
+    cat > .env.example << 'EOF'
+# Authentication (optional - SDK generates credentials if not set)
+SWML_BASIC_AUTH_USER=
+SWML_BASIC_AUTH_PASSWORD=
+
+# Server Configuration
+AGENT_HOST=0.0.0.0
+AGENT_PORT=5000
+SWML_PROXY_URL_BASE=
+
+# Skill API Keys (as needed)
+GOOGLE_API_KEY=
+WEATHER_API_KEY=
+EOF
+
+    # Create .env from example
+    cp .env.example .env
+
+    # Create .gitignore
+    cat > .gitignore << 'EOF'
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+EOF
+
+    # Create requirements.txt
+    cat > requirements.txt << 'EOF'
+signalwire-agents>=1.0.3
+python-dotenv>=1.0.0
+pytest>=7.0.0
+EOF
+
+    # Create README.md
+    cat > README.md << EOF
+# $name
+
+SignalWire AI Agent project.
+
+## Setup
+
+\`\`\`bash
+# Activate virtual environment (auto-activated by WireStarter)
+venv init
+
+# Install additional dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+\`\`\`
+
+## Running
+
+\`\`\`bash
+# Run with auto-restart
+up
+
+# Or run directly
+python main.py
+
+# Test with swaig-test
+swaig-test agents/main_agent.py --dump-swml
+swaig-test agents/main_agent.py --list-tools
+\`\`\`
+
+## Testing
+
+\`\`\`bash
+pytest tests/ -v
+\`\`\`
+
+## Project Structure
+
+\`\`\`
+$name/
+├── agents/              # Agent modules
+│   ├── __init__.py
+│   └── main_agent.py    # Main agent implementation
+├── skills/              # Custom skills (optional)
+├── tests/               # Test files
+│   └── test_agent.py
+├── web/                 # Static files (optional)
+├── .env                 # Environment variables
+├── .env.example         # Environment template
+├── .gitignore
+├── main.py              # Entry point
+├── README.md
+└── requirements.txt
+\`\`\`
+EOF
+
+    # Create sample web/index.html
+    cat > web/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agent Status</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .status { padding: 20px; background: #e8f5e9; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Agent Status</h1>
+    <div class="status">
+        <p><strong>Status:</strong> Running</p>
+        <p><strong>Endpoint:</strong> /</p>
+    </div>
+</body>
+</html>
+EOF
+
+    echo ""
+    echo "Created SignalWire agent project: $project_dir"
+    echo ""
+    echo "Project structure:"
+    echo "  agents/main_agent.py  - Main agent implementation"
+    echo "  main.py               - Entry point"
+    echo "  tests/test_agent.py   - Unit tests"
+    echo "  .env                  - Environment variables"
+    echo "  requirements.txt      - Dependencies"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Edit agents/main_agent.py to customize your agent"
+    echo "  2. Run 'up' to start the agent"
+    echo "  3. Test with: swaig-test agents/main_agent.py --dump-swml"
 }
 
