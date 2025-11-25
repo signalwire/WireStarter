@@ -134,6 +134,13 @@ start_ngrok() {
 }
 
 setup_credentials() {
+    # Reload .env to get latest values (in case file was modified externally)
+    if [ -f "/workdir/.env" ]; then
+        set -a
+        . /workdir/.env 2>/dev/null || true
+        set +a
+    fi
+
     # Prepopulate with existing values
     local sw_space="${SIGNALWIRE_SPACE_NAME:-}"
     local project_id="${SIGNALWIRE_PROJECT_ID:-}"
@@ -171,21 +178,22 @@ setup_credentials() {
     sw_space=$(echo "$sw_space" | sed 's/\.signalwire\.com//g')
 
     # Preserve existing extra variables from .env (like AI keys)
+    # Match lines that don't start with the known variables (handles both quoted and unquoted)
     local existing_extra=""
     if [ -f /workdir/.env ]; then
-        existing_extra=$(grep -v -E "^(SIGNALWIRE_SPACE_NAME|SIGNALWIRE_PROJECT_ID|SIGNALWIRE_TOKEN|FREESWITCH_PAT|NGROK_TOKEN|NGROK_ARGS|VISUAL|WORKDIR)=" /workdir/.env 2>/dev/null | grep -v "^#" | grep -v "^$")
+        existing_extra=$(grep -v -E '^(SIGNALWIRE_SPACE_NAME|SIGNALWIRE_PROJECT_ID|SIGNALWIRE_TOKEN|FREESWITCH_PAT|NGROK_TOKEN|NGROK_ARGS|VISUAL|WORKDIR)=' /workdir/.env 2>/dev/null | grep -v '^#' | grep -v '^$' | grep -v '^[[:space:]]*$')
     fi
 
-    # Write .env file
+    # Write .env file (quote values to handle special characters)
     cat > /workdir/.env << ENVEOF
-SIGNALWIRE_SPACE_NAME=$sw_space
-SIGNALWIRE_PROJECT_ID=$project_id
-SIGNALWIRE_TOKEN=$api_token
-FREESWITCH_PAT=$freeswitch_pat
-NGROK_TOKEN=$ngrok_token
-NGROK_ARGS=$ngrok_args
-VISUAL=$visual
-WORKDIR=/workdir
+SIGNALWIRE_SPACE_NAME="$sw_space"
+SIGNALWIRE_PROJECT_ID="$project_id"
+SIGNALWIRE_TOKEN="$api_token"
+FREESWITCH_PAT="$freeswitch_pat"
+NGROK_TOKEN="$ngrok_token"
+NGROK_ARGS="$ngrok_args"
+VISUAL="$visual"
+WORKDIR="/workdir"
 ENVEOF
 
     # Append any existing extra variables
