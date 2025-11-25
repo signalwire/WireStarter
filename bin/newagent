@@ -1010,7 +1010,7 @@ cat > web/index.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SignalWire Agent</title>
+    <title>SignalWire Agents SDK</title>
     <style>
         * { box-sizing: border-box; }
         body {
