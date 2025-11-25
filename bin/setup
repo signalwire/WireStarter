@@ -424,6 +424,55 @@ setup_ai_keys() {
     whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env\n\nClaude Code and Gemini CLI ready." 10 55
 }
 
+setup_freeswitch() {
+    # Determine which token to use - SIGNALWIRE_TOKEN first (Enterprise), then FREESWITCH_PAT (OSS)
+    local token=""
+    local token_type=""
+
+    if [ -n "$SIGNALWIRE_TOKEN" ]; then
+        token="$SIGNALWIRE_TOKEN"
+        token_type="SIGNALWIRE_TOKEN (Enterprise if scope enabled)"
+    elif [ -n "$FREESWITCH_PAT" ]; then
+        token="$FREESWITCH_PAT"
+        token_type="FREESWITCH_PAT (Community)"
+    else
+        whiptail --title "No Token Available" --msgbox "No FreeSWITCH token found.\n\nConfigure one of:\n- SIGNALWIRE_TOKEN (for Enterprise, requires FreeSWITCH Access scope)\n- FREESWITCH_PAT (for Community/OSS)\n\nUse option 1 to set up credentials." 14 65
+        return 1
+    fi
+
+    # Show which token will be used
+    whiptail --title "FreeSWITCH Installation" --yesno "Token detected: $token_type\n\nThe installer will automatically detect:\n- PT* tokens → FreeSWITCH Enterprise\n- pat_* tokens → FreeSWITCH Community\n\nContinue with installation?" 14 65
+    [ $? -ne 0 ] && return
+
+    # Choose release channel
+    local channel=$(whiptail --title "FreeSWITCH Channel" --menu "Select release channel:" 12 50 2 \
+        "release" "Stable release (recommended)" \
+        "prerelease" "Pre-release / testing" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    # Run the installer with visible output
+    clear
+    echo "========================================"
+    echo "Installing FreeSWITCH ($channel)"
+    echo "========================================"
+    echo ""
+
+    curl -sSL https://freeswitch.org/fsget | bash -s "$token" "$channel" install
+    local status=$?
+
+    echo ""
+    echo "========================================"
+    if [ $status -eq 0 ]; then
+        echo "Installation completed!"
+    else
+        echo "Installation finished with exit code: $status"
+    fi
+    echo "========================================"
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
 clean_environment() {
     CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 15 60 5 \
         "1" "Clean all Python venvs" \
@@ -623,7 +672,7 @@ while true; do
         ngrok_status="ngrok Running (restart)"
     fi
 
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 22 60 13 \
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 24 60 15 \
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "$ngrok_status" \
         "3" "Setup AI API Keys (Claude/Gemini)" \
@@ -632,11 +681,12 @@ while true; do
         "6" "Setup Go (latest stable)" \
         "7" "Setup NVM + Node.js" \
         "8" "Setup PostgreSQL" \
-        "9" "Setup Python Dev Tools" \
-        "10" "Setup Audio Tools (ffmpeg/sox)" \
-        "11" "Setup All Dev Tools" \
-        "12" "Show Status" \
-        "13" "Clean Environment" \
+        "9" "Setup FreeSWITCH" \
+        "10" "Setup Python Dev Tools" \
+        "11" "Setup Audio Tools (ffmpeg/sox)" \
+        "12" "Setup All Dev Tools" \
+        "13" "Show Status" \
+        "14" "Clean Environment" \
         3>&1 1>&2 2>&3)
 
     # Cancel button or ESC exits
@@ -651,10 +701,11 @@ while true; do
         "6") setup_golang ;;
         "7") setup_nvm ;;
         "8") setup_pgsql ;;
-        "9") setup_python_dev ;;
-        "10") setup_audio_tools ;;
-        "11") setup_all ;;
-        "12") show_status ;;
-        "13") clean_environment ;;
+        "9") setup_freeswitch ;;
+        "10") setup_python_dev ;;
+        "11") setup_audio_tools ;;
+        "12") setup_all ;;
+        "13") show_status ;;
+        "14") clean_environment ;;
     esac
 done
