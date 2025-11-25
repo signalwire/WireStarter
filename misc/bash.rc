@@ -233,11 +233,26 @@ if [ -f "/workdir/.bashrc" ]; then
    . "/workdir/.bashrc"
 fi
 
-if [  -f "/workdir/.emacs" ]; then
+# Editor config persistence
+if [ -f "/workdir/.emacs" ]; then
     ln -f -s /workdir/.emacs ~/.emacs
 fi
+if [ -d "/workdir/.emacs.d" ]; then
+    rm -rf ~/.emacs.d
+    ln -f -s /workdir/.emacs.d ~
+fi
+if [ -f "/workdir/.vimrc" ]; then
+    ln -f -s /workdir/.vimrc ~/.vimrc
+fi
+if [ -d "/workdir/.vim" ]; then
+    rm -rf ~/.vim
+    ln -f -s /workdir/.vim ~
+fi
+if [ -f "/workdir/.nanorc" ]; then
+    ln -f -s /workdir/.nanorc ~/.nanorc
+fi
 
-if [  -f "/workdir/.gitconfig" ]; then
+if [ -f "/workdir/.gitconfig" ]; then
     ln -f -s /workdir/.gitconfig ~
 fi
 if [ -f "/workdir/.pypirc" ]; then
