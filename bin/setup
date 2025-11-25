@@ -629,7 +629,7 @@ setup_mcp() {
     [ "$has_claude" = "yes" ] && tools_msg+="- Claude Code\n"
     [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
 
-    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- puppeteer (browser automation)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)" 20 60
+    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)" 18 60
 
     # Install MCP servers using CLI commands
     clear
@@ -682,9 +682,6 @@ setup_mcp() {
 
     # sequential-thinking - step-by-step reasoning
     add_mcp_server "sequential-thinking" -- npx -y @modelcontextprotocol/server-sequential-thinking
-
-    # puppeteer - browser automation
-    add_mcp_server "puppeteer" -- npx -y @modelcontextprotocol/server-puppeteer
 
     # postgres - only if configured (requires connection URL as argument)
     if [ -f "/workdir/.setuppgsql" ]; then
