@@ -29,10 +29,6 @@ while true
 do
     if [ -n "$NGROK_TOKEN" ]; then
         export NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
-        if [ -n "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
-            # update the numbers that were previously mapped to an ngrok URL previously.
-            python3 /usr/lib/cgi-bin/update_laml_bins.py "$NGROK_URL"
-        fi
     fi
 
     clear

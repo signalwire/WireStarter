@@ -210,11 +210,6 @@ fi
 
 
 
-# Update the phone numbers that were previously mapped to an ngrok URL
-if [ ! -z "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
-    python3 /usr/lib/cgi-bin/update_laml_bins.py $NGROK_URL
-fi
-
 clear
 echo -e "\n\n";
 cat /.sw.ans
