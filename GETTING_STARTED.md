@@ -55,26 +55,15 @@ git clone https://github.com/signalwire/WireStarter.git
 cd WireStarter
 ```
 
-### Configure Your Environment
+### Create a Basic .env File
 
 ```bash
 cp env.example .env
 ```
 
-Edit `.env` with your credentials:
+Edit `.env` to set just your workspace directory:
 
 ```bash
-# SignalWire Credentials (from Step 1)
-SIGNALWIRE_SPACE_NAME=yourspace
-SIGNALWIRE_PROJECT_ID=a1b2c3d4-e5f6-7890-abcd-ef1234567890
-SIGNALWIRE_TOKEN=PTxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# ngrok (from Step 2)
-NGROK_TOKEN=your_ngrok_authtoken
-
-# Optional: Use a static ngrok domain
-# NGROK_ARGS=--url yourname.ngrok.io
-
 # Your workspace directory (where your code lives)
 WORKDIR=/path/to/your/workspace
 ```
@@ -86,7 +75,19 @@ make up      # Start in background
 make enter   # Enter the container
 ```
 
-On first run, WireStarter validates your credentials and starts the SignalWire Shell (`swsh`). Type `exit` to access the full bash environment.
+### First Run: Interactive Setup
+
+On first login, WireStarter automatically launches an interactive setup wizard that walks you through configuring everything:
+
+1. **SignalWire Credentials** - Enter your space name, project ID, and API token
+2. **ngrok Configuration** - Enter your authtoken and optional static domain
+3. **Credential Validation** - Automatically tests your SignalWire credentials
+
+The setup wizard saves everything to `/workdir/.env` so you only need to do this once.
+
+After setup completes, you'll be in the SignalWire Shell (`swsh`). Type `exit` to access the full bash environment.
+
+**Tip:** You can re-run the setup wizard anytime by typing `setup`.
 
 ## Step 4: Create Your First Agent
 
