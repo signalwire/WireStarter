@@ -1744,8 +1744,12 @@ if [ -n "$NGROK_URL" ]; then
     echo "  Web:  $NGROK_URL/"
     echo ""
 fi
-echo "Type 'up' to start the agent"
+echo "To start your agent:"
 echo ""
-
-# Change to project directory (venv will auto-activate via cd hook)
-cd "$PROJECT_DIR"
+echo "  cd $PROJECT_DIR"
+echo "  up"
+echo ""
+echo "To run tests:"
+echo ""
+echo "  pytest tests/ -v"
+echo ""
