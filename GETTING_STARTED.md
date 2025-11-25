@@ -42,33 +42,22 @@ Before starting, you'll need:
 - Go to **Domains** → **New Domain**
 - This gives you a permanent URL like `yourname.ngrok.io` instead of random URLs
 
-## Step 3: Set Up WireStarter
+## Step 3: Run WireStarter
 
-### Clone the Repository
-
-```bash
-git clone https://github.com/signalwire/WireStarter.git
-cd WireStarter
-```
-
-### Create a Basic .env File
+### Create a Workspace Directory
 
 ```bash
-cp env.example .env
-```
-
-Edit `.env` to set just your workspace directory:
-
-```bash
-# Your workspace directory (where your code lives)
-WORKDIR=/path/to/your/workspace
+mkdir ~/workdir
+export WORKDIR=~/workdir
 ```
 
 ### Start the Container
 
 ```bash
-make up      # Start in background
-make enter   # Enter the container
+docker run -it --name wirestarter \
+  -p 9080:9080 \
+  -v $WORKDIR:/workdir \
+  briankwest/wirestarter
 ```
 
 ### First Run: Interactive Setup
