@@ -554,139 +554,161 @@ setup_mcp() {
     export NVM_DIR="/workdir/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 
-    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for both:\n\n- Claude Code (~/.claude/)\n- Gemini CLI (~/.gemini/)\n\nServers to be configured:\n- filesystem (file operations)\n- postgres (database queries)\n- redis (key-value store)\n- fetch (HTTP requests)\n- memory (persistent notes)\n- github (if GITHUB_TOKEN set)" 18 60
+    # Check what's available
+    local has_claude=$(command -v claude >/dev/null 2>&1 && echo "yes" || echo "no")
+    local has_gemini=$(command -v gemini >/dev/null 2>&1 && echo "yes" || echo "no")
 
-    # Create directories
-    mkdir -p /workdir/.claude /workdir/.gemini
-
-    # Build the MCP servers config
-    local github_config=""
-    if [ -n "$GITHUB_TOKEN" ]; then
-        github_config=',
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-github"],
-      "env": {
-        "GITHUB_TOKEN": "'"$GITHUB_TOKEN"'"
-      }
-    }'
+    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ]; then
+        whiptail --title "No AI CLI Found" --msgbox "Neither Claude Code nor Gemini CLI is installed.\n\nInstall one of them first:\n- claude: npm install -g @anthropic-ai/claude-code\n- gemini: npm install -g @anthropic-ai/gemini-cli" 12 60
+        return
     fi
 
-    # Claude Code config (settings.local.json for user scope)
-    cat > /workdir/.claude/settings.local.json << MCPEOF
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-filesystem", "/workdir"]
-    },
-    "postgres": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-postgres"],
-      "env": {
-        "PGHOST": "localhost",
-        "PGUSER": "postgres",
-        "PGDATABASE": "postgres"
-      }
-    },
-    "redis": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"]
-    },
-    "fetch": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-fetch"]
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-memory"]
-    }${github_config}
-  }
-}
-MCPEOF
+    local tools_msg=""
+    [ "$has_claude" = "yes" ] && tools_msg+="- Claude Code\n"
+    [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
 
-    # Gemini CLI config
-    cat > /workdir/.gemini/settings.json << GEMINIEOF
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-filesystem", "/workdir"]
-    },
-    "postgres": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-postgres"],
-      "env": {
-        "PGHOST": "localhost",
-        "PGUSER": "postgres",
-        "PGDATABASE": "postgres"
-      }
-    },
-    "redis": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-redis", "redis://localhost:6379"]
-    },
-    "fetch": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-fetch"]
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-server-memory"]
-    }${github_config}
-  }
-}
-GEMINIEOF
+    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- fetch (HTTP requests)\n- memory (persistent notes)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)" 18 60
 
-    # Pre-download MCP servers with progress
-    (
-        echo 0
-        echo "XXX"
-        echo "Installing filesystem server..."
-        echo "XXX"
-        npx -y @anthropic-ai/mcp-server-filesystem --version > /dev/null 2>&1
+    # Install MCP servers using CLI commands
+    clear
+    echo "========================================"
+    echo "Installing MCP Servers"
+    echo "========================================"
+    echo ""
 
-        echo 20
-        echo "XXX"
-        echo "Installing postgres server..."
-        echo "XXX"
-        npx -y @anthropic-ai/mcp-server-postgres --version > /dev/null 2>&1
+    # Helper function to add server to both CLIs
+    add_mcp_server() {
+        local name="$1"
+        shift
+        echo "Adding $name..."
 
-        echo 40
-        echo "XXX"
-        echo "Installing redis server..."
-        echo "XXX"
-        npx -y @modelcontextprotocol/server-redis --version > /dev/null 2>&1
-
-        echo 60
-        echo "XXX"
-        echo "Installing fetch server..."
-        echo "XXX"
-        npx -y @anthropic-ai/mcp-server-fetch --version > /dev/null 2>&1
-
-        echo 80
-        echo "XXX"
-        echo "Installing memory server..."
-        echo "XXX"
-        npx -y @anthropic-ai/mcp-server-memory --version > /dev/null 2>&1
-
-        if [ -n "$GITHUB_TOKEN" ]; then
-            echo 90
-            echo "XXX"
-            echo "Installing github server..."
-            echo "XXX"
-            npx -y @anthropic-ai/mcp-server-github --version > /dev/null 2>&1
+        if [ "$has_claude" = "yes" ]; then
+            echo "  -> Claude Code"
+            claude mcp add --scope user "$name" "$@" 2>/dev/null || true
         fi
 
-        echo 100
-    ) | whiptail --title "Installing MCP Servers" --gauge "Preparing..." 8 60 0
+        if [ "$has_gemini" = "yes" ]; then
+            echo "  -> Gemini CLI"
+            gemini mcp add "$name" "$@" 2>/dev/null || true
+        fi
+        echo ""
+    }
 
-    local servers_list="- filesystem\n- postgres\n- redis\n- fetch\n- memory"
-    if [ -n "$GITHUB_TOKEN" ]; then
-        servers_list="$servers_list\n- github"
+    # filesystem - file operations on /workdir
+    add_mcp_server "filesystem" -- npx -y @anthropic-ai/mcp-server-filesystem /workdir
+
+    # fetch - HTTP requests
+    add_mcp_server "fetch" -- npx -y @anthropic-ai/mcp-server-fetch
+
+    # memory - persistent notes
+    add_mcp_server "memory" -- npx -y @anthropic-ai/mcp-server-memory
+
+    # postgres - only if configured
+    if [ -f "/workdir/.setuppgsql" ]; then
+        echo "Adding postgres (PostgreSQL detected)..."
+        if [ "$has_claude" = "yes" ]; then
+            echo "  -> Claude Code"
+            claude mcp add --scope user postgres --env PGHOST=localhost --env PGUSER=postgres --env PGDATABASE=postgres -- npx -y @anthropic-ai/mcp-server-postgres 2>/dev/null || true
+        fi
+        if [ "$has_gemini" = "yes" ]; then
+            echo "  -> Gemini CLI"
+            # Gemini doesn't support --env flag the same way, need to use environment
+            PGHOST=localhost PGUSER=postgres PGDATABASE=postgres gemini mcp add postgres -- npx -y @anthropic-ai/mcp-server-postgres 2>/dev/null || true
+        fi
+        echo ""
     fi
 
-    whiptail --title "MCP Servers Configured" --msgbox "MCP servers installed and configured!\n\nServers enabled:\n${servers_list}\n\nConfigs saved to:\n- /workdir/.claude/settings.local.json\n- /workdir/.gemini/settings.json\n\nRestart Claude/Gemini to use MCP tools." 20 55
+    # github - only if token set
+    if [ -n "$GITHUB_TOKEN" ]; then
+        echo "Adding github (GITHUB_TOKEN detected)..."
+        if [ "$has_claude" = "yes" ]; then
+            echo "  -> Claude Code"
+            claude mcp add --scope user github --env GITHUB_TOKEN="$GITHUB_TOKEN" -- npx -y @anthropic-ai/mcp-server-github 2>/dev/null || true
+        fi
+        if [ "$has_gemini" = "yes" ]; then
+            echo "  -> Gemini CLI"
+            GITHUB_TOKEN="$GITHUB_TOKEN" gemini mcp add github -- npx -y @anthropic-ai/mcp-server-github 2>/dev/null || true
+        fi
+        echo ""
+    fi
+
+    echo "========================================"
+    echo "MCP Servers Installed!"
+    echo "========================================"
+    echo ""
+
+    if [ "$has_claude" = "yes" ]; then
+        echo "Claude Code servers:"
+        claude mcp list 2>/dev/null || echo "  (run 'claude mcp list' to verify)"
+        echo ""
+    fi
+
+    if [ "$has_gemini" = "yes" ]; then
+        echo "Gemini CLI servers:"
+        gemini mcp list 2>/dev/null || echo "  (run 'gemini mcp list' to verify)"
+        echo ""
+    fi
+
+    read -p "Press Enter to continue..."
+}
+
+remove_mcp() {
+    # Check what's available
+    local has_claude=$(command -v claude >/dev/null 2>&1 && echo "yes" || echo "no")
+    local has_gemini=$(command -v gemini >/dev/null 2>&1 && echo "yes" || echo "no")
+
+    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ]; then
+        whiptail --title "No AI CLI Found" --msgbox "Neither Claude Code nor Gemini CLI is installed." 8 50
+        return
+    fi
+
+    # Get list of servers
+    local servers=""
+    if [ "$has_claude" = "yes" ]; then
+        servers=$(claude mcp list 2>/dev/null | grep -E "^\s+\w+" | awk '{print $1}' | sort -u)
+    fi
+    if [ "$has_gemini" = "yes" ]; then
+        local gemini_servers=$(gemini mcp list 2>/dev/null | grep -E "^\s+\w+" | awk '{print $1}' | sort -u)
+        servers=$(echo -e "$servers\n$gemini_servers" | sort -u | grep -v '^$')
+    fi
+
+    if [ -z "$servers" ]; then
+        whiptail --title "No MCP Servers" --msgbox "No MCP servers are currently configured." 8 50
+        return
+    fi
+
+    # Build menu options
+    local menu_items=""
+    local count=1
+    for server in $servers; do
+        menu_items+="\"$count\" \"$server\" "
+        count=$((count + 1))
+    done
+
+    local choice=$(eval "whiptail --title \"Remove MCP Server\" --menu \"Select server to remove:\" 20 50 10 $menu_items" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    # Get server name from choice
+    local server_name=$(echo "$servers" | sed -n "${choice}p")
+
+    if whiptail --title "Confirm Removal" --yesno "Remove MCP server '$server_name' from all tools?" 8 50; then
+        clear
+        echo "Removing $server_name..."
+
+        if [ "$has_claude" = "yes" ]; then
+            echo "  -> Claude Code"
+            claude mcp remove "$server_name" 2>/dev/null || true
+        fi
+
+        if [ "$has_gemini" = "yes" ]; then
+            echo "  -> Gemini CLI"
+            gemini mcp remove "$server_name" 2>/dev/null || true
+        fi
+
+        echo ""
+        echo "Done!"
+        read -p "Press Enter to continue..."
+    fi
 }
 
 setup_freeswitch() {
@@ -968,8 +990,12 @@ show_status() {
         fi
 
         # MCP servers
-        if [ -f "/workdir/.claude/settings.local.json" ] && [ -f "/workdir/.gemini/settings.json" ]; then
-            STATUS+="MCP Servers: [OK] Configured\n"
+        local mcp_count=0
+        if command -v claude >/dev/null 2>&1; then
+            mcp_count=$(claude mcp list 2>/dev/null | grep -c "^\s" || echo "0")
+        fi
+        if [ "$mcp_count" -gt 0 ]; then
+            STATUS+="MCP Servers: [OK] ${mcp_count} configured\n"
         else
             STATUS+="MCP Servers: [--] Not configured\n"
         fi
@@ -1016,23 +1042,24 @@ while true; do
         swsh_status="Enable swsh on Login"
     fi
 
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 28 60 18 \
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 28 60 19 \
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "$ngrok_status" \
         "3" "Setup AI API Keys (Claude/Gemini)" \
-        "4" "Setup MCP Servers (Claude/Gemini)" \
-        "5" "Setup Git Identity" \
-        "6" "Setup SSH Key" \
-        "7" "Setup Go (latest stable)" \
-        "8" "Setup NVM + Node.js" \
-        "9" "Setup PostgreSQL" \
-        "10" "Setup FreeSWITCH" \
-        "11" "Setup Python Dev Tools" \
-        "12" "Setup Audio Tools (ffmpeg/sox)" \
-        "13" "Setup All Dev Tools" \
-        "14" "$swsh_status" \
-        "15" "Show Status" \
-        "16" "Clean Environment" \
+        "4" "Add MCP Servers (Claude/Gemini)" \
+        "5" "Remove MCP Server" \
+        "6" "Setup Git Identity" \
+        "7" "Setup SSH Key" \
+        "8" "Setup Go (latest stable)" \
+        "9" "Setup NVM + Node.js" \
+        "10" "Setup PostgreSQL" \
+        "11" "Setup FreeSWITCH" \
+        "12" "Setup Python Dev Tools" \
+        "13" "Setup Audio Tools (ffmpeg/sox)" \
+        "14" "Setup All Dev Tools" \
+        "15" "$swsh_status" \
+        "16" "Show Status" \
+        "17" "Clean Environment" \
         3>&1 1>&2 2>&3)
 
     # Cancel button or ESC exits
@@ -1043,17 +1070,18 @@ while true; do
         "2") start_ngrok ;;
         "3") setup_ai_keys ;;
         "4") setup_mcp ;;
-        "5") setup_git_identity ;;
-        "6") setup_ssh_key ;;
-        "7") setup_golang ;;
-        "8") setup_nvm ;;
-        "9") setup_pgsql ;;
-        "10") setup_freeswitch ;;
-        "11") setup_python_dev ;;
-        "12") setup_audio_tools ;;
-        "13") setup_all ;;
-        "14") toggle_swsh ;;
-        "15") show_status ;;
-        "16") clean_environment ;;
+        "5") remove_mcp ;;
+        "6") setup_git_identity ;;
+        "7") setup_ssh_key ;;
+        "8") setup_golang ;;
+        "9") setup_nvm ;;
+        "10") setup_pgsql ;;
+        "11") setup_freeswitch ;;
+        "12") setup_python_dev ;;
+        "13") setup_audio_tools ;;
+        "14") setup_all ;;
+        "15") toggle_swsh ;;
+        "16") show_status ;;
+        "17") clean_environment ;;
     esac
 done
