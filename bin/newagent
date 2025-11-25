@@ -618,23 +618,140 @@ EOF
 # Create tests/test_agent.py
 cat > tests/test_agent.py << 'EOF'
 #!/usr/bin/env python3
-"""Tests for the main agent."""
+"""
+Tests for the main agent using swaig-test.
+
+This test suite verifies:
+- Agent can be loaded without errors
+- SWML structure is valid
+- SWAIG functions are defined correctly
+- SWAIG functions execute and return expected results
+"""
+
+import subprocess
+import json
+import sys
+from pathlib import Path
 
 import pytest
-from agents import MainAgent
 
 
-class TestMainAgent:
-    """Test suite for MainAgent."""
+# Path to the main agent file
+AGENT_FILE = Path(__file__).parent.parent / "agents" / "main_agent.py"
+
+
+def run_swaig_test(*args) -> tuple[int, str, str]:
+    """Run swaig-test on the agent and return (returncode, stdout, stderr)."""
+    cmd = [sys.executable, "-m", "signalwire_agents.cli.swaig_test_wrapper", str(AGENT_FILE)] + list(args)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    return result.returncode, result.stdout, result.stderr
+
+
+def get_swml_json() -> dict:
+    """Get SWML JSON output from the agent."""
+    returncode, stdout, stderr = run_swaig_test("--dump-swml", "--raw")
+    if returncode != 0:
+        pytest.fail(f"swaig-test failed:\nstderr: {stderr}\nstdout: {stdout}")
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError as e:
+        pytest.fail(f"Invalid JSON: {e}\nOutput: {stdout}")
+
+
+def list_tools() -> list[str]:
+    """List tools available in the agent."""
+    returncode, stdout, stderr = run_swaig_test("--list-tools")
+    if returncode != 0:
+        return []
+    tools = []
+    for line in stdout.split('\n'):
+        line = line.strip()
+        if ' - ' in line and not line.startswith('Parameters:'):
+            parts = line.split(' - ')
+            if parts:
+                tool_name = parts[0].strip()
+                if tool_name and not tool_name.startswith('('):
+                    tools.append(tool_name)
+    return tools
+
+
+class TestAgentLoading:
+    """Test that the agent can be loaded without errors."""
+
+    def test_agent_loads(self):
+        """Test agent file can be loaded by swaig-test."""
+        returncode, stdout, stderr = run_swaig_test("--list-tools")
+        assert returncode == 0, f"Failed to load agent: {stderr}"
+
+    def test_agent_has_tools(self):
+        """Test agent has expected tools defined."""
+        tools = list_tools()
+        assert "get_info" in tools, f"Missing get_info tool. Found: {tools}"
+
+
+class TestSWMLGeneration:
+    """Test that the agent generates valid SWML documents."""
+
+    def test_swml_structure(self):
+        """Test SWML has required structure."""
+        swml = get_swml_json()
+        assert "version" in swml, "SWML missing 'version'"
+        assert "sections" in swml, "SWML missing 'sections'"
+        assert "main" in swml["sections"], "SWML missing 'sections.main'"
+
+    def test_swml_has_ai_section(self):
+        """Test SWML has AI configuration."""
+        swml = get_swml_json()
+        main_section = swml.get("sections", {}).get("main", [])
+        ai_found = any("ai" in verb for verb in main_section)
+        assert ai_found, "SWML missing 'ai' verb"
+
+    def test_swml_has_swaig_functions(self):
+        """Test SWML includes SWAIG function definitions."""
+        swml = get_swml_json()
+        main_section = swml.get("sections", {}).get("main", [])
+        for verb in main_section:
+            if "ai" in verb:
+                ai_config = verb["ai"]
+                assert "SWAIG" in ai_config, "AI config missing SWAIG section"
+                assert "functions" in ai_config["SWAIG"], "SWAIG missing functions"
+                return
+        pytest.fail("No AI verb found in SWML")
+
+
+class TestFunctionExecution:
+    """Test that SWAIG functions can be executed."""
+
+    def test_get_info_function(self):
+        """Test get_info function executes successfully."""
+        returncode, stdout, stderr = run_swaig_test(
+            "--exec", "get_info", "--topic", "SignalWire"
+        )
+        assert returncode == 0, f"Function execution failed: {stderr}"
+        assert "SignalWire" in stdout, f"Expected 'SignalWire' in output: {stdout}"
+
+    def test_get_info_with_different_topic(self):
+        """Test get_info function with different topic."""
+        returncode, stdout, stderr = run_swaig_test(
+            "--exec", "get_info", "--topic", "testing"
+        )
+        assert returncode == 0, f"Function execution failed: {stderr}"
+        assert "testing" in stdout.lower(), f"Expected 'testing' in output: {stdout}"
+
+
+class TestDirectImport:
+    """Test direct Python import of the agent."""
 
     def test_agent_creation(self):
         """Test that agent can be instantiated."""
+        from agents import MainAgent
         agent = MainAgent()
         assert agent is not None
         assert agent.name == "main-agent"
 
-    def test_get_info_tool(self):
-        """Test the get_info tool."""
+    def test_get_info_tool_direct(self):
+        """Test the get_info tool via direct call."""
+        from agents import MainAgent
         agent = MainAgent()
         result = agent.get_info({"topic": "test"}, {})
         assert "test" in result.response
