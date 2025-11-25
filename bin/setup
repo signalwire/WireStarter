@@ -476,14 +476,23 @@ setup_all() {
 }
 
 show_status() {
-    STATUS=""
+    STATUS="=== Services ===\n"
 
-    if [ -n "$SIGNALWIRE_SPACE" ] && [ -n "$PROJECT_ID" ] && [ -n "$REST_API_TOKEN" ]; then
-        STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE}\n"
+    # Redis status
+    if pgrep -x redis-server > /dev/null 2>&1; then
+        STATUS+="Redis: [OK] Running\n"
     else
-        STATUS+="SignalWire: [--] Not configured\n"
+        STATUS+="Redis: [--] Not running\n"
     fi
 
+    # nginx status
+    if pgrep -x nginx > /dev/null 2>&1; then
+        STATUS+="nginx: [OK] Running\n"
+    else
+        STATUS+="nginx: [--] Not running\n"
+    fi
+
+    # ngrok status
     if [ -n "$NGROK_TOKEN" ]; then
         local ngrok_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
         if [ -n "$ngrok_url" ] && [ "$ngrok_url" != "null" ]; then
@@ -495,53 +504,19 @@ show_status() {
         STATUS+="ngrok: [--] Not configured\n"
     fi
 
-    STATUS+="\n"
-
-    if [ -d "/workdir/.go" ]; then
-        GO_VER=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}')
-        STATUS+="Go: [OK] ${GO_VER}\n"
+    # Docker socket
+    if [ -S /var/run/docker.sock ]; then
+        STATUS+="Docker: [OK] Socket available\n"
     else
-        STATUS+="Go: [--] Not installed\n"
+        STATUS+="Docker: [--] No socket\n"
     fi
 
-    if [ -d "/workdir/.nvm" ]; then
-        STATUS+="NVM: [OK] Installed\n"
-    else
-        STATUS+="NVM: [--] Not installed\n"
-    fi
+    STATUS+="\n=== Credentials ===\n"
 
-    if [ -f "/workdir/.setuppgsql" ]; then
-        STATUS+="PostgreSQL: [OK] Configured\n"
+    if [ -n "$SIGNALWIRE_SPACE" ] && [ -n "$PROJECT_ID" ] && [ -n "$REST_API_TOKEN" ]; then
+        STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE}\n"
     else
-        STATUS+="PostgreSQL: [--] Not configured\n"
-    fi
-
-    if [ -d "/workdir/.npm" ]; then
-        STATUS+="NPM Cache: [OK] Persistent\n"
-    else
-        STATUS+="NPM Cache: [--] Default\n"
-    fi
-
-    if [ -d "/workdir/.venvs" ]; then
-        VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l)
-        STATUS+="Python venvs: [OK] ${VENV_COUNT} environments\n"
-    else
-        STATUS+="Python venvs: [--] None\n"
-    fi
-
-    STATUS+="\n"
-
-    if [ -f "/workdir/.ssh/id_ed25519" ]; then
-        STATUS+="SSH Key: [OK] Configured\n"
-    else
-        STATUS+="SSH Key: [--] Not configured\n"
-    fi
-
-    if [ -f "/workdir/.gitconfig" ]; then
-        local git_name=$(git config --global user.name 2>/dev/null)
-        STATUS+="Git Identity: [OK] ${git_name}\n"
-    else
-        STATUS+="Git Identity: [--] Not configured\n"
+        STATUS+="SignalWire: [--] Not configured\n"
     fi
 
     if [ -n "$ANTHROPIC_API_KEY" ]; then
@@ -556,13 +531,98 @@ show_status() {
         STATUS+="Gemini API: [--] Not configured\n"
     fi
 
+    if [ -f "/workdir/.ssh/id_ed25519" ]; then
+        STATUS+="SSH Key: [OK] Configured\n"
+    else
+        STATUS+="SSH Key: [--] Not configured\n"
+    fi
+
+    if [ -f "/workdir/.gitconfig" ]; then
+        local git_name=$(git config --global user.name 2>/dev/null)
+        STATUS+="Git Identity: [OK] ${git_name}\n"
+    else
+        STATUS+="Git Identity: [--] Not configured\n"
+    fi
+
+    STATUS+="\n=== Dev Tools ===\n"
+
+    # Python version
+    local py_ver=$(python3 --version 2>/dev/null | awk '{print $2}')
+    STATUS+="Python: [OK] ${py_ver}\n"
+
+    # Active venv
+    if [ -n "$VIRTUAL_ENV" ]; then
+        STATUS+="Active venv: [OK] $(basename $VIRTUAL_ENV)\n"
+    else
+        STATUS+="Active venv: [--] None\n"
+    fi
+
+    # Venv count
+    if [ -d "/workdir/.venvs" ]; then
+        VENV_COUNT=$(ls -1 /workdir/.venvs/ 2>/dev/null | wc -l | tr -d ' ')
+        STATUS+="Python venvs: [OK] ${VENV_COUNT} saved\n"
+    else
+        STATUS+="Python venvs: [--] None\n"
+    fi
+
+    if [ -d "/workdir/.go" ]; then
+        GO_VER=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}')
+        STATUS+="Go: [OK] ${GO_VER}\n"
+    else
+        STATUS+="Go: [--] Not installed\n"
+    fi
+
+    if [ -d "/workdir/.nvm" ]; then
+        # Try to get node version
+        local node_ver=""
+        if [ -f "/workdir/.nvm/nvm.sh" ]; then
+            node_ver=$(source /workdir/.nvm/nvm.sh 2>/dev/null && node --version 2>/dev/null)
+        fi
+        if [ -n "$node_ver" ]; then
+            STATUS+="Node.js: [OK] ${node_ver}\n"
+        else
+            STATUS+="NVM: [OK] Installed\n"
+        fi
+    else
+        STATUS+="NVM: [--] Not installed\n"
+    fi
+
+    if [ -f "/workdir/.setuppgsql" ]; then
+        if pgrep -x postgres > /dev/null 2>&1; then
+            STATUS+="PostgreSQL: [OK] Running\n"
+        else
+            STATUS+="PostgreSQL: [!!] Configured but not running\n"
+        fi
+    else
+        STATUS+="PostgreSQL: [--] Not configured\n"
+    fi
+
     if command -v ffmpeg &>/dev/null; then
         STATUS+="Audio Tools: [OK] Installed\n"
     else
         STATUS+="Audio Tools: [--] Not installed\n"
     fi
 
-    whiptail --title "Environment Status" --msgbox "$STATUS" 28 55
+    STATUS+="\n=== Storage ===\n"
+
+    # Disk usage
+    local disk_used=$(du -sh /workdir 2>/dev/null | awk '{print $1}')
+    local disk_avail=$(df -h /workdir 2>/dev/null | tail -1 | awk '{print $4}')
+    STATUS+="Workdir: ${disk_used} used, ${disk_avail} free\n"
+
+    # Public folder
+    if [ -d "/workdir/public" ]; then
+        local pub_count=$(find /workdir/public -type f 2>/dev/null | wc -l | tr -d ' ')
+        STATUS+="Public files: ${pub_count} files\n"
+    else
+        STATUS+="Public: [--] No folder\n"
+    fi
+
+    # Container uptime
+    local uptime=$(cat /proc/uptime 2>/dev/null | awk '{printf "%dd %dh %dm", $1/86400, ($1%86400)/3600, ($1%3600)/60}')
+    STATUS+="\nUptime: ${uptime}\n"
+
+    whiptail --title "Environment Status" --msgbox "$STATUS" 38 60
 }
 
 # Main menu loop - Cancel button exits
