@@ -4,23 +4,12 @@ export HISTFILESIZE=20000
 export HISTCONTROL=ignoredups:erasedups
 shopt -s histappend
 
-# Colors
-_C_RESET='\[\e[0m\]'
-_C_BOLD='\[\e[1m\]'
-_C_DIM='\[\e[2m\]'
-_C_RED='\[\e[31m\]'
-_C_GREEN='\[\e[32m\]'
-_C_YELLOW='\[\e[33m\]'
-_C_BLUE='\[\e[34m\]'
-_C_MAGENTA='\[\e[35m\]'
-_C_CYAN='\[\e[36m\]'
-_C_WHITE='\[\e[37m\]'
-
-# Git branch/status for prompt
-_git_prompt() {
+# Prompt helper functions (output raw text, no escapes)
+__git_info() {
     local branch=$(git symbolic-ref --short HEAD 2>/dev/null)
     if [ -n "$branch" ]; then
         local status=""
+        local rev=$(git rev-parse --short HEAD 2>/dev/null)
         # Check for uncommitted changes
         if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
             status="*"
@@ -29,62 +18,82 @@ _git_prompt() {
         if [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
             status="${status}+"
         fi
-        echo " ($branch$status)"
+        echo "${branch}:${rev}${status}"
     fi
 }
 
-# Python venv indicator
-_venv_prompt() {
+__venv_info() {
     if [ -n "$VIRTUAL_ENV" ]; then
-        local venv_name=$(basename "$VIRTUAL_ENV")
-        echo " [py:$venv_name]"
+        basename "$VIRTUAL_ENV"
     fi
 }
 
-# Shorten path: /workdir/foo/bar -> ~/foo/bar
-_short_pwd() {
+__short_pwd() {
     echo "${PWD/#\/workdir/\~}"
 }
 
-# Build the prompt
-_build_prompt() {
-    local exit_code=$?
-    local prompt=""
-
-    # Newline for breathing room
-    prompt+="\n"
-
-    # Exit code indicator (red if non-zero)
-    if [ $exit_code -ne 0 ]; then
-        prompt+="${_C_RED}[$exit_code]${_C_RESET} "
+__exit_status() {
+    local code=$?
+    if [ $code -ne 0 ]; then
+        echo "$code"
     fi
-
-    # Time in dim
-    prompt+="${_C_DIM}\t${_C_RESET} "
-
-    # Directory in bold cyan
-    prompt+="${_C_BOLD}${_C_CYAN}$(_short_pwd)${_C_RESET}"
-
-    # Git info in yellow
-    prompt+="${_C_YELLOW}$(_git_prompt)${_C_RESET}"
-
-    # Venv info in magenta
-    prompt+="${_C_MAGENTA}$(_venv_prompt)${_C_RESET}"
-
-    # Newline and prompt char
-    prompt+="\n"
-
-    # Green $ for normal, red # for root
-    if [ $EUID -eq 0 ]; then
-        prompt+="${_C_RED}#${_C_RESET} "
-    else
-        prompt+="${_C_GREEN}\$${_C_RESET} "
-    fi
-
-    PS1="$prompt"
 }
 
-PROMPT_COMMAND=_build_prompt
+# Build prompt using PROMPT_COMMAND to capture exit code, then set PS1
+__build_prompt() {
+    local EXIT=$?
+
+    # Colors (raw escape codes for PROMPT_COMMAND context)
+    local RST='\[\e[0m\]'
+    local BOLD='\[\e[1m\]'
+    local DIM='\[\e[2m\]'
+    local RED='\[\e[31m\]'
+    local GRN='\[\e[32m\]'
+    local YLW='\[\e[33m\]'
+    local BLU='\[\e[34m\]'
+    local MAG='\[\e[35m\]'
+    local CYN='\[\e[36m\]'
+
+    # Get dynamic values
+    local git_info=$(__git_info)
+    local venv_info=$(__venv_info)
+    local short_pwd=$(__short_pwd)
+
+    # Start building PS1
+    local PS1_LINE1=""
+    local PS1_LINE2=""
+
+    # Line 1: [exit] time path (git) [venv]
+    PS1_LINE1="\n"
+
+    # Exit code if non-zero
+    if [ $EXIT -ne 0 ]; then
+        PS1_LINE1+="${RED}[$EXIT]${RST} "
+    fi
+
+    # Time
+    PS1_LINE1+="${DIM}\t${RST} "
+
+    # Path
+    PS1_LINE1+="${BOLD}${CYN}${short_pwd}${RST}"
+
+    # Git info
+    if [ -n "$git_info" ]; then
+        PS1_LINE1+=" ${YLW}(${git_info})${RST}"
+    fi
+
+    # Venv info
+    if [ -n "$venv_info" ]; then
+        PS1_LINE1+=" ${MAG}[py:${venv_info}]${RST}"
+    fi
+
+    # Line 2: prompt character
+    PS1_LINE2="\n${GRN}\$${RST} "
+
+    PS1="${PS1_LINE1}${PS1_LINE2}"
+}
+
+PROMPT_COMMAND=__build_prompt
 
 if [ -f "/workdir/.env" ]; then
     set -a
