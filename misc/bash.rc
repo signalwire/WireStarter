@@ -272,9 +272,12 @@ else
     mkdir -p /workdir/.claude
     ln -f -s /workdir/.claude ~
 fi
-# Ensure MCP settings file exists for Claude Code
-if [ ! -f "/workdir/.claude/settings.local.json" ]; then
-    echo '{"mcpServers":{}}' > /workdir/.claude/settings.local.json
+# Claude Code MCP config (stored in ~/.claude.json, not in .claude directory)
+if [ -f "/workdir/.claude.json" ]; then
+    ln -sf /workdir/.claude.json ~/.claude.json
+fi
+if [ -f "/workdir/.claude.json.backup" ]; then
+    ln -sf /workdir/.claude.json.backup ~/.claude.json.backup
 fi
 
 # Gemini CLI config persistence
