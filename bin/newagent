@@ -578,10 +578,12 @@ def main():
     # Print startup banner
     print()
     print_separator("═")
-    print(f"{BOLD}{CYAN}SignalWire Agent Server{RESET}")
+    print(f"{BOLD}{CYAN}SignalWire Agents SDK Server{RESET}")
     print_separator()
     print(f"{GREEN}SWML endpoint:{RESET}  http://{host}:{port}/swml")
+    print(f"{GREEN}SWAIG endpoint:{RESET} http://{host}:{port}/swml/swaig/")
     print(f"{GREEN}Web root:{RESET}       http://{host}:{port}/")
+    print(f"{GREEN}Get token:{RESET}      http://{host}:{port}/get_token")
     print(f"{GREEN}Debug webhook:{RESET}  http://{host}:{port}/debug")
     print(f"{GREEN}Post-prompt:{RESET}    http://{host}:{port}/post_prompt")
 
@@ -589,6 +591,8 @@ def main():
         print()
         print(f"{BOLD}{YELLOW}Public URLs:{RESET}")
         print(f"  SWML:        {proxy_url}/swml")
+        print(f"  SWAIG:       {proxy_url}/swml/swaig/")
+        print(f"  Get token:   {proxy_url}/get_token")
         print(f"  Debug:       {proxy_url}/debug")
         print(f"  Post-prompt: {proxy_url}/post_prompt")
 
