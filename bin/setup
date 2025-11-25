@@ -585,7 +585,7 @@ setup_mcp() {
     [ "$has_claude" = "yes" ] && tools_msg+="- Claude Code\n"
     [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
 
-    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- fetch (HTTP requests)\n- memory (persistent notes)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)" 18 60
+    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)" 16 60
 
     # Install MCP servers using CLI commands
     clear
@@ -595,59 +595,55 @@ setup_mcp() {
     echo ""
 
     # Helper function to add server to both CLIs
+    # Usage: add_mcp_server "name" [--env KEY=VALUE ...] -- command args...
     add_mcp_server() {
         local name="$1"
         shift
+
+        # Parse --env arguments
+        local claude_env_args=""
+        local gemini_env_prefix=""
+        while [ "$1" != "--" ] && [ $# -gt 0 ]; do
+            if [ "$1" = "--env" ]; then
+                shift
+                claude_env_args+="--env $1 "
+                gemini_env_prefix+="$1 "
+                shift
+            else
+                shift
+            fi
+        done
+        # Skip the "--" separator
+        [ "$1" = "--" ] && shift
+
         echo "Adding $name..."
 
         if [ "$has_claude" = "yes" ]; then
             echo "  -> Claude Code"
-            claude mcp add --scope user "$name" "$@" 2>/dev/null || true
+            eval "claude mcp add --scope user \"$name\" $claude_env_args-- \"\$@\"" 2>/dev/null || true
         fi
 
         if [ "$has_gemini" = "yes" ]; then
             echo "  -> Gemini CLI"
-            gemini mcp add "$name" "$@" 2>/dev/null || true
+            eval "$gemini_env_prefix gemini mcp add \"$name\" -- \"\$@\"" 2>/dev/null || true
         fi
         echo ""
     }
 
     # filesystem - file operations on /workdir
-    add_mcp_server "filesystem" -- npx -y @anthropic-ai/mcp-server-filesystem /workdir
-
-    # fetch - HTTP requests
-    add_mcp_server "fetch" -- npx -y @anthropic-ai/mcp-server-fetch
+    add_mcp_server "filesystem" -- npx -y @modelcontextprotocol/server-filesystem /workdir
 
     # memory - persistent notes
-    add_mcp_server "memory" -- npx -y @anthropic-ai/mcp-server-memory
+    add_mcp_server "memory" -- npx -y @modelcontextprotocol/server-memory
 
-    # postgres - only if configured
+    # postgres - only if configured (requires connection URL as argument)
     if [ -f "/workdir/.setuppgsql" ]; then
-        echo "Adding postgres (PostgreSQL detected)..."
-        if [ "$has_claude" = "yes" ]; then
-            echo "  -> Claude Code"
-            claude mcp add --scope user postgres --env PGHOST=localhost --env PGUSER=postgres --env PGDATABASE=postgres -- npx -y @anthropic-ai/mcp-server-postgres 2>/dev/null || true
-        fi
-        if [ "$has_gemini" = "yes" ]; then
-            echo "  -> Gemini CLI"
-            # Gemini doesn't support --env flag the same way, need to use environment
-            PGHOST=localhost PGUSER=postgres PGDATABASE=postgres gemini mcp add postgres -- npx -y @anthropic-ai/mcp-server-postgres 2>/dev/null || true
-        fi
-        echo ""
+        add_mcp_server "postgres" -- npx -y @modelcontextprotocol/server-postgres postgresql://postgres@localhost/postgres
     fi
 
     # github - only if token set
     if [ -n "$GITHUB_TOKEN" ]; then
-        echo "Adding github (GITHUB_TOKEN detected)..."
-        if [ "$has_claude" = "yes" ]; then
-            echo "  -> Claude Code"
-            claude mcp add --scope user github --env GITHUB_TOKEN="$GITHUB_TOKEN" -- npx -y @anthropic-ai/mcp-server-github 2>/dev/null || true
-        fi
-        if [ "$has_gemini" = "yes" ]; then
-            echo "  -> Gemini CLI"
-            GITHUB_TOKEN="$GITHUB_TOKEN" gemini mcp add github -- npx -y @anthropic-ai/mcp-server-github 2>/dev/null || true
-        fi
-        echo ""
+        add_mcp_server "github" --env GITHUB_TOKEN="$GITHUB_TOKEN" -- npx -y @modelcontextprotocol/server-github
     fi
 
     echo "========================================"
