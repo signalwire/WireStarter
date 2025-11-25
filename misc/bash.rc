@@ -526,6 +526,14 @@ fi
 
 export PATH=$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 
+# swsh history persistence
+if [ -f "/workdir/.swsh_history" ]; then
+    ln -f -s /workdir/.swsh_history ~/.swsh_history
+else
+    touch /workdir/.swsh_history
+    ln -f -s /workdir/.swsh_history ~/.swsh_history
+fi
+
 if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f /workdir/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
