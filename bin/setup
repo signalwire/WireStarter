@@ -92,9 +92,9 @@ start_ngrok() {
 
 setup_credentials() {
     # Prepopulate with existing values
-    local sw_space="${SIGNALWIRE_SPACE:-}"
-    local project_id="${PROJECT_ID:-}"
-    local api_token="${REST_API_TOKEN:-}"
+    local sw_space="${SIGNALWIRE_SPACE_NAME:-}"
+    local project_id="${SIGNALWIRE_PROJECT_ID:-}"
+    local api_token="${SIGNALWIRE_TOKEN:-}"
     local ngrok_token="${NGROK_TOKEN:-}"
     local ngrok_args="${NGROK_ARGS:-}"
     local visual="${VISUAL:-vim}"
@@ -125,9 +125,9 @@ setup_credentials() {
 
     # Write .env file
     cat > /workdir/.env << ENVEOF
-SIGNALWIRE_SPACE=$sw_space
-PROJECT_ID=$project_id
-REST_API_TOKEN=$api_token
+SIGNALWIRE_SPACE_NAME=$sw_space
+SIGNALWIRE_PROJECT_ID=$project_id
+SIGNALWIRE_TOKEN=$api_token
 NGROK_TOKEN=$ngrok_token
 NGROK_ARGS=$ngrok_args
 VISUAL=$visual
@@ -513,8 +513,8 @@ show_status() {
 
     STATUS+="\n=== Credentials ===\n"
 
-    if [ -n "$SIGNALWIRE_SPACE" ] && [ -n "$PROJECT_ID" ] && [ -n "$REST_API_TOKEN" ]; then
-        STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE}\n"
+    if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ]; then
+        STATUS+="SignalWire: [OK] ${SIGNALWIRE_SPACE_NAME}\n"
     else
         STATUS+="SignalWire: [--] Not configured\n"
     fi

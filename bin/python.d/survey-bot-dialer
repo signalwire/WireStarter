@@ -5,16 +5,16 @@ WORKINGDIR=/usr/local/sw_dialer_agent_docker/
 
 
 # Verify that the env vars are set
-if [ -z $SIGNALWIRE_SPACE ]; then
-  echo "ERROR: The SignalWire Space environment variable SIGNALWIRE_SPACE is missing.  Please export the SignalWire Space Name and try again"
+if [ -z $SIGNALWIRE_SPACE_NAME ]; then
+  echo "ERROR: The SignalWire Space environment variable SIGNALWIRE_SPACE_NAME is missing.  Please export the SignalWire Space Name and try again"
   exit 1
 # API Token
-elif [ -z $REST_API_TOKEN ]; then
-  echo "ERROR: SignalWire API Token environment variable REST_API_TOKEN is missing.  Please export the SignalWire Token ID and try again"
+elif [ -z $SIGNALWIRE_TOKEN ]; then
+  echo "ERROR: SignalWire API Token environment variable SIGNALWIRE_TOKEN is missing.  Please export the SignalWire Token ID and try again"
   exit 1
 # Project ID
-elif [ -z $PROJECT_ID ]; then
-  echo "ERROR: Signalwire Project ID env variable PROJECT_ID is missing.  Please export the SignalWire Project ID and try again"
+elif [ -z $SIGNALWIRE_PROJECT_ID ]; then
+  echo "ERROR: Signalwire Project ID env variable SIGNALWIRE_PROJECT_ID is missing.  Please export the SignalWire Project ID and try again"
   export 1
 # Ngrok Tunnel
 elif [ -z $NGROK_TOKEN ]; then

@@ -33,9 +33,9 @@ cp env.example .env
 Edit `.env` with your credentials:
 
 ```bash
-SIGNALWIRE_SPACE=yourspace
-PROJECT_ID=your-project-id
-REST_API_TOKEN=your-api-token
+SIGNALWIRE_SPACE_NAME=yourspace
+SIGNALWIRE_PROJECT_ID=your-project-id
+SIGNALWIRE_TOKEN=your-api-token
 NGROK_TOKEN=your-ngrok-token
 WORKDIR=/path/to/your/workspace
 ```
@@ -246,9 +246,9 @@ make enter
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `SIGNALWIRE_SPACE` | Yes | Your SignalWire space (without .signalwire.com) |
-| `PROJECT_ID` | Yes | SignalWire project ID |
-| `REST_API_TOKEN` | Yes | SignalWire API token |
+| `SIGNALWIRE_SPACE_NAME` | Yes | Your SignalWire space (without .signalwire.com) |
+| `SIGNALWIRE_PROJECT_ID` | Yes | SignalWire project ID |
+| `SIGNALWIRE_TOKEN` | Yes | SignalWire API token |
 | `NGROK_TOKEN` | No | ngrok auth token for tunneling |
 | `NGROK_ARGS` | No | Additional ngrok arguments (e.g., `--url yourdomain.ngrok.io`) |
 | `WORKDIR` | Yes | Host directory to mount as /workdir |

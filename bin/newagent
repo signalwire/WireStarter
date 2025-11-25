@@ -76,9 +76,9 @@ if [ -f /workdir/.env ]; then
 fi
 
 # Standard variable names
-SW_SPACE="${SIGNALWIRE_SPACE:-}"
-SW_PROJECT="${PROJECT_ID:-}"
-SW_TOKEN="${REST_API_TOKEN:-}"
+SW_SPACE="${SIGNALWIRE_SPACE_NAME:-}"
+SW_PROJECT="${SIGNALWIRE_PROJECT_ID:-}"
+SW_TOKEN="${SIGNALWIRE_TOKEN:-}"
 NGROK_URL="${NGROK_URL:-}"
 
 # Try to get ngrok URL if not set
@@ -282,9 +282,9 @@ print_success "tests/test_agent.py"
 # Create .env file with credentials
 cat > .env << ENVEOF
 # SignalWire Credentials
-SIGNALWIRE_SPACE=${SW_SPACE}
-PROJECT_ID=${SW_PROJECT}
-REST_API_TOKEN=${SW_TOKEN}
+SIGNALWIRE_SPACE_NAME=${SW_SPACE}
+SIGNALWIRE_PROJECT_ID=${SW_PROJECT}
+SIGNALWIRE_TOKEN=${SW_TOKEN}
 
 # Agent Server Configuration
 HOST=0.0.0.0
@@ -302,9 +302,9 @@ print_success ".env"
 # Create .env.example (without secrets)
 cat > .env.example << 'EOF'
 # SignalWire Credentials
-SIGNALWIRE_SPACE=your-space
-PROJECT_ID=your-project-id
-REST_API_TOKEN=your-api-token
+SIGNALWIRE_SPACE_NAME=your-space
+SIGNALWIRE_PROJECT_ID=your-project-id
+SIGNALWIRE_TOKEN=your-api-token
 
 # Agent Server Configuration
 HOST=0.0.0.0
@@ -406,9 +406,9 @@ ${NAME}/
 
 Edit \`.env\` to configure:
 
-- **SIGNALWIRE_SPACE** - Your SignalWire space name
-- **PROJECT_ID** - Your SignalWire project ID
-- **REST_API_TOKEN** - Your SignalWire API token
+- **SIGNALWIRE_SPACE_NAME** - Your SignalWire space name
+- **SIGNALWIRE_PROJECT_ID** - Your SignalWire project ID
+- **SIGNALWIRE_TOKEN** - Your SignalWire API token
 - **HOST/PORT** - Server binding (default: 0.0.0.0:5000)
 - **SWML_BASIC_AUTH_USER/PASSWORD** - Basic auth for SWML webhooks
 - **SWML_PROXY_URL_BASE** - Public URL for webhooks (ngrok URL)

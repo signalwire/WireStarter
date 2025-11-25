@@ -120,7 +120,7 @@ if (-not (Test-Path $envFileDestination)) {
 }
 
 # Check if the .env file needs to be edited
-$requiredVariables = @("SIGNALWIRE_SPACE", "PROJECT_ID", "REST_API_TOKEN", "NGROK_TOKEN", "VISUAL", "WORKDIR")
+$requiredVariables = @("SIGNALWIRE_SPACE_NAME", "SIGNALWIRE_PROJECT_ID", "SIGNALWIRE_TOKEN", "NGROK_TOKEN", "VISUAL", "WORKDIR")
 $envVariables = @{}
 
 Get-Content $envFileDestination | ForEach-Object {

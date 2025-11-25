@@ -101,7 +101,7 @@ if [ -f "/workdir/.env" ]; then
     set +a
 fi
 
-SW_TEST_URL="https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts -u ${PROJECT_ID}:${REST_API_TOKEN}"
+SW_TEST_URL="https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01/Accounts -u ${SIGNALWIRE_PROJECT_ID}:${SIGNALWIRE_TOKEN}"
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
 # Define the output file
@@ -127,15 +127,15 @@ fi
 if [ ! -f "/workdir/.env" ]; then
     # Display the form and collect the inputs
     {
-	SIGNALWIRE_SPACE=$(whiptail --inputbox "Please enter your SignalWire Space Domain:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	SIGNALWIRE_SPACE_NAME=$(whiptail --inputbox "Please enter your SignalWire Space Domain:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then exit; fi
 
-	PROJECT_ID=$(whiptail --inputbox "Please enter your Project ID:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	SIGNALWIRE_PROJECT_ID=$(whiptail --inputbox "Please enter your Project ID:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then exit; fi
 
-	REST_API_TOKEN=$(whiptail --inputbox "Please enter your API Auth Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
+	SIGNALWIRE_TOKEN=$(whiptail --inputbox "Please enter your API Auth Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then exit; fi
 
@@ -159,9 +159,9 @@ if [ ! -f "/workdir/.env" ]; then
 
     # Write to .env file (no quotes, no export - compatible with Docker --env-file)
     {
-	echo "SIGNALWIRE_SPACE=$SIGNALWIRE_SPACE"
-	echo "PROJECT_ID=$PROJECT_ID"
-	echo "REST_API_TOKEN=$REST_API_TOKEN"
+	echo "SIGNALWIRE_SPACE_NAME=$SIGNALWIRE_SPACE_NAME"
+	echo "SIGNALWIRE_PROJECT_ID=$SIGNALWIRE_PROJECT_ID"
+	echo "SIGNALWIRE_TOKEN=$SIGNALWIRE_TOKEN"
 	echo "NGROK_TOKEN=$NGROK_TOKEN"
 	echo "NGROK_ARGS=$NGROK_ARGS"
 	echo "VISUAL=$VISUAL"
@@ -409,13 +409,13 @@ alias gp='git pull'
 
 # SignalWire development helpers
 sw_test() {
-    curl -s "https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts" \
-        -u "${PROJECT_ID}:${REST_API_TOKEN}" | jq .
+    curl -s "https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01/Accounts" \
+        -u "${SIGNALWIRE_PROJECT_ID}:${SIGNALWIRE_TOKEN}" | jq .
 }
 
 sw_numbers() {
-    curl -s "https://${SIGNALWIRE_SPACE}.signalwire.com/api/laml/2010-04-01/Accounts/${PROJECT_ID}/IncomingPhoneNumbers" \
-        -u "${PROJECT_ID}:${REST_API_TOKEN}" | jq '.incoming_phone_numbers[] | {sid, phone_number, friendly_name}'
+    curl -s "https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01/Accounts/${SIGNALWIRE_PROJECT_ID}/IncomingPhoneNumbers" \
+        -u "${SIGNALWIRE_PROJECT_ID}:${SIGNALWIRE_TOKEN}" | jq '.incoming_phone_numbers[] | {sid, phone_number, friendly_name}'
 }
 
 logs() {
@@ -501,7 +501,7 @@ fi
 
 export PATH=$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 
-if [ -n "$SIGNALWIRE_SPACE" ] && [ -n "$PROJECT_ID" ] && [ -n "$REST_API_TOKEN" ] && [ ! -f /workdir/.noswsh ]; then
+if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f /workdir/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
 
@@ -747,7 +747,7 @@ webhook() {
 swpy() {
     python3 -i -c "
 from signalwire.rest import Client
-client = Client('$PROJECT_ID', '$REST_API_TOKEN', signalwire_space_url='$SIGNALWIRE_SPACE.signalwire.com')
+client = Client('$SIGNALWIRE_PROJECT_ID', '$SIGNALWIRE_TOKEN', signalwire_space_url='$SIGNALWIRE_SPACE_NAME.signalwire.com')
 print('SignalWire client ready as: client')
 print('Example: client.incoming_phone_numbers.list()')
 "

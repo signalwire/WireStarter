@@ -54,9 +54,9 @@ The container runs these services on startup:
 
 ### Environment Variables
 Required in `.env` (see `env.example`):
-- `SIGNALWIRE_SPACE` - SignalWire space name (without .signalwire.com)
-- `PROJECT_ID` - SignalWire project ID
-- `REST_API_TOKEN` - SignalWire API token
+- `SIGNALWIRE_SPACE_NAME` - SignalWire space name (without .signalwire.com)
+- `SIGNALWIRE_PROJECT_ID` - SignalWire project ID
+- `SIGNALWIRE_TOKEN` - SignalWire API token
 - `NGROK_TOKEN` - NGROK auth token (optional but recommended)
 - `WORKDIR` - Host directory to mount as /workdir
 
