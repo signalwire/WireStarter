@@ -256,6 +256,10 @@ else
     mkdir -p /workdir/.claude
     ln -f -s /workdir/.claude ~
 fi
+# Ensure MCP settings file exists for Claude Code
+if [ ! -f "/workdir/.claude/settings.local.json" ]; then
+    echo '{"mcpServers":{}}' > /workdir/.claude/settings.local.json
+fi
 
 # Gemini CLI config persistence
 if [ -d "/workdir/.gemini" ]; then
@@ -265,17 +269,24 @@ else
     mkdir -p /workdir/.gemini
     ln -f -s /workdir/.gemini ~
 fi
+# Ensure MCP settings file exists for Gemini CLI
+if [ ! -f "/workdir/.gemini/settings.json" ]; then
+    echo '{"mcpServers":{}}' > /workdir/.gemini/settings.json
+fi
 
 # Start PostgreSQL if previously configured via setup.sh
 if [ -f "/workdir/.setuppgsql" ] && [ -d "/workdir/postgres" ]; then
     sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start 2>/dev/null
 fi
 
-# GitHub Copilot config persistence (symlink instead of copy)
-if [ -d "/workdir/github-copilot" ]; then
-    mkdir -p ~/.config
-    rm -rf ~/.config/github-copilot
-    ln -f -s /workdir/github-copilot ~/.config/github-copilot
+# ~/.config persistence (for various tools like GitHub Copilot, etc.)
+if [ -d "/workdir/.config" ]; then
+    rm -rf ~/.config
+    ln -f -s /workdir/.config ~
+else
+    mkdir -p /workdir/.config
+    rm -rf ~/.config
+    ln -f -s /workdir/.config ~
 fi
 
 if [  -f "/workdir/cpanfile" ]; then
