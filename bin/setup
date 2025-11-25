@@ -1,6 +1,15 @@
 #!/bin/bash
 # WireStarter Environment Setup
 
+# Ensure we have a proper terminal
+if [ ! -t 0 ] || [ ! -t 1 ]; then
+    echo "Error: setup requires an interactive terminal"
+    exit 1
+fi
+
+# Set TERM if not set (needed for whiptail)
+export TERM="${TERM:-xterm}"
+
 # Load existing .env if present
 if [ -f "/workdir/.env" ]; then
     set -a
