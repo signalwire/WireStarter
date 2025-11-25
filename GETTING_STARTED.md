@@ -32,10 +32,6 @@ Before starting, you'll need:
    - Click **Show** next to API Tokens, or create a new one
    - Copy your **API Token**
 
-4. **Get a Phone Number** (optional for WebRTC testing, required for phone calls)
-   - Go to **Phone Numbers** → **Buy a Number**
-   - Choose any number (you can use the default area code)
-
 ## Step 2: Get Your ngrok Token
 
 1. Log in to [ngrok Dashboard](https://dashboard.ngrok.com)
@@ -133,23 +129,13 @@ Debug level: 1 (0=off, 1=basic, 2=verbose)
 
 ## Step 5: Test Your Agent
 
-### Option A: Call from Your Browser (Easiest)
-
 1. Open your public URL in a browser: `https://yourname.ngrok.io/`
 2. You'll see the SignalWire Agents SDK web interface
 3. Click **Call Agent**
 4. Allow microphone access when prompted
 5. Talk to your agent!
 
-### Option B: Call from Your Phone
-
-1. Go to your [SignalWire Dashboard](https://signalwire.com/signin)
-2. Navigate to **Phone Numbers**
-3. Click on your phone number
-4. Set **Handle Calls Using** to **SWML Script**
-5. Enter your SWML URL: `https://yourname.ngrok.io/swml`
-6. Add your basic auth credentials (shown in the startup output)
-7. Save and call the number!
+**Want to call from a phone number?** You can optionally buy a SignalWire phone number and point it at your SWML webhook URL. The agent automatically creates an External SWML Handler resource you can also assign to a number.
 
 ## Step 6: Customize Your Agent
 
