@@ -114,9 +114,11 @@ class MainAgent(AgentBase):
     def __init__(self):
         super().__init__(
             name="main-agent",
-            route="/",
+            route="/swml",
             host=os.getenv("HOST", "0.0.0.0"),
-            port=int(os.getenv("PORT", "5000"))
+            port=int(os.getenv("PORT", "5000")),
+            static_folder="web",
+            static_url_path="/"
         )
 
         # Set basic auth if configured
@@ -218,12 +220,13 @@ def main():
     port = int(os.getenv("PORT", "5000"))
 
     print(f"Starting agent server on {host}:{port}")
-    print(f"SWML endpoint: http://{host}:{port}/")
+    print(f"SWML endpoint: http://{host}:{port}/swml")
+    print(f"Web root: http://{host}:{port}/")
 
     # Show public URL if available
     proxy_url = os.getenv("SWML_PROXY_URL_BASE")
     if proxy_url:
-        print(f"Public URL: {proxy_url}/")
+        print(f"Public SWML: {proxy_url}/swml")
 
     agent.run()
 
@@ -453,7 +456,7 @@ cat > web/index.html << 'EOF'
 <body>
     <h1>SignalWire Agent</h1>
     <p>Your agent is running!</p>
-    <p>SWML endpoint: <code>/</code></p>
+    <p>SWML endpoint: <code>/swml</code></p>
 </body>
 </html>
 EOF
@@ -490,11 +493,15 @@ fi
 echo ""
 echo -e "${GREEN}Project created successfully!${NC}"
 echo ""
-echo "Next steps:"
-echo "  cd /workdir/$NAME"
-echo "  up"
-echo ""
 if [ -n "$NGROK_URL" ]; then
     echo "Your agent will be available at:"
-    echo "  $NGROK_URL/"
+    echo "  SWML: $NGROK_URL/swml"
+    echo "  Web:  $NGROK_URL/"
+    echo ""
 fi
+echo "Run 'up' to start the agent"
+echo ""
+
+# Change to project directory and spawn new shell
+cd "$PROJECT_DIR"
+exec bash
