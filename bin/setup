@@ -1038,7 +1038,7 @@ setup_nanocoder() {
         openrouter_info="\n\n• OpenRouter provider: configured\n  Models: claude-3.5-sonnet, gpt-4o, llama-3.1, etc."
     fi
 
-    if ! whiptail --title "Setup NanoCoder" --yesno "This will configure NanoCoder with:\n\n• Ollama provider: $ollama_host\n  Status: $ollama_status\n  Models: ${models:-none found}${openrouter_info}\n\n• MCP Servers:\n  - filesystem, memory, sequential-thinking\n  - ollama, serena\n  - postgres (if configured), github (if token set)\n\nProceed?" 22 65; then
+    if ! whiptail --title "Setup NanoCoder" --yesno "This will configure NanoCoder with:\n\n• Ollama provider: $ollama_host\n  Status: $ollama_status\n  Models: auto-detect tool-capable models${openrouter_info}\n\n• MCP Servers:\n  - filesystem, memory, sequential-thinking\n  - ollama, serena\n  - postgres (if configured), github (if token set)\n\nProceed?" 22 65; then
         return
     fi
 
@@ -1111,12 +1111,33 @@ setup_nanocoder() {
     mcp_servers+='
   ]'
 
+    # Detect Ollama models that support tools
+    echo "Detecting Ollama models with tool support..."
+    local tool_models=""
+    if curl -s --connect-timeout 2 "$ollama_host/api/tags" > /dev/null 2>&1; then
+        # Get list of models and check each for tool support
+        local all_models=$(curl -s "$ollama_host/api/tags" | jq -r '.models[].name' 2>/dev/null)
+        for model in $all_models; do
+            # Check if model supports tools by querying its info
+            if curl -s "$ollama_host/api/show" -d "{\"name\":\"$model\"}" 2>/dev/null | grep -qi "tools"; then
+                [ -n "$tool_models" ] && tool_models+=", "
+                tool_models+="\"$model\""
+                echo "  [+] $model (supports tools)"
+            else
+                echo "  [ ] $model"
+            fi
+        done
+    fi
+    # Fallback to common tool-capable models if none detected
+    [ -z "$tool_models" ] && tool_models='"qwen2.5-coder:latest", "llama3.1:latest"'
+    echo ""
+
     # Build providers array
     local providers='[
       {
         "name": "Ollama",
         "baseUrl": "'"${ollama_host}"'/v1",
-        "models": ["qwen2.5-coder:latest", "codellama:latest", "deepseek-coder:latest"]
+        "models": ['"$tool_models"']
       }'
 
     # Add OpenRouter if API key is set
