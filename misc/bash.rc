@@ -297,12 +297,16 @@ else
     ln -f -s /workdir/.claude ~
 fi
 # Claude Code MCP config (stored in ~/.claude.json, not in .claude directory)
-if [ -f "/workdir/.claude.json" ]; then
-    ln -sf /workdir/.claude.json ~/.claude.json
+# If real file exists in ~ but not in /workdir, migrate it first
+if [ -f ~/.claude.json ] && [ ! -L ~/.claude.json ] && [ ! -f /workdir/.claude.json ]; then
+    mv ~/.claude.json /workdir/.claude.json
 fi
-if [ -f "/workdir/.claude.json.backup" ]; then
-    ln -sf /workdir/.claude.json.backup ~/.claude.json.backup
+if [ -f ~/.claude.json.backup ] && [ ! -L ~/.claude.json.backup ] && [ ! -f /workdir/.claude.json.backup ]; then
+    mv ~/.claude.json.backup /workdir/.claude.json.backup
 fi
+# Create symlinks (even if target doesn't exist yet - Claude Code will create it)
+ln -sf /workdir/.claude.json ~/.claude.json
+ln -sf /workdir/.claude.json.backup ~/.claude.json.backup
 
 # Gemini CLI config persistence
 if [ -d "/workdir/.gemini" ]; then
@@ -549,14 +553,20 @@ fi
 
 # NPM cache and config persistence
 mkdir -p /workdir/.npm
-npm config set cache /workdir/.npm 2>/dev/null
-if [ -f "/workdir/.npmrc" ]; then
-    ln -sf /workdir/.npmrc ~/.npmrc
+# If real npmrc exists in ~ but not in /workdir, migrate it first
+if [ -f ~/.npmrc ] && [ ! -L ~/.npmrc ] && [ ! -f /workdir/.npmrc ]; then
+    mv ~/.npmrc /workdir/.npmrc
 fi
-if [ -d "/workdir/.npm" ]; then
-    rm -rf ~/.npm
-    ln -sf /workdir/.npm ~/.npm
+# Ensure npmrc exists in /workdir
+if [ ! -f /workdir/.npmrc ]; then
+    echo "cache=/workdir/.npm" > /workdir/.npmrc
 fi
+# Symlink npmrc to /workdir
+rm -f ~/.npmrc
+ln -sf /workdir/.npmrc ~/.npmrc
+# Symlink npm cache directory
+rm -rf ~/.npm
+ln -sf /workdir/.npm ~/.npm
 
 if [ -z $VISUAL ]; then
     export VISUAL=vim

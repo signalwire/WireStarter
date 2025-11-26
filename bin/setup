@@ -1147,7 +1147,7 @@ show_status() {
         echo "  ====================================  ===================================="
 
         # Services column data
-        local svc1="  " svc2="  " svc3="  " svc4="  " svc5="  " svc6="  "
+        local svc1="  " svc2="  " svc3="  " svc4="  " svc5="  " svc6="  " svc7="  "
         pgrep -x redis-server >/dev/null 2>&1 && svc1+="[*] Redis" || svc1+="[ ] Redis"
         pgrep -x nginx >/dev/null 2>&1 && svc2+="[*] nginx" || svc2+="[ ] nginx"
         if [ -n "$NGROK_TOKEN" ]; then
@@ -1155,12 +1155,22 @@ show_status() {
         else
             svc3+="[ ] ngrok"
         fi
-        pgrep -x freeswitch >/dev/null 2>&1 && svc4+="[*] FreeSWITCH" || svc4+="[ ] FreeSWITCH"
-        pgrep -x postgres >/dev/null 2>&1 && svc5+="[*] PostgreSQL" || svc5+="[ ] PostgreSQL"
-        [ -S /var/run/docker.sock ] && svc6+="[*] Docker" || svc6+="[ ] Docker"
+        # Cloudflare Tunnel status
+        if [ -f "/workdir/.cloudflared/token" ]; then
+            if tmux has-session -t cloudflared 2>/dev/null; then
+                svc4+="[*] Cloudflare Tunnel"
+            else
+                svc4+="[!] Cloudflare Tunnel (stopped)"
+            fi
+        else
+            svc4+="[ ] Cloudflare Tunnel"
+        fi
+        pgrep -x freeswitch >/dev/null 2>&1 && svc5+="[*] FreeSWITCH" || svc5+="[ ] FreeSWITCH"
+        pgrep -x postgres >/dev/null 2>&1 && svc6+="[*] PostgreSQL" || svc6+="[ ] PostgreSQL"
+        [ -S /var/run/docker.sock ] && svc7+="[*] Docker" || svc7+="[ ] Docker"
 
         # Auth column data
-        local auth1="" auth2="" auth3="" auth4="" auth5="" auth6=""
+        local auth1="" auth2="" auth3="" auth4="" auth5="" auth6="" auth7=""
         if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
             auth1="[*] Claude (OAuth)"
         elif [ -n "$ANTHROPIC_API_KEY" ]; then
@@ -1179,6 +1189,7 @@ show_status() {
         [ -n "$SLACK_BOT_TOKEN" ] && auth4="[*] Slack Token" || auth4="[ ] Slack Token"
         [ -n "$BRAVE_API_KEY" ] && auth5="[*] Brave API Key" || auth5="[ ] Brave API Key"
         [ -n "$FREESWITCH_PAT" ] && auth6="[*] FreeSWITCH PAT" || auth6="[ ] FreeSWITCH PAT"
+        auth7=""  # Empty for alignment
 
         printf "%-40s%s\n" "$svc1" "$auth1"
         printf "%-40s%s\n" "$svc2" "$auth2"
@@ -1186,6 +1197,7 @@ show_status() {
         printf "%-40s%s\n" "$svc4" "$auth4"
         printf "%-40s%s\n" "$svc5" "$auth5"
         printf "%-40s%s\n" "$svc6" "$auth6"
+        printf "%-40s%s\n" "$svc7" "$auth7"
 
         echo ""
         echo "  CONFIGURATION                         DEV TOOLS"
