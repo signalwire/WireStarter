@@ -7,18 +7,19 @@ A batteries-included Docker development environment for building SignalWire appl
 ## Features
 
 - **Pre-configured SignalWire SDKs** - Python SDK, signalwire-agents, SWML, SWAIG ready to use
-- **Automatic ngrok tunneling** - Public URLs for webhook development
-- **Persistent storage** - Your code, venvs, and configs survive container rebuilds
+- **Automatic tunneling** - ngrok or Cloudflare Tunnel for public webhook URLs
+- **Persistent storage** - Your code, venvs, configs, and credentials survive container rebuilds
 - **Interactive setup** - TUI menus for configuring credentials and tools
-- **Built-in services** - Redis, nginx, PostgreSQL available on demand
-- **AI coding assistants** - Claude Code and Gemini CLI pre-installed
-- **Developer tools** - Git, editors (vim/emacs/nano), debugging utilities
+- **Built-in services** - Redis, nginx, PostgreSQL, FreeSWITCH available on demand
+- **AI coding assistants** - Claude Code and Gemini CLI pre-installed with MCP support
+- **Developer tools** - Git, tmux, editors (vim/emacs/nano/micro/ne), debugging utilities
+- **Security** - Global gitignore prevents accidental credential commits
 
 ## Prerequisites
 
 - [Docker Desktop](https://docs.docker.com/desktop/)
 - [SignalWire Account](https://signalwire.com/signup) with [API Credentials](https://developer.signalwire.com/guides/your-first-api-calls/)
-- [ngrok Account](https://ngrok.com) (optional but recommended)
+- [ngrok Account](https://ngrok.com) or [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
 
 ## Quick Start
 
@@ -51,6 +52,8 @@ make enter   # Enter the container
 
 On first entry, WireStarter validates your SignalWire credentials and drops you into the SignalWire Shell (`swsh`). Type `exit` to access the full bash environment.
 
+Run `setup` for the interactive configuration menu.
+
 ## Container Commands
 
 ### From your host machine
@@ -69,26 +72,41 @@ On first entry, WireStarter validates your SignalWire credentials and drops you 
 
 Type `help` for a complete command reference.
 
-### Setup
+### Interactive Setup Menu
 
 ```bash
 setup                 # Interactive environment setup menu
 ```
 
 The setup menu provides:
-- SignalWire & ngrok credentials
-- AI API keys (Claude/Gemini)
-- Git identity & SSH keys
-- Go, NVM/Node.js, PostgreSQL
-- Python dev tools
-- Audio tools (ffmpeg/sox)
+
+| Option | Description |
+|--------|-------------|
+| Setup SignalWire & NGROK Credentials | Configure API keys and ngrok token (required) |
+| Start ngrok Tunnel | Start/restart the ngrok tunnel |
+| Setup Cloudflare Tunnel | Alternative to ngrok using Cloudflare |
+| Setup AI API Keys | Configure Claude/Gemini API keys or OAuth |
+| Add MCP Servers | Add Model Context Protocol servers to Claude/Gemini |
+| Remove MCP Server | Remove configured MCP servers |
+| Setup Git Identity | Configure git user, email, and GitHub token |
+| Setup SSH Key | Generate ED25519 SSH key for git |
+| Setup Go | Install latest Go to /workdir/.go |
+| Setup NVM + Node.js | Install NVM and Node.js LTS |
+| Setup PostgreSQL | Initialize PostgreSQL in /workdir/postgres |
+| Setup FreeSWITCH | Install FreeSWITCH (requires PAT) |
+| Setup Python Dev Tools | Install black, pytest, build, twine |
+| Setup Audio Tools | Install pydub for audio processing |
+| Setup All Dev Tools | Install Go, NVM, PostgreSQL, Python tools |
+| Enable/Disable swsh | Toggle SignalWire Shell on login |
+| Show Status | Display current environment status |
+| Clean Environment | Remove all dev tools and configs |
 
 ### Python Virtual Environments
 
 Venvs are stored in `/workdir/.venvs/` and persist across container rebuilds.
 
 ```bash
-venv init             # Create venv for current directory (installs flask, requests, signalwire-agents)
+venv init             # Create venv for current directory
 venv delete           # Delete venv for current directory
 venv list             # List all venvs
 venv nuke             # Delete currently active venv
@@ -107,7 +125,7 @@ The `newagent` command creates a complete project structure:
 - `agents/` - Agent modules with AgentBase patterns
 - `skills/` - Reusable skills
 - `tests/` - Pytest test scaffolding
-- `web/` - Static files
+- `web/` - Static files with WebRTC calling interface
 - `.env` - Pre-configured with your SignalWire credentials
 
 ### Running Applications
@@ -145,6 +163,8 @@ reqs                  # Formatted request log
 ports                 # Show what's running on 5000, 5001, 9080
 killport 5000         # Kill process on port
 reload                # Reload nginx
+tmux attach -t ngrok  # Attach to ngrok session
+tmux attach -t cloudflared  # Attach to Cloudflare tunnel session
 ```
 
 ### Redis
@@ -154,6 +174,12 @@ redis                 # Redis CLI
 rkeys                 # List all keys
 rget mykey            # Get value
 rclear                # Flush all data
+```
+
+### PostgreSQL
+
+```bash
+psql                  # Connect to PostgreSQL (auto-configured)
 ```
 
 ### Git Shortcuts
@@ -180,40 +206,190 @@ public                # cd /workdir/public
 
 On startup, WireStarter runs:
 
-1. **ngrok** - Tunnels port 9080 to a public URL
-2. **nginx** - Reverse proxy on port 9080
+1. **ngrok** (if configured) - Tunnels port 9080 to a public URL (runs in tmux)
+2. **Cloudflare Tunnel** (if configured) - Alternative tunnel to ngrok (runs in tmux)
+3. **nginx** - Reverse proxy on port 9080
    - `/` → localhost:5000 (your app)
    - `/webhook` → localhost:5002 (webhook catcher)
    - `/public` → /workdir/public (static files)
-3. **Redis** - Available on default port
+4. **Redis** - Available on default port
+5. **PostgreSQL** (if configured) - Auto-starts if data directory exists
 
 ### Persistent Storage
 
-Everything in `/workdir` persists across container rebuilds:
+Everything in `/workdir` persists across container rebuilds. The following files and directories are automatically symlinked from `/workdir` to their expected locations:
 
 | Path | Purpose |
 |------|---------|
-| `/workdir/.env` | Environment variables |
+| `/workdir/.env` | Environment variables (SignalWire, ngrok, etc.) |
+| `/workdir/.bashrc` | Custom bash configuration |
 | `/workdir/.venvs/` | Python virtual environments |
 | `/workdir/.ssh/` | SSH keys |
 | `/workdir/.gitconfig` | Git configuration |
+| `/workdir/.git-credentials` | Git credential storage |
+| `/workdir/.gitignore_global` | Global gitignore (auto-created) |
 | `/workdir/.go/` | Go installation |
 | `/workdir/.nvm/` | NVM + Node.js |
 | `/workdir/.npm/` | NPM cache |
-| `/workdir/.claude/` | Claude Code config |
-| `/workdir/.gemini/` | Gemini CLI config |
-| `/workdir/postgres/` | PostgreSQL data |
-| `/workdir/public/` | Static files (served at ngrok URL) |
+| `/workdir/.npmrc` | NPM configuration |
+| `/workdir/.claude/` | Claude Code auth & session data |
+| `/workdir/.claude.json` | Claude Code MCP configuration |
+| `/workdir/.gemini/` | Gemini CLI auth & config |
+| `/workdir/.cloudflared/` | Cloudflare Tunnel config & token |
+| `/workdir/.config/` | XDG config (GitHub Copilot, etc.) |
+| `/workdir/.emacs` | Emacs configuration |
+| `/workdir/.vimrc` | Vim configuration |
+| `/workdir/.nanorc` | Nano configuration |
+| `/workdir/.pypirc` | PyPI configuration |
+| `/workdir/.swsh_history` | SignalWire Shell history |
+| `/workdir/postgres/` | PostgreSQL data directory |
+| `/workdir/public/` | Static files (served at tunnel URL/public) |
+
+### Security Features
+
+**Global Gitignore**: WireStarter automatically creates `/workdir/.gitignore_global` to prevent accidentally committing secrets. The following patterns are globally ignored in all git repositories:
+
+- `.env`, `.env.*`, `*.env`, `.envrc`
+- `credentials.json`, `*_credentials.json`
+- `*.pem`, `*.key`
+- `id_rsa`, `id_ed25519`
+- `.npmrc`
+- `.claude.json`, `.claude.json.backup`
+
+**Token Storage**: Sensitive tokens (like Cloudflare Tunnel) are stored in dedicated files with restricted permissions (chmod 600) rather than in `.env`.
 
 ### Pre-installed Packages
 
-**System:** git, curl, wget, jq, screen, ffmpeg, sox, sqlite3, ncdu
+**System:** git, curl, wget, jq, tmux, screen, ffmpeg, sox, sqlite3, ncdu, cloudflared
 
-**Editors:** vim, emacs, nano
+**Editors:** vim, emacs, nano, micro, ne
 
 **Python:** signalwire, signalwire-agents, signalwire-swml, signalwire-swaig, flask, requests, ipython, httpie, black
 
-**AI Tools:** Claude Code, Gemini CLI
+**AI Tools:** Claude Code, Gemini CLI (with MCP server support)
+
+## Tunneling Options
+
+### ngrok (Default)
+
+Set `NGROK_TOKEN` in your `.env` file. The tunnel starts automatically on container launch.
+
+```bash
+# Optional: Use a custom domain
+NGROK_ARGS="--url yourdomain.ngrok.io"
+```
+
+Access the ngrok session: `tmux attach -t ngrok`
+
+### Cloudflare Tunnel (Alternative)
+
+1. Create a tunnel in [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/)
+2. Run `setup` and select "Setup Cloudflare Tunnel"
+3. Enter your tunnel token
+
+The tunnel runs in a tmux session and auto-starts on container launch.
+
+Access the cloudflared session: `tmux attach -t cloudflared`
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SIGNALWIRE_SPACE_NAME` | Yes | Your SignalWire space (without .signalwire.com) |
+| `SIGNALWIRE_PROJECT_ID` | Yes | SignalWire project ID |
+| `SIGNALWIRE_TOKEN` | Yes | SignalWire API token |
+| `NGROK_TOKEN` | Yes* | ngrok auth token (*or use Cloudflare Tunnel) |
+| `NGROK_ARGS` | No | Additional ngrok arguments (e.g., `--url yourdomain.ngrok.io`) |
+| `FREESWITCH_PAT` | No | FreeSWITCH package access token |
+| `WORKDIR` | Yes | Host directory to mount as /workdir |
+| `VISUAL` | No | Preferred editor (vim/emacs/nano/micro/ne) |
+| `ANTHROPIC_API_KEY` | No | Claude API key (alternative to OAuth) |
+| `GEMINI_API_KEY` | No | Gemini API key (alternative to OAuth) |
+| `GITHUB_TOKEN` | No | GitHub personal access token |
+| `SLACK_BOT_TOKEN` | No | Slack bot token (for MCP server) |
+| `BRAVE_API_KEY` | No | Brave Search API key (for MCP server) |
+
+## AI Coding Assistants
+
+### Claude Code
+
+Claude Code is pre-installed. Authenticate via:
+- OAuth: `claude` (browser-based login)
+- API Key: Set `ANTHROPIC_API_KEY` in setup
+
+MCP servers can be added via the setup menu for enhanced capabilities (filesystem access, GitHub, memory, etc.).
+
+### Gemini CLI
+
+Gemini CLI is pre-installed. Authenticate via:
+- OAuth: `gemini` (browser-based login)
+- API Key: Set `GEMINI_API_KEY` in setup
+
+## Example: Creating a SignalWire Agent
+
+```bash
+# Enter the container
+make enter
+
+# Exit swsh to get to bash
+exit
+
+# Create a new agent project
+newagent mybot
+cd /workdir/mybot
+
+# Edit the agent logic
+vim agents/main_agent.py
+
+# Run it
+up
+
+# Your agent is now available at the ngrok URL
+urls
+```
+
+## Webhook Development
+
+WireStarter includes a webhook catcher for debugging callbacks:
+
+```bash
+# Start the webhook catcher
+webhook
+
+# Your webhook URL is:
+# https://your-tunnel-url/webhook
+# https://your-tunnel-url/webhook/xml (returns XML/LaML)
+```
+
+All incoming requests are pretty-printed to the console with headers, body, and query parameters.
+
+## Troubleshooting
+
+**Container exits immediately**
+- Check that `.env` exists and has valid credentials
+- Run `make debug` to see startup errors
+
+**ngrok not working**
+- Verify `NGROK_TOKEN` is set in `.env`
+- Check ngrok status: `curl http://127.0.0.1:4040/api/tunnels`
+- Attach to session: `tmux attach -t ngrok`
+
+**Cloudflare Tunnel not working**
+- Check the tunnel session: `tmux attach -t cloudflared`
+- Verify token file exists: `ls -la /workdir/.cloudflared/token`
+- Re-run setup to reconfigure
+
+**SignalWire credentials fail**
+- Run `sw_test` to validate credentials
+- Ensure space name doesn't include `.signalwire.com`
+
+**Venv not activating**
+- Only works in `/workdir/*` directories
+- Run `venv init` to create one
+
+**PostgreSQL not starting**
+- Check if data exists: `ls /workdir/postgres/PG_VERSION`
+- Run `setup` → "Setup PostgreSQL" to initialize
 
 ## Platform-Specific Installation
 
@@ -241,75 +417,6 @@ cp env.example .env
 make up
 make enter
 ```
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SIGNALWIRE_SPACE_NAME` | Yes | Your SignalWire space (without .signalwire.com) |
-| `SIGNALWIRE_PROJECT_ID` | Yes | SignalWire project ID |
-| `SIGNALWIRE_TOKEN` | Yes | SignalWire API token |
-| `FREESWITCH_PAT` | No | FreeSWITCH package access token |
-| `NGROK_TOKEN` | No | ngrok auth token for tunneling |
-| `NGROK_ARGS` | No | Additional ngrok arguments (e.g., `--url yourdomain.ngrok.io`) |
-| `WORKDIR` | Yes | Host directory to mount as /workdir |
-| `VISUAL` | No | Preferred editor (vim/emacs/nano) |
-
-## Example: Creating a SignalWire Agent
-
-```bash
-# Enter the container
-make enter
-
-# Exit swsh to get to bash
-exit
-
-# Create a new agent project
-newagent mybot
-cd /workdir/mybot
-
-# Edit app.py with your agent logic
-vim app.py
-
-# Run it
-up
-
-# Your agent is now available at the ngrok URL
-urls
-```
-
-## Webhook Development
-
-WireStarter includes a webhook catcher for debugging callbacks:
-
-```bash
-# Start the webhook catcher
-webhook
-
-# Your webhook URL is:
-# https://your-ngrok-url.ngrok.io/webhook
-# https://your-ngrok-url.ngrok.io/webhook/xml (returns XML/LaML)
-```
-
-All incoming requests are pretty-printed to the console with headers, body, and query parameters.
-
-## Troubleshooting
-
-**Container exits immediately**
-- Check that `.env` exists and has valid credentials
-- Run `make debug` to see startup errors
-
-**ngrok not working**
-- Verify `NGROK_TOKEN` is set in `.env`
-- Check ngrok status: `curl http://127.0.0.1:4040/api/tunnels`
-
-**SignalWire credentials fail**
-- Run `sw_test` to validate credentials
-- Ensure space name doesn't include `.signalwire.com`
-
-**Venv not activating**
-- Only works in `/workdir/*` directories
-- Run `venv init` to create one
 
 ## Contributing
 
