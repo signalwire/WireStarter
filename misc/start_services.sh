@@ -4,10 +4,122 @@
 PERSIST="/workdir/persistent"
 mkdir -p "$PERSIST" 2>/dev/null
 
-# Set up ~/.config symlink early (ngrok stores config there)
-mkdir -p "$PERSIST/.config"
-rm -rf ~/.config
-ln -sf "$PERSIST/.config" ~/.config
+# ============================================================================
+# setup_persistence - Create all symlinks from ~ to $PERSIST
+# This runs once at container startup, not on every shell
+# ============================================================================
+setup_persistence() {
+    # ~/.config (ngrok, GitHub Copilot, etc.)
+    mkdir -p "$PERSIST/.config"
+    rm -rf ~/.config
+    ln -sf "$PERSIST/.config" ~/.config
+
+    # Editor configs
+    [ -f "$PERSIST/.emacs" ] && ln -sf "$PERSIST/.emacs" ~/.emacs
+    [ -d "$PERSIST/.emacs.d" ] && rm -rf ~/.emacs.d && ln -sf "$PERSIST/.emacs.d" ~/.emacs.d
+    [ -f "$PERSIST/.vimrc" ] && ln -sf "$PERSIST/.vimrc" ~/.vimrc
+    [ -d "$PERSIST/.vim" ] && rm -rf ~/.vim && ln -sf "$PERSIST/.vim" ~/.vim
+    [ -f "$PERSIST/.nanorc" ] && ln -sf "$PERSIST/.nanorc" ~/.nanorc
+
+    # Git configs
+    [ -f "$PERSIST/.gitconfig" ] && ln -sf "$PERSIST/.gitconfig" ~/.gitconfig
+    [ -f "$PERSIST/.git-credentials" ] && ln -sf "$PERSIST/.git-credentials" ~/.git-credentials
+    [ -f "$PERSIST/.pypirc" ] && ln -sf "$PERSIST/.pypirc" ~/.pypirc
+
+    # Cache directory (pip, npm, etc.)
+    # Migrate existing cache if it's a real directory
+    if [ -d ~/.cache ] && [ ! -L ~/.cache ]; then
+        mkdir -p "$PERSIST/.cache"
+        cp -a ~/.cache/. "$PERSIST/.cache/" 2>/dev/null || true
+        rm -rf ~/.cache
+    fi
+    mkdir -p "$PERSIST/.cache"
+    ln -sf "$PERSIST/.cache" ~/.cache
+
+    # SSH directory
+    if [ -d "$PERSIST/.ssh" ]; then
+        rm -rf ~/.ssh
+        ln -sf "$PERSIST/.ssh" ~/.ssh
+    fi
+
+    # Claude Code config
+    mkdir -p "$PERSIST/.claude"
+    rm -rf ~/.claude
+    ln -sf "$PERSIST/.claude" ~/.claude
+    # Claude MCP config files - migrate if needed
+    if [ -f ~/.claude.json ] && [ ! -L ~/.claude.json ] && [ ! -f "$PERSIST/.claude.json" ]; then
+        mv ~/.claude.json "$PERSIST/.claude.json"
+    fi
+    if [ -f ~/.claude.json.backup ] && [ ! -L ~/.claude.json.backup ] && [ ! -f "$PERSIST/.claude.json.backup" ]; then
+        mv ~/.claude.json.backup "$PERSIST/.claude.json.backup"
+    fi
+    ln -sf "$PERSIST/.claude.json" ~/.claude.json
+    ln -sf "$PERSIST/.claude.json.backup" ~/.claude.json.backup
+
+    # Gemini CLI config
+    mkdir -p "$PERSIST/.gemini"
+    rm -rf ~/.gemini
+    ln -sf "$PERSIST/.gemini" ~/.gemini
+    # Ensure MCP settings file exists
+    [ ! -f "$PERSIST/.gemini/settings.json" ] && echo '{"mcpServers":{}}' > "$PERSIST/.gemini/settings.json"
+
+    # Cloudflare Tunnel config
+    if [ -d "$PERSIST/.cloudflared" ]; then
+        rm -rf ~/.cloudflared
+        ln -sf "$PERSIST/.cloudflared" ~/.cloudflared
+    fi
+
+    # NPM cache and config
+    mkdir -p "$PERSIST/.npm"
+    # Migrate /workdir/.npm if exists
+    if [ -d /workdir/.npm ] && [ ! -L /workdir/.npm ]; then
+        cp -a /workdir/.npm/. "$PERSIST/.npm/" 2>/dev/null || true
+        rm -rf /workdir/.npm
+    fi
+    ln -sf "$PERSIST/.npm" /workdir/.npm 2>/dev/null || true
+    # Migrate ~/.npmrc if exists
+    if [ -f ~/.npmrc ] && [ ! -L ~/.npmrc ] && [ ! -f "$PERSIST/.npmrc" ]; then
+        mv ~/.npmrc "$PERSIST/.npmrc"
+    fi
+    # Ensure npmrc exists with correct cache path
+    [ ! -f "$PERSIST/.npmrc" ] && echo "cache=$PERSIST/.npm" > "$PERSIST/.npmrc"
+    rm -f ~/.npmrc
+    ln -sf "$PERSIST/.npmrc" ~/.npmrc
+    rm -rf ~/.npm
+    ln -sf "$PERSIST/.npm" ~/.npm
+
+    # swsh history
+    touch "$PERSIST/.swsh_history"
+    ln -sf "$PERSIST/.swsh_history" ~/.swsh_history
+
+    # Global gitignore
+    if [ ! -f "$PERSIST/.gitignore_global" ]; then
+        cat > "$PERSIST/.gitignore_global" << 'GITIGNORE'
+# Global gitignore - prevents committing secrets
+.env
+.env.*
+*.env
+.envrc
+.npmrc
+credentials.json
+*_credentials.json
+*.pem
+*.key
+id_rsa
+id_ed25519
+.claude.json
+.claude.json.backup
+GITIGNORE
+    fi
+    git config --global core.excludesfile "$PERSIST/.gitignore_global" 2>/dev/null
+
+    # Create public and logs directories
+    mkdir -p "$PERSIST/public"
+    mkdir -p "$PERSIST/logs"
+}
+
+# Run persistence setup
+setup_persistence
 
 # Start Ngrok
 if [ -n "$NGROK_TOKEN" ]; then
@@ -30,12 +142,8 @@ fi
 
 export HOSTNAME=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null | sed 's/https:\/\///')
 
-# Start Cloudflare Tunnel if configured
+# Start Cloudflare Tunnel if configured (symlink already created by setup_persistence)
 if [ -f "$PERSIST/.cloudflared/token" ]; then
-    # Symlink config directory
-    rm -rf ~/.cloudflared
-    ln -sf "$PERSIST/.cloudflared" ~/.cloudflared
-    # Start tunnel in tmux using TUNNEL_TOKEN env var to avoid exposing token in process list
     /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat $PERSIST/.cloudflared/token) exec cloudflared tunnel run"
     echo "Cloudflare Tunnel starting..."
 fi
@@ -48,8 +156,7 @@ if [ -f "$PERSIST/postgres/PG_VERSION" ]; then
     sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D "$PERSIST/postgres" -l "$PERSIST/postgres/logfile" start >/dev/null 2>&1
 fi
 
-# Start webhook catcher in background (logs to persistent location)
-mkdir -p "$PERSIST/logs"
+# Start webhook catcher in background (logs directory created by setup_persistence)
 /usr/bin/tmux new-session -d -s webhook "python3 /usr/bin/webhook-catcher.py 5002 --log-file $PERSIST/logs/webhook.log"
 
 
