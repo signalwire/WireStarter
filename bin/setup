@@ -172,26 +172,28 @@ setup_credentials() {
     ngrok_args="${ngrok_args:-${NGROK_ARGS:-}}"
     visual="${visual:-vim}"
 
-    sw_space=$(whiptail --inputbox "SignalWire Space Domain:" 8 60 "$sw_space" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    # Required fields
+    sw_space=$(whiptail --inputbox "SignalWire Space Name (required):" 8 60 "$sw_space" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    project_id=$(whiptail --inputbox "Project ID:" 8 60 "$project_id" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    project_id=$(whiptail --inputbox "Project ID (required):" 8 60 "$project_id" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    api_token=$(whiptail --inputbox "SignalWire Token:" 8 60 "$api_token" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    api_token=$(whiptail --inputbox "SignalWire Token (required):" 8 60 "$api_token" --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    freeswitch_pat=$(whiptail --inputbox "FreeSWITCH PAT (optional):" 8 60 "$freeswitch_pat" --title "FreeSWITCH Credentials" 3>&1 1>&2 2>&3)
+    ngrok_token=$(whiptail --inputbox "NGROK Token (required):" 8 60 "$ngrok_token" --title "NGROK Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    ngrok_token=$(whiptail --inputbox "NGROK Token (optional):" 8 60 "$ngrok_token" --title "NGROK Setup" 3>&1 1>&2 2>&3)
+    # Optional fields
+    freeswitch_pat=$(whiptail --inputbox "FreeSWITCH PAT (optional - for FreeSWITCH install):" 8 65 "$freeswitch_pat" --title "Optional Settings" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     # Use -- to prevent whiptail from interpreting default value as options (e.g., --url)
-    ngrok_args=$(whiptail --inputbox "NGROK Args (e.g., --url yourdomain.ngrok.io):" 8 70 --title "NGROK Setup" -- "$ngrok_args" 3>&1 1>&2 2>&3)
+    ngrok_args=$(whiptail --inputbox "NGROK Args (optional - e.g., --url yourdomain.ngrok.io):" 8 70 --title "Optional Settings" -- "$ngrok_args" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    visual=$(whiptail --title "Default Editor" --default-item "$visual" --menu "Choose your editor:" 14 50 5 \
+    visual=$(whiptail --title "Default Editor (optional)" --default-item "$visual" --menu "Choose your editor:" 14 50 5 \
         "vim" "Vi IMproved" \
         "emacs" "GNU Emacs" \
         "nano" "Simple editor" \
