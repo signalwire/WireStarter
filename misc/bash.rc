@@ -327,10 +327,8 @@ if [ -d "/workdir/.cloudflared" ]; then
     ln -f -s /workdir/.cloudflared ~
 fi
 
-# Start PostgreSQL if data directory exists (PG_VERSION file indicates valid cluster)
+# PostgreSQL alias (server started by start_services.sh)
 if [ -f "/workdir/postgres/PG_VERSION" ]; then
-    sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start 2>/dev/null
-    # Alias psql to connect as postgres user
     alias psql='psql -U postgres'
 fi
 
@@ -542,7 +540,7 @@ APPEOF
 # NVM setup (persistent in /workdir/.nvm)
 export NVM_DIR="/workdir/.nvm"
 if [ -f "$NVM_DIR/nvm.sh" ]; then
-    source "$NVM_DIR/nvm.sh"
+    source "$NVM_DIR/nvm.sh" >/dev/null 2>&1
 fi
 
 # Go setup (persistent in /workdir/.go)
@@ -668,7 +666,7 @@ _audit_venvs() {
 }
 
 # Run venv audit on shell startup (silently)
-_audit_venvs 2>/dev/null
+_audit_venvs >/dev/null 2>&1
 
 cd() {
     builtin cd "$@" || return

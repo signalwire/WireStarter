@@ -34,6 +34,11 @@ fi
 /etc/init.d/redis-server start > /dev/null 2>&1
 /etc/init.d/nginx start > /dev/null 2>&1
 
+# Start PostgreSQL if data directory exists (PG_VERSION file indicates valid cluster)
+if [ -f "/workdir/postgres/PG_VERSION" ]; then
+    sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start >/dev/null 2>&1
+fi
+
 
 # Loop so we can update the urls if they change while running.
 while true
