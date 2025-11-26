@@ -152,7 +152,8 @@ setup_cloudflare_tunnel() {
     fi
 
     # Get the tunnel token
-    local cf_token=$(whiptail --inputbox "Enter your Cloudflare Tunnel Token:\n\n(From: Zero Trust > Networks > Tunnels > Create)" 12 70 "" --title "Cloudflare Tunnel Setup" 3>&1 1>&2 2>&3)
+    local cf_token
+    cf_token=$(whiptail --inputbox "Enter your Cloudflare Tunnel Token:\n\n(From: Zero Trust > Networks > Tunnels > Create)" 12 70 "" --title "Cloudflare Tunnel Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
     [ -z "$cf_token" ] && return
 
@@ -539,7 +540,8 @@ setup_ssh_key() {
     fi
 
     local current_email=$(git config --global user.email 2>/dev/null)
-    local email=$(whiptail --inputbox "Email for SSH key:" 8 60 "$current_email" --title "SSH Key Setup" 3>&1 1>&2 2>&3)
+    local email
+    email=$(whiptail --inputbox "Email for SSH key:" 8 60 "$current_email" --title "SSH Key Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     mkdir -p /workdir/.ssh
@@ -576,13 +578,16 @@ setup_git_identity() {
     local current_email=$(git config --global user.email 2>/dev/null)
     local current_token="${GITHUB_TOKEN:-}"
 
-    local name=$(whiptail --inputbox "Git user name:" 8 60 "$current_name" --title "Git Identity" 3>&1 1>&2 2>&3)
+    local name
+    name=$(whiptail --inputbox "Git user name:" 8 60 "$current_name" --title "Git Identity" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    local email=$(whiptail --inputbox "Git email:" 8 60 "$current_email" --title "Git Identity" 3>&1 1>&2 2>&3)
+    local email
+    email=$(whiptail --inputbox "Git email:" 8 60 "$current_email" --title "Git Identity" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    local github_token=$(whiptail --inputbox "GitHub Personal Access Token (optional):\n\nUsed for: gh CLI, MCP github server, private repos" 10 70 "$current_token" --title "GitHub Token" 3>&1 1>&2 2>&3)
+    local github_token
+    github_token=$(whiptail --inputbox "GitHub Personal Access Token (optional):\n\nUsed for: gh CLI, MCP github server, private repos" 10 70 "$current_token" --title "GitHub Token" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     cat > /workdir/.gitconfig << GITEOF
@@ -845,7 +850,8 @@ remove_mcp() {
         count=$((count + 1))
     done
 
-    local choice=$(eval "whiptail --title \"Remove MCP Server\" --menu \"Select server to remove:\" 20 50 10 $menu_items" 3>&1 1>&2 2>&3)
+    local choice
+    choice=$(eval "whiptail --title \"Remove MCP Server\" --menu \"Select server to remove:\" 20 50 10 $menu_items" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     # Get server name from choice
@@ -927,7 +933,8 @@ setup_freeswitch() {
         return 1
     fi
 
-    local edition=$(whiptail --title "FreeSWITCH Edition" --menu "Select FreeSWITCH edition:\n(Only editions your tokens have access to are shown)" 14 70 ${#menu_options[@]} \
+    local edition
+    edition=$(whiptail --title "FreeSWITCH Edition" --menu "Select FreeSWITCH edition:\n(Only editions your tokens have access to are shown)" 14 70 ${#menu_options[@]} \
         "${menu_options[@]}" \
         3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
@@ -940,7 +947,8 @@ setup_freeswitch() {
     fi
 
     # Choose release channel
-    local channel=$(whiptail --title "FreeSWITCH Channel" --menu "Select release channel:" 12 50 2 \
+    local channel
+    channel=$(whiptail --title "FreeSWITCH Channel" --menu "Select release channel:" 12 50 2 \
         "release" "Stable release (recommended)" \
         "prerelease" "Pre-release / testing" \
         3>&1 1>&2 2>&3)
