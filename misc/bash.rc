@@ -297,8 +297,13 @@ if [ -f "$PERSIST/.pypirc" ]; then
 fi
 
 # Cache directory persistence (pip, npm, etc.)
+# Migrate existing cache if it's a real directory (not already a symlink)
+if [ -d ~/.cache ] && [ ! -L ~/.cache ]; then
+    mkdir -p "$PERSIST/.cache"
+    cp -a ~/.cache/. "$PERSIST/.cache/" 2>/dev/null || true
+    rm -rf ~/.cache
+fi
 mkdir -p "$PERSIST/.cache"
-rm -rf ~/.cache
 ln -sf "$PERSIST/.cache" ~/.cache
 
 # Global gitignore to prevent accidentally committing secrets
