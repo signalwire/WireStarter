@@ -83,20 +83,10 @@ setup_persistence() {
     rm -rf ~/.local/bin
     ln -sf "$PERSIST/.local/bin" ~/.local/bin
 
-    # NPM cache and config
+    # NPM cache and config - use $PERSIST/.npm directly (no double symlinks)
     mkdir -p "$PERSIST/.npm"
-    # Migrate /workdir/.npm if exists
-    if [ -d /workdir/.npm ] && [ ! -L /workdir/.npm ]; then
-        cp -a /workdir/.npm/. "$PERSIST/.npm/" 2>/dev/null || true
-        rm -rf /workdir/.npm
-    fi
-    ln -sf "$PERSIST/.npm" /workdir/.npm 2>/dev/null || true
-    # Migrate ~/.npmrc if exists
-    if [ -f ~/.npmrc ] && [ ! -L ~/.npmrc ] && [ ! -f "$PERSIST/.npmrc" ]; then
-        mv ~/.npmrc "$PERSIST/.npmrc"
-    fi
-    # Ensure npmrc exists with correct cache path
-    [ ! -f "$PERSIST/.npmrc" ] && echo "cache=$PERSIST/.npm" > "$PERSIST/.npmrc"
+    # Always set correct cache path in npmrc
+    echo "cache=$PERSIST/.npm" > "$PERSIST/.npmrc"
     rm -f ~/.npmrc
     ln -sf "$PERSIST/.npmrc" ~/.npmrc
     rm -rf ~/.npm
