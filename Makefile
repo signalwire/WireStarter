@@ -23,9 +23,21 @@ help: ## Show this help message
 ##@ Container Management
 
 up: ## Start container in background (detached)
-	@docker run -it -d --rm \
+	@if [ -z "$${WORKDIR}" ]; then \
+		echo "Error: WORKDIR environment variable must be set"; \
+		echo "Usage: WORKDIR=/path/to/workspace make up"; \
+		exit 1; \
+	fi
+	@ENV_FILE=""; \
+	if [ -f "$${WORKDIR}/persistent/.env" ]; then \
+		ENV_FILE="--env-file $${WORKDIR}/persistent/.env"; \
+		echo "Using $${WORKDIR}/persistent/.env"; \
+	else \
+		echo "No .env found - starting fresh (run 'setup' inside container)"; \
+	fi; \
+	docker run -it -d --rm \
 		--name $(CONTAINER_NAME) \
-		--env-file .env \
+		$$ENV_FILE \
 		-e HOST_WORKDIR="$${WORKDIR}" \
 		--volume "$${WORKDIR}:/workdir" \
 		--volume /var/run/docker.sock:/var/run/docker.sock \
@@ -48,19 +60,18 @@ status: ## Show container status and info
 	@echo "=== Container Status ==="
 	@docker ps -a --filter name=$(CONTAINER_NAME) --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 	@echo ""
-	@echo "=== Environment Check ==="
-	@if [ -f .env ]; then \
-		echo ".env file: Found"; \
-		grep -c "^[^#]" .env 2>/dev/null | xargs -I {} echo "Variables defined: {}"; \
-	else \
-		echo ".env file: NOT FOUND - copy env.example to .env"; \
-	fi
-	@echo ""
 	@echo "=== WORKDIR ==="
 	@if [ -n "$${WORKDIR}" ]; then \
 		echo "WORKDIR: $${WORKDIR}"; \
+		if [ -f "$${WORKDIR}/persistent/.env" ]; then \
+			echo ".env: Found at $${WORKDIR}/persistent/.env"; \
+			grep -c "^[^#]" "$${WORKDIR}/persistent/.env" 2>/dev/null | xargs -I {} echo "Variables defined: {}"; \
+		else \
+			echo ".env: Not found (run 'setup' inside container)"; \
+		fi; \
 	else \
 		echo "WORKDIR: NOT SET"; \
+		echo "Set WORKDIR environment variable to your workspace directory"; \
 	fi
 
 ##@ Build & Deploy
@@ -83,9 +94,21 @@ push: ## Build and push multi-arch image to Docker Hub
 ##@ Development
 
 debug: ## Run container in foreground (for debugging)
-	@docker run -it --rm \
+	@if [ -z "$${WORKDIR}" ]; then \
+		echo "Error: WORKDIR environment variable must be set"; \
+		echo "Usage: WORKDIR=/path/to/workspace make debug"; \
+		exit 1; \
+	fi
+	@ENV_FILE=""; \
+	if [ -f "$${WORKDIR}/persistent/.env" ]; then \
+		ENV_FILE="--env-file $${WORKDIR}/persistent/.env"; \
+		echo "Using $${WORKDIR}/persistent/.env"; \
+	else \
+		echo "No .env found - starting fresh (run 'setup' inside container)"; \
+	fi; \
+	docker run -it --rm \
 		--name $(CONTAINER_NAME) \
-		--env-file .env \
+		$$ENV_FILE \
 		-e HOST_WORKDIR="$${WORKDIR}" \
 		--volume "$${WORKDIR}:/workdir" \
 		--volume /var/run/docker.sock:/var/run/docker.sock \
@@ -114,18 +137,25 @@ nuke: down ## Remove everything including volumes (DESTRUCTIVE)
 
 ##@ Setup
 
-init: ## Initial setup - copy env.example to .env
-	@if [ ! -f .env ]; then \
-		cp env.example .env; \
-		echo "Created .env from env.example"; \
-		echo "Edit .env with your credentials before running 'make up'"; \
-	else \
-		echo ".env already exists"; \
+init: ## Initial setup - create persistent directory structure
+	@if [ -z "$${WORKDIR}" ]; then \
+		echo "Error: WORKDIR environment variable must be set"; \
+		echo "Usage: WORKDIR=/path/to/workspace make init"; \
+		exit 1; \
 	fi
+	@mkdir -p "$${WORKDIR}/persistent"
+	@echo "Created $${WORKDIR}/persistent"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Run: WORKDIR=$${WORKDIR} make up"
+	@echo "  2. Enter container: make enter"
+	@echo "  3. Run 'setup' to configure credentials"
 
 check: ## Verify environment is ready
 	@echo "=== Checking Prerequisites ==="
 	@command -v docker >/dev/null 2>&1 && echo "✓ Docker installed" || echo "✗ Docker not found"
 	@docker info >/dev/null 2>&1 && echo "✓ Docker running" || echo "✗ Docker not running"
-	@test -f .env && echo "✓ .env file exists" || echo "✗ .env file missing (run: make init)"
-	@test -n "$${WORKDIR}" && echo "✓ WORKDIR set: $${WORKDIR}" || echo "✗ WORKDIR not set in .env"
+	@test -n "$${WORKDIR}" && echo "✓ WORKDIR set: $${WORKDIR}" || echo "✗ WORKDIR not set"
+	@if [ -n "$${WORKDIR}" ]; then \
+		test -f "$${WORKDIR}/persistent/.env" && echo "✓ .env exists at $${WORKDIR}/persistent/.env" || echo "○ No .env yet (will be created by 'setup' in container)"; \
+	fi
