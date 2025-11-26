@@ -599,18 +599,25 @@ fi
 
 # NPM cache and config persistence
 mkdir -p $PERSIST/.npm
+# Migrate existing /workdir/.npm if it's a real directory
+if [ -d /workdir/.npm ] && [ ! -L /workdir/.npm ]; then
+    cp -a /workdir/.npm/. $PERSIST/.npm/ 2>/dev/null || true
+    rm -rf /workdir/.npm
+fi
+# Symlink /workdir/.npm to persistent (in case anything uses this path)
+ln -sf $PERSIST/.npm /workdir/.npm 2>/dev/null || true
 # If real npmrc exists in ~ but not in persistent, migrate it first
 if [ -f ~/.npmrc ] && [ ! -L ~/.npmrc ] && [ ! -f $PERSIST/.npmrc ]; then
     mv ~/.npmrc $PERSIST/.npmrc
 fi
-# Ensure npmrc exists in persistent
+# Ensure npmrc exists in persistent with correct cache path
 if [ ! -f $PERSIST/.npmrc ]; then
     echo "cache=$PERSIST/.npm" > $PERSIST/.npmrc
 fi
 # Symlink npmrc
 rm -f ~/.npmrc
 ln -sf $PERSIST/.npmrc ~/.npmrc
-# Symlink npm cache directory
+# Symlink npm cache directory in home
 rm -rf ~/.npm
 ln -sf $PERSIST/.npm ~/.npm
 
