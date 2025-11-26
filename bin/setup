@@ -728,14 +728,16 @@ setup_mcp() {
     echo "========================================"
     echo ""
 
-    # Get absolute path to npx (MCP servers spawn without shell, need full path)
-    local NPX_PATH=$(which npx 2>/dev/null)
-    if [ -z "$NPX_PATH" ]; then
-        echo "ERROR: npx not found in PATH. Install Node.js first."
+    # Use system Node's npx (MCP servers spawn without shell context, so NVM paths won't work)
+    # Always use /usr/bin/npx which is the system Node installed in the Docker image
+    local NPX_PATH="/usr/bin/npx"
+    if [ ! -x "$NPX_PATH" ]; then
+        echo "ERROR: System npx not found at $NPX_PATH"
+        echo "The Docker image should have Node.js pre-installed."
         read -p "Press Enter to continue..."
         return 1
     fi
-    echo "Using npx: $NPX_PATH"
+    echo "Using npx: $NPX_PATH (system Node - required for MCP)"
     echo ""
 
     # Helper function to add server to both CLIs
@@ -882,6 +884,119 @@ remove_mcp() {
         echo "Done!"
         read -p "Press Enter to continue..."
     fi
+}
+
+fix_mcp() {
+    # Fix common MCP server issues:
+    # 1. Clear corrupted npm cache
+    # 2. Fix npx paths to use system Node instead of NVM paths
+
+    local has_claude=$(command -v claude >/dev/null 2>&1 && echo "yes" || echo "no")
+    local has_gemini=$(command -v gemini >/dev/null 2>&1 && echo "yes" || echo "no")
+
+    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ]; then
+        whiptail --title "No AI CLI Found" --msgbox "Neither Claude Code nor Gemini CLI is installed." 8 50
+        return
+    fi
+
+    # Confirm fix
+    if ! whiptail --title "Fix MCP Servers" --yesno "This will:\n\n1. Clear corrupted npm/npx cache\n2. Fix npx paths to use system Node (/usr/bin/npx)\n\nThis fixes 'Failed to connect' errors caused by:\n- NVM path issues (MCP servers spawn without shell)\n- Corrupted npm cache\n\nProceed?" 16 60; then
+        return
+    fi
+
+    clear
+    echo "========================================"
+    echo "Fixing MCP Servers"
+    echo "========================================"
+    echo ""
+
+    # Step 1: Clear npm cache
+    echo "Step 1: Clearing npm/npx cache..."
+    if [ -d "$PERSIST/.npm/_npx" ]; then
+        rm -rf "$PERSIST/.npm/_npx"
+        echo "  -> Cleared $PERSIST/.npm/_npx"
+    else
+        echo "  -> Cache directory not found (OK)"
+    fi
+    echo ""
+
+    # Step 2: Fix Claude config
+    if [ "$has_claude" = "yes" ]; then
+        echo "Step 2: Fixing Claude Code MCP config..."
+        local claude_config="/root/.claude.json"
+        if [ -f "$claude_config" ]; then
+            # Check if there are any MCP servers configured
+            local server_count=$(jq '.mcpServers | keys | length' "$claude_config" 2>/dev/null || echo "0")
+            if [ "$server_count" -gt 0 ]; then
+                # Fix all command paths that contain 'npx' to use /usr/bin/npx
+                jq '(.mcpServers | to_entries | map(
+                    if (.value.command | test("npx$")) then
+                        .value.command = "/usr/bin/npx"
+                    else .
+                    end
+                ) | from_entries) as $fixed | .mcpServers = $fixed' "$claude_config" > /tmp/claude_fix.json
+                if [ -s /tmp/claude_fix.json ]; then
+                    mv /tmp/claude_fix.json "$claude_config"
+                    echo "  -> Fixed $server_count server(s)"
+                else
+                    echo "  -> No changes needed"
+                fi
+            else
+                echo "  -> No MCP servers configured"
+            fi
+        else
+            echo "  -> Config file not found"
+        fi
+        echo ""
+    fi
+
+    # Step 3: Fix Gemini config
+    if [ "$has_gemini" = "yes" ]; then
+        echo "Step 3: Fixing Gemini CLI MCP config..."
+        local gemini_config="/root/.gemini/settings.json"
+        if [ -f "$gemini_config" ]; then
+            local server_count=$(jq '.mcpServers | keys | length' "$gemini_config" 2>/dev/null || echo "0")
+            if [ "$server_count" -gt 0 ]; then
+                jq '(.mcpServers | to_entries | map(
+                    if (.value.command | test("npx$")) then
+                        .value.command = "/usr/bin/npx"
+                    else .
+                    end
+                ) | from_entries) as $fixed | .mcpServers = $fixed' "$gemini_config" > /tmp/gemini_fix.json
+                if [ -s /tmp/gemini_fix.json ]; then
+                    mv /tmp/gemini_fix.json "$gemini_config"
+                    echo "  -> Fixed $server_count server(s)"
+                else
+                    echo "  -> No changes needed"
+                fi
+            else
+                echo "  -> No MCP servers configured"
+            fi
+        else
+            echo "  -> Config file not found"
+        fi
+        echo ""
+    fi
+
+    # Step 4: Verify
+    echo "========================================"
+    echo "Verifying MCP Servers"
+    echo "========================================"
+    echo ""
+
+    if [ "$has_claude" = "yes" ]; then
+        echo "Claude Code servers:"
+        claude mcp list 2>/dev/null || echo "  (unable to list)"
+        echo ""
+    fi
+
+    if [ "$has_gemini" = "yes" ]; then
+        echo "Gemini CLI servers:"
+        gemini mcp list 2>/dev/null || echo "  (unable to list)"
+        echo ""
+    fi
+
+    read -p "Press Enter to continue..."
 }
 
 setup_freeswitch() {
@@ -1282,19 +1397,20 @@ while true; do
         "4" "Setup AI API Keys (Claude/Gemini)" \
         "5" "Add MCP Servers (Claude/Gemini)" \
         "6" "Remove MCP Server" \
-        "7" "Setup Git Identity" \
-        "8" "Setup SSH Key" \
-        "9" "Setup Go (latest stable)" \
-        "10" "Setup NVM + Node.js" \
-        "11" "Setup PostgreSQL" \
-        "12" "Setup FreeSWITCH" \
-        "13" "Uninstall FreeSWITCH" \
-        "14" "Setup Python Dev Tools" \
-        "15" "Setup Audio Tools (ffmpeg/sox)" \
-        "16" "Setup All Dev Tools" \
-        "17" "$swsh_status" \
-        "18" "Show Status" \
-        "19" "Clean Environment" \
+        "7" "Fix MCP Servers (connection issues)" \
+        "8" "Setup Git Identity" \
+        "9" "Setup SSH Key" \
+        "10" "Setup Go (latest stable)" \
+        "11" "Setup NVM + Node.js" \
+        "12" "Setup PostgreSQL" \
+        "13" "Setup FreeSWITCH" \
+        "14" "Uninstall FreeSWITCH" \
+        "15" "Setup Python Dev Tools" \
+        "16" "Setup Audio Tools (ffmpeg/sox)" \
+        "17" "Setup All Dev Tools" \
+        "18" "$swsh_status" \
+        "19" "Show Status" \
+        "20" "Clean Environment" \
         3>&1 1>&2 2>&3)
 
     # Cancel button or ESC exits
@@ -1307,18 +1423,19 @@ while true; do
         "4") setup_ai_keys ;;
         "5") setup_mcp ;;
         "6") remove_mcp ;;
-        "7") setup_git_identity ;;
-        "8") setup_ssh_key ;;
-        "9") setup_golang ;;
-        "10") setup_nvm ;;
-        "11") setup_pgsql ;;
-        "12") setup_freeswitch ;;
-        "13") uninstall_freeswitch ;;
-        "14") setup_python_dev ;;
-        "15") setup_audio_tools ;;
-        "16") setup_all ;;
-        "17") toggle_swsh ;;
-        "18") show_status ;;
-        "19") clean_environment ;;
+        "7") fix_mcp ;;
+        "8") setup_git_identity ;;
+        "9") setup_ssh_key ;;
+        "10") setup_golang ;;
+        "11") setup_nvm ;;
+        "12") setup_pgsql ;;
+        "13") setup_freeswitch ;;
+        "14") uninstall_freeswitch ;;
+        "15") setup_python_dev ;;
+        "16") setup_audio_tools ;;
+        "17") setup_all ;;
+        "18") toggle_swsh ;;
+        "19") show_status ;;
+        "20") clean_environment ;;
     esac
 done
