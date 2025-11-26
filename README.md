@@ -152,7 +152,7 @@ swpy                  # Python REPL with SignalWire client loaded
 urls                  # Show ngrok tunnel URLs
 tunnel                # Print ngrok URL
 testapp               # Test local and public endpoints
-webhook               # Start webhook catcher (dumps requests)
+webhook               # Tail webhook log (catcher runs in background)
 logs                  # Tail nginx access log
 reqs                  # Formatted request log
 ```
@@ -211,9 +211,10 @@ On startup, WireStarter runs:
 3. **nginx** - Reverse proxy on port 9080
    - `/` → localhost:5000 (your app)
    - `/webhook` → localhost:5002 (webhook catcher)
-   - `/public` → /workdir/public (static files)
+   - `/public` → /workdir/persistent/public (static files)
 4. **Redis** - Available on default port
 5. **PostgreSQL** (if configured) - Auto-starts if data directory exists
+6. **Webhook catcher** - Logs incoming requests to `/workdir/persistent/logs/webhook.log` (runs in tmux)
 
 ### Persistent Storage
 
@@ -353,18 +354,20 @@ urls
 
 ## Webhook Development
 
-WireStarter includes a webhook catcher for debugging callbacks:
+WireStarter includes a webhook catcher that runs automatically as a background service. All requests to `/webhook` are logged to `/workdir/persistent/logs/webhook.log`.
 
 ```bash
-# Start the webhook catcher
-webhook
-
-# Your webhook URL is:
-# https://your-tunnel-url/webhook
-# https://your-tunnel-url/webhook/xml (returns XML/LaML)
+webhook               # Tail the webhook log (live view)
+webhook clear         # Clear the log file
+webhook status        # Show catcher status and URLs
+webhook attach        # Attach to the tmux session
 ```
 
-All incoming requests are pretty-printed to the console with headers, body, and query parameters.
+Your webhook URLs are:
+- `https://your-tunnel-url/webhook` - Returns JSON response
+- `https://your-tunnel-url/webhook/xml` - Returns XML/LaML response
+
+Requests are logged with headers, body, and query parameters.
 
 ## Troubleshooting
 
