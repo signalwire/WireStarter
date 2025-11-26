@@ -26,9 +26,8 @@ if [ -f "/workdir/.cloudflared/token" ]; then
     # Symlink config directory
     rm -rf ~/.cloudflared
     ln -sf /workdir/.cloudflared ~/.cloudflared
-    # Read token and start tunnel in tmux
-    CF_TOKEN=$(cat /workdir/.cloudflared/token)
-    /usr/bin/tmux new-session -d -s cloudflared "cloudflared tunnel run --token $CF_TOKEN"
+    # Start tunnel in tmux using TUNNEL_TOKEN env var to avoid exposing token in process list
+    /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat /workdir/.cloudflared/token) exec cloudflared tunnel run"
     echo "Cloudflare Tunnel starting..."
 fi
 

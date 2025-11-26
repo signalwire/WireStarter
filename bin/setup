@@ -171,8 +171,8 @@ setup_cloudflare_tunnel() {
         echo "Starting Cloudflare Tunnel..."
         echo "XXX"
 
-        # Start tunnel in tmux session
-        /usr/bin/tmux new-session -d -s cloudflared "cloudflared tunnel run --token $cf_token"
+        # Start tunnel in tmux session using env var to hide token from process list
+        /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat /workdir/.cloudflared/token) exec cloudflared tunnel run"
 
         # Wait for tunnel to connect
         sleep 3
