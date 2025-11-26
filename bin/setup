@@ -700,18 +700,11 @@ setup_ai_keys() {
 }
 
 setup_mcp() {
-    # Check if NVM/Node is installed
-    if [ ! -d "$PERSIST/.nvm" ]; then
-        if whiptail --title "Node.js Required" --yesno "MCP servers require Node.js.\n\nInstall NVM + Node.js now?" 10 50; then
-            setup_nvm
-        else
-            return
-        fi
+    # Check if npx is available (should be from system Node in Docker image)
+    if ! command -v npx >/dev/null 2>&1; then
+        whiptail --title "Node.js Required" --msgbox "npx not found. Node.js should be pre-installed.\n\nTry rebuilding the container." 10 50
+        return
     fi
-
-    # Source NVM
-    export NVM_DIR="$PERSIST/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 
     # Check what's available
     local has_claude=$(command -v claude >/dev/null 2>&1 && echo "yes" || echo "no")
