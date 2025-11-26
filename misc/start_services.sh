@@ -3,7 +3,7 @@
 # Start Ngrok
 if [ -n "$NGROK_TOKEN" ]; then
     /usr/local/bin/ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1
-    /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080
+    /usr/bin/tmux new-session -d -s ngrok "/usr/local/bin/ngrok http $NGROK_ARGS 9080"
 
     # Wait for ngrok to be ready (up to 20 seconds)
     RETRY_COUNT=0

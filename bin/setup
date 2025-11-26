@@ -97,7 +97,7 @@ start_ngrok() {
         echo "XXX"
         echo "Starting ngrok tunnel..."
         echo "XXX"
-        /usr/bin/screen -dmS ngrok /usr/local/bin/ngrok http $NGROK_ARGS 9080
+        /usr/bin/tmux new-session -d -s ngrok "/usr/local/bin/ngrok http $NGROK_ARGS 9080"
 
         # Wait for ngrok to be ready
         retry=0
