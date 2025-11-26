@@ -1426,6 +1426,13 @@ show_status() {
     fi
     [ -z "$gemini_mcp" ] && gemini_mcp="(none)"
 
+    # NanoCoder MCP servers
+    local nanocoder_mcp=""
+    if [ -f "$PERSIST/.nanocoder/agents.config.json" ]; then
+        nanocoder_mcp=$(jq -r '.nanocoder.mcpServers // [] | map(.name) | join(", ")' "$PERSIST/.nanocoder/agents.config.json" 2>/dev/null)
+    fi
+    [ -z "$nanocoder_mcp" ] && nanocoder_mcp="(none)"
+
     # Build status using a temp file for reliable whiptail display
     local tmpfile=$(mktemp)
     {
@@ -1537,8 +1544,9 @@ show_status() {
         echo ""
         echo "  MCP SERVERS"
         echo "  ============================================================================"
-        echo "  Claude: $claude_mcp"
-        echo "  Gemini: $gemini_mcp"
+        echo "  Claude:    $claude_mcp"
+        echo "  Gemini:    $gemini_mcp"
+        echo "  NanoCoder: $nanocoder_mcp"
         echo ""
         echo "  ============================================================================"
         echo "  Uptime: $uptime"
