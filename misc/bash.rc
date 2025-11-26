@@ -130,57 +130,57 @@ fi
 
 
 if [ ! -f "$PERSIST/.env" ]; then
+    mkdir -p "$PERSIST"
+
     # Display the form and collect the inputs
-    {
-	SIGNALWIRE_SPACE_NAME=$(whiptail --inputbox "Please enter your SignalWire Space Domain:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then exit; fi
+    SIGNALWIRE_SPACE_NAME=$(whiptail --inputbox "SignalWire Space Name (required):" 8 60 --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit
 
-	SIGNALWIRE_PROJECT_ID=$(whiptail --inputbox "Please enter your Project ID:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then exit; fi
+    SIGNALWIRE_PROJECT_ID=$(whiptail --inputbox "Project ID (required):" 8 60 --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit
 
-	SIGNALWIRE_TOKEN=$(whiptail --inputbox "Please enter your API Auth Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then exit; fi
+    SIGNALWIRE_TOKEN=$(whiptail --inputbox "SignalWire Token (required):" 8 60 --title "SignalWire Credentials" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit
 
-	NGROK_TOKEN=$(whiptail --inputbox "Please enter your NGROK Token:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then exit; fi
+    NGROK_TOKEN=$(whiptail --inputbox "NGROK Token (required):" 8 60 --title "NGROK Setup" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit
 
-	NGROK_ARGS=$(whiptail --inputbox "Please enter your NGROK Args:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then exit; fi
-    }
+    FREESWITCH_PAT=$(whiptail --inputbox "FreeSWITCH PAT (optional):" 8 65 --title "Optional Settings" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit
 
-    # Dropdown for VISUAL using whiptail menu
-    VISUAL=$(whiptail --title "Visual Editor Selection" --menu "Choose your editor" 15 60 3 \
-		      "nano" "" \
-		      "emacs" "" \
-		      "vim" "" 3>&1 1>&2 2>&3)
+    NGROK_ARGS=$(whiptail --inputbox "NGROK Args (optional - e.g., --url yourdomain.ngrok.io):" 8 70 --title "Optional Settings" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit
 
-    exitstatus=$?
-    if [ $exitstatus != 0 ]; then exit; fi
+    VISUAL=$(whiptail --title "Default Editor" --menu "Choose your editor:" 14 50 5 \
+        "vim" "Vi IMproved" \
+        "emacs" "GNU Emacs" \
+        "nano" "Simple editor" \
+        "micro" "Modern terminal editor" \
+        "ne" "Nice Editor" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && exit
 
-    # Write to .env file (no quotes, no export - compatible with Docker --env-file)
-    {
-	echo "SIGNALWIRE_SPACE_NAME=$SIGNALWIRE_SPACE_NAME"
-	echo "SIGNALWIRE_PROJECT_ID=$SIGNALWIRE_PROJECT_ID"
-	echo "SIGNALWIRE_TOKEN=$SIGNALWIRE_TOKEN"
-	echo "NGROK_TOKEN=$NGROK_TOKEN"
-	echo "NGROK_ARGS=$NGROK_ARGS"
-	echo "VISUAL=$VISUAL"
-	echo "WORKDIR=/workdir"
-    } > $ENV_FILE
+    # Strip .signalwire.com if included
+    SIGNALWIRE_SPACE_NAME=$(echo "$SIGNALWIRE_SPACE_NAME" | sed 's/\.signalwire\.com//g')
 
-    sed -i~ 's/\.signalwire.com//g' $ENV_FILE
+    # Write .env file (quote values to handle special characters)
+    cat > "$PERSIST/.env" << ENVEOF
+SIGNALWIRE_SPACE_NAME="$SIGNALWIRE_SPACE_NAME"
+SIGNALWIRE_PROJECT_ID="$SIGNALWIRE_PROJECT_ID"
+SIGNALWIRE_TOKEN="$SIGNALWIRE_TOKEN"
+FREESWITCH_PAT="$FREESWITCH_PAT"
+NGROK_TOKEN="$NGROK_TOKEN"
+NGROK_ARGS="$NGROK_ARGS"
+VISUAL="$VISUAL"
+WORKDIR="/workdir"
+ENVEOF
 
     set -a
-    source $ENV_FILE
+    source "$PERSIST/.env"
     set +a
 
     # Confirmation message
-    whiptail --title "Confirmation" --msgbox "Details saved to $ENV_FILE." 8 78
+    whiptail --title "Confirmation" --msgbox "Details saved to $PERSIST/.env\n\nRun 'setup' for more options." 10 50
 
 fi
 
