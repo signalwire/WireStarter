@@ -300,6 +300,10 @@ if [ -z "$OLLAMA_HOST" ]; then
     export OLLAMA_HOST="http://host.docker.internal:11434"
 fi
 
+# NanoCoder - set config dir to persistent storage
+export NANOCODER_CONFIG_DIR="$PERSIST/.nanocoder"
+export NANOCODER_DATA_DIR="$PERSIST/.nanocoder"
+
 ollama_url() {
     echo "$OLLAMA_HOST"
     # Test connection
@@ -389,11 +393,13 @@ GIT
 AI ASSISTANTS
   claude                Claude Code CLI
   gemini                Gemini CLI
+  nanocoder             NanoCoder CLI (local-first coding agent for Ollama)
   ollama                Ollama CLI (connects to OLLAMA_HOST)
   ollama_url            Show Ollama host URL
 
 PERSISTENT STORAGE (/workdir/persistent/ - survives container rebuilds)
   .venvs/               Python virtual environments
+  .nanocoder/           NanoCoder config
   .go/                  Go installation
   .nvm/                 NVM + Node.js versions
   .npm/                 NPM cache

@@ -1348,7 +1348,12 @@ show_status() {
         [ -n "$SLACK_BOT_TOKEN" ] && auth4="[*] Slack Token" || auth4="[ ] Slack Token"
         [ -n "$BRAVE_API_KEY" ] && auth5="[*] Brave API Key" || auth5="[ ] Brave API Key"
         [ -n "$FREESWITCH_PAT" ] && auth6="[*] FreeSWITCH PAT" || auth6="[ ] FreeSWITCH PAT"
-        auth7=""  # Empty for alignment
+        # NanoCoder - check if configured
+        if [ -f "$PERSIST/.nanocoder/agents.config.json" ]; then
+            auth7="[*] NanoCoder (configured)"
+        else
+            auth7="[ ] NanoCoder"
+        fi
         auth8=""  # Empty for alignment (Ollama row)
 
         printf "%-40s%s\n" "$svc1" "$auth1"
