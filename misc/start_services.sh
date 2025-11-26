@@ -22,12 +22,13 @@ fi
 export HOSTNAME=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null | sed 's/https:\/\///')
 
 # Start Cloudflare Tunnel if configured
-if [ -f "/workdir/.cloudflared/config.yml" ]; then
+if [ -f "/workdir/.cloudflared/token" ]; then
     # Symlink config directory
     rm -rf ~/.cloudflared
     ln -sf /workdir/.cloudflared ~/.cloudflared
-    # Start cloudflared service
-    cloudflared service install 2>/dev/null || cloudflared tunnel run 2>/dev/null &
+    # Read token and start tunnel in tmux
+    CF_TOKEN=$(cat /workdir/.cloudflared/token)
+    /usr/bin/tmux new-session -d -s cloudflared "cloudflared tunnel run --token $CF_TOKEN"
     echo "Cloudflare Tunnel starting..."
 fi
 
