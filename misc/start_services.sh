@@ -4,6 +4,11 @@
 PERSIST="/workdir/persistent"
 mkdir -p "$PERSIST" 2>/dev/null
 
+# Set up ~/.config symlink early (ngrok stores config there)
+mkdir -p "$PERSIST/.config"
+rm -rf ~/.config
+ln -sf "$PERSIST/.config" ~/.config
+
 # Start Ngrok
 if [ -n "$NGROK_TOKEN" ]; then
     /usr/local/bin/ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1
