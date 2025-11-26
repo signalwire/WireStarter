@@ -267,123 +267,9 @@ if [ -f "$PERSIST/.bashrc" ]; then
    . "$PERSIST/.bashrc"
 fi
 
-# Editor config persistence
-if [ -f "$PERSIST/.emacs" ]; then
-    ln -f -s $PERSIST/.emacs ~/.emacs
-fi
-if [ -d "$PERSIST/.emacs.d" ]; then
-    rm -rf ~/.emacs.d
-    ln -f -s $PERSIST/.emacs.d ~
-fi
-if [ -f "$PERSIST/.vimrc" ]; then
-    ln -f -s $PERSIST/.vimrc ~/.vimrc
-fi
-if [ -d "$PERSIST/.vim" ]; then
-    rm -rf ~/.vim
-    ln -f -s $PERSIST/.vim ~
-fi
-if [ -f "$PERSIST/.nanorc" ]; then
-    ln -f -s $PERSIST/.nanorc ~/.nanorc
-fi
-
-if [ -f "$PERSIST/.gitconfig" ]; then
-    ln -f -s $PERSIST/.gitconfig ~
-fi
-if [ -f "$PERSIST/.git-credentials" ]; then
-    ln -f -s $PERSIST/.git-credentials ~
-fi
-if [ -f "$PERSIST/.pypirc" ]; then
-    ln -f -s $PERSIST/.pypirc ~
-fi
-
-# Cache directory persistence (pip, npm, etc.)
-# Migrate existing cache if it's a real directory (not already a symlink)
-if [ -d ~/.cache ] && [ ! -L ~/.cache ]; then
-    mkdir -p "$PERSIST/.cache"
-    cp -a ~/.cache/. "$PERSIST/.cache/" 2>/dev/null || true
-    rm -rf ~/.cache
-fi
-mkdir -p "$PERSIST/.cache"
-ln -sf "$PERSIST/.cache" ~/.cache
-
-# Global gitignore to prevent accidentally committing secrets
-if [ ! -f "$PERSIST/.gitignore_global" ]; then
-    cat > $PERSIST/.gitignore_global << 'GITIGNORE'
-# Global gitignore - prevents committing secrets
-.env
-.env.*
-*.env
-.envrc
-.npmrc
-credentials.json
-*_credentials.json
-*.pem
-*.key
-id_rsa
-id_ed25519
-.claude.json
-.claude.json.backup
-GITIGNORE
-fi
-git config --global core.excludesfile $PERSIST/.gitignore_global 2>/dev/null
-
-if [  -d "$PERSIST/.ssh" ]; then
-    rm -rf ~/.ssh
-    ln -f -s $PERSIST/.ssh ~
-fi
-
-# Claude Code config persistence
-if [ -d "$PERSIST/.claude" ]; then
-    rm -rf ~/.claude
-    ln -f -s $PERSIST/.claude ~
-else
-    mkdir -p $PERSIST/.claude
-    ln -f -s $PERSIST/.claude ~
-fi
-# Claude Code MCP config (stored in ~/.claude.json, not in .claude directory)
-# If real file exists in ~ but not in persistent, migrate it first
-if [ -f ~/.claude.json ] && [ ! -L ~/.claude.json ] && [ ! -f $PERSIST/.claude.json ]; then
-    mv ~/.claude.json $PERSIST/.claude.json
-fi
-if [ -f ~/.claude.json.backup ] && [ ! -L ~/.claude.json.backup ] && [ ! -f $PERSIST/.claude.json.backup ]; then
-    mv ~/.claude.json.backup $PERSIST/.claude.json.backup
-fi
-# Create symlinks (even if target doesn't exist yet - Claude Code will create it)
-ln -sf $PERSIST/.claude.json ~/.claude.json
-ln -sf $PERSIST/.claude.json.backup ~/.claude.json.backup
-
-# Gemini CLI config persistence
-if [ -d "$PERSIST/.gemini" ]; then
-    rm -rf ~/.gemini
-    ln -f -s $PERSIST/.gemini ~
-else
-    mkdir -p $PERSIST/.gemini
-    ln -f -s $PERSIST/.gemini ~
-fi
-# Ensure MCP settings file exists for Gemini CLI
-if [ ! -f "$PERSIST/.gemini/settings.json" ]; then
-    echo '{"mcpServers":{}}' > $PERSIST/.gemini/settings.json
-fi
-
-# Cloudflare Tunnel config persistence
-if [ -d "$PERSIST/.cloudflared" ]; then
-    rm -rf ~/.cloudflared
-    ln -f -s $PERSIST/.cloudflared ~
-fi
-
 # PostgreSQL alias (server started by start_services.sh)
 if [ -f "$PERSIST/postgres/PG_VERSION" ]; then
     alias psql='psql -U postgres'
-fi
-
-# ~/.config persistence (for various tools like GitHub Copilot, etc.)
-if [ -d "$PERSIST/.config" ]; then
-    rm -rf ~/.config
-    ln -f -s $PERSIST/.config ~
-else
-    mkdir -p $PERSIST/.config
-    rm -rf ~/.config
-    ln -f -s $PERSIST/.config ~
 fi
 
 if [  -f "/workdir/cpanfile" ]; then
@@ -597,43 +483,11 @@ if [ -d "$PERSIST/.go" ]; then
     export GOPATH=$PERSIST/.go
 fi
 
-# NPM cache and config persistence
-mkdir -p $PERSIST/.npm
-# Migrate existing /workdir/.npm if it's a real directory
-if [ -d /workdir/.npm ] && [ ! -L /workdir/.npm ]; then
-    cp -a /workdir/.npm/. $PERSIST/.npm/ 2>/dev/null || true
-    rm -rf /workdir/.npm
-fi
-# Symlink /workdir/.npm to persistent (in case anything uses this path)
-ln -sf $PERSIST/.npm /workdir/.npm 2>/dev/null || true
-# If real npmrc exists in ~ but not in persistent, migrate it first
-if [ -f ~/.npmrc ] && [ ! -L ~/.npmrc ] && [ ! -f $PERSIST/.npmrc ]; then
-    mv ~/.npmrc $PERSIST/.npmrc
-fi
-# Ensure npmrc exists in persistent with correct cache path
-if [ ! -f $PERSIST/.npmrc ]; then
-    echo "cache=$PERSIST/.npm" > $PERSIST/.npmrc
-fi
-# Symlink npmrc
-rm -f ~/.npmrc
-ln -sf $PERSIST/.npmrc ~/.npmrc
-# Symlink npm cache directory in home
-rm -rf ~/.npm
-ln -sf $PERSIST/.npm ~/.npm
-
 if [ -z $VISUAL ]; then
     export VISUAL=vim
 fi
 
 export PATH=$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
-
-# swsh history persistence
-if [ -f "$PERSIST/.swsh_history" ]; then
-    ln -f -s $PERSIST/.swsh_history ~/.swsh_history
-else
-    touch $PERSIST/.swsh_history
-    ln -f -s $PERSIST/.swsh_history ~/.swsh_history
-fi
 
 if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f $PERSIST/.noswsh ]; then
     python3 /usr/local/bin/swsh
