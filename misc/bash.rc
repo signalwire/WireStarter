@@ -523,9 +523,16 @@ if [ -d "/workdir/.go" ]; then
     export GOPATH=/workdir/.go
 fi
 
-# NPM cache persistence
+# NPM cache and config persistence
 mkdir -p /workdir/.npm
 npm config set cache /workdir/.npm 2>/dev/null
+if [ -f "/workdir/.npmrc" ]; then
+    ln -sf /workdir/.npmrc ~/.npmrc
+fi
+if [ -d "/workdir/.npm" ]; then
+    rm -rf ~/.npm
+    ln -sf /workdir/.npm ~/.npm
+fi
 
 if [ -z $VISUAL ]; then
     export VISUAL=vim
