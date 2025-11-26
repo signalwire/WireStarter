@@ -184,7 +184,31 @@ if [ ! -f "$PERSIST/.env" ]; then
 
 fi
 
-# Wait for ngrok tunnel (started by start_services.sh)
+# Restart services if their tmux sessions died
+# ngrok
+if [ -n "$NGROK_TOKEN" ] && ! tmux has-session -t ngrok 2>/dev/null; then
+    echo "Restarting ngrok..."
+    /usr/local/bin/ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1
+    /usr/bin/tmux new-session -d -s ngrok "/usr/local/bin/ngrok http $NGROK_ARGS 9080"
+    sleep 2
+fi
+
+# Cloudflare Tunnel
+if [ -f "$PERSIST/.cloudflared/token" ] && ! tmux has-session -t cloudflared 2>/dev/null; then
+    echo "Restarting Cloudflare Tunnel..."
+    rm -rf ~/.cloudflared
+    ln -sf "$PERSIST/.cloudflared" ~/.cloudflared
+    /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat $PERSIST/.cloudflared/token) exec cloudflared tunnel run"
+fi
+
+# Webhook catcher
+if ! tmux has-session -t webhook 2>/dev/null; then
+    echo "Restarting webhook catcher..."
+    mkdir -p "$PERSIST/logs"
+    /usr/bin/tmux new-session -d -s webhook "python3 /usr/bin/webhook-catcher.py 5002 --log-file $PERSIST/logs/webhook.log"
+fi
+
+# Wait for ngrok tunnel (started by start_services.sh or restarted above)
 if [ -n "$NGROK_TOKEN" ]; then
     NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null)
 
