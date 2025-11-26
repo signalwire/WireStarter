@@ -8,7 +8,7 @@ server {
     port_in_redirect off;
 
     location /public {
-        alias /workdir/public; # Alias /public to /workdir/public
+        alias /workdir/persistent/public; # Alias /public to /workdir/persistent/public
         autoindex on; # Enable directory listing
         try_files $uri $uri/ =404; # Return 404 if file not found
     }

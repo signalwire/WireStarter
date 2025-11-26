@@ -407,7 +407,7 @@ fi
 alias ..='cd ..'
 alias ...='cd ../..'
 alias work='cd /workdir'
-alias public='cd /workdir/public'
+alias public='cd /workdir/persistent/public'
 
 # Help command
 help() {
@@ -421,7 +421,7 @@ SETUP & STATUS
 
 NAVIGATION
   work                  cd /workdir
-  public                cd /workdir/public
+  public                cd /workdir/persistent/public
   ..                    cd ..
   ...                   cd ../..
 
@@ -499,7 +499,7 @@ PERSISTENT STORAGE (/workdir/persistent/ - survives container rebuilds)
   logs/                 Webhook and service logs
   .env                  Environment variables
 
-  /workdir/public/      Static files (served at $NGROK_URL/public/)
+  /workdir/persistent/public/  Static files (served at $NGROK_URL/public/)
 
 HELPEOF
 }

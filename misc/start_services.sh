@@ -64,7 +64,7 @@ do
 
     if [ -n "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
         echo -e "NGROK Tunnel: $NGROK_URL";
-        echo -e "/workdir/public -> $NGROK_URL/public\n";
+        echo -e "/workdir/persistent/public -> $NGROK_URL/public\n";
     fi
     if [ -n "$WORKDIR" ]; then
         echo -e "Persistent host directory is /workdir -> $WORKDIR\n";

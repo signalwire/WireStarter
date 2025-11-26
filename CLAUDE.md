@@ -45,7 +45,7 @@ ngrok_url     # Get current NGROK public URL
 The container runs these services on startup:
 1. NGROK tunnel on port 9080 (if NGROK_TOKEN set)
 2. Redis server
-3. Nginx (serves `/workdir/public` at `$NGROK_URL/public`)
+3. Nginx (serves `/workdir/persistent/public` at `$NGROK_URL/public`)
 
 ### Volume Mounting
 - Host `$WORKDIR` directory mounts to `/workdir` in container

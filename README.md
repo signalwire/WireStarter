@@ -195,7 +195,7 @@ gp                    # git pull
 
 ```bash
 work                  # cd /workdir
-public                # cd /workdir/public
+public                # cd /workdir/persistent/public
 ..                    # cd ..
 ...                   # cd ../..
 ```
