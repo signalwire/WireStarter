@@ -296,6 +296,11 @@ if [ -f "$PERSIST/.pypirc" ]; then
     ln -f -s $PERSIST/.pypirc ~
 fi
 
+# Cache directory persistence (pip, npm, etc.)
+mkdir -p "$PERSIST/.cache"
+rm -rf ~/.cache
+ln -sf "$PERSIST/.cache" ~/.cache
+
 # Global gitignore to prevent accidentally committing secrets
 if [ ! -f "$PERSIST/.gitignore_global" ]; then
     cat > $PERSIST/.gitignore_global << 'GITIGNORE'

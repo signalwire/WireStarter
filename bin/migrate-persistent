@@ -30,6 +30,7 @@ mkdir -p "$PERSISTENT"
 # Files/directories to migrate
 ITEMS=(
     ".bash_history"
+    ".cache"
     ".claude"
     ".claude.json"
     ".claude.json.backup"
