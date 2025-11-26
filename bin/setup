@@ -1032,7 +1032,13 @@ setup_nanocoder() {
         models=$(curl -s "$ollama_host/api/tags" | jq -r '.models[].name' 2>/dev/null | head -5 | tr '\n' ', ' | sed 's/,$//')
     fi
 
-    if ! whiptail --title "Setup NanoCoder" --yesno "This will configure NanoCoder with:\n\n• Ollama provider: $ollama_host\n  Status: $ollama_status\n  Models: ${models:-none found}\n\n• MCP Servers:\n  - filesystem (file operations)\n  - memory (persistent notes)\n  - sequential-thinking (reasoning)\n  - ollama (LLM access)\n  - serena (semantic code understanding)\n\nProceed?" 21 65; then
+    # Check OpenRouter
+    local openrouter_info=""
+    if [ -n "$OPENROUTER_API_KEY" ]; then
+        openrouter_info="\n\n• OpenRouter provider: configured\n  Models: claude-3.5-sonnet, gpt-4o, llama-3.1, etc."
+    fi
+
+    if ! whiptail --title "Setup NanoCoder" --yesno "This will configure NanoCoder with:\n\n• Ollama provider: $ollama_host\n  Status: $ollama_status\n  Models: ${models:-none found}${openrouter_info}\n\n• MCP Servers:\n  - filesystem, memory, sequential-thinking\n  - ollama, serena\n  - postgres (if configured), github (if token set)\n\nProceed?" 22 65; then
         return
     fi
 
@@ -1105,17 +1111,33 @@ setup_nanocoder() {
     mcp_servers+='
   ]'
 
+    # Build providers array
+    local providers='[
+      {
+        "name": "Ollama",
+        "baseUrl": "'"${ollama_host}"'/v1",
+        "models": ["qwen2.5-coder:latest", "codellama:latest", "deepseek-coder:latest"]
+      }'
+
+    # Add OpenRouter if API key is set
+    if [ -n "$OPENROUTER_API_KEY" ]; then
+        providers+=',
+      {
+        "name": "OpenRouter",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "'"$OPENROUTER_API_KEY"'",
+        "models": ["anthropic/claude-3.5-sonnet", "openai/gpt-4o", "meta-llama/llama-3.1-70b-instruct", "mistralai/mistral-large"]
+      }'
+    fi
+
+    providers+='
+    ]'
+
     # Create the config file
     cat > "$PERSIST/.nanocoder/agents.config.json" << NANOCFG
 {
   "nanocoder": {
-    "providers": [
-      {
-        "name": "Ollama",
-        "baseUrl": "${ollama_host}/v1",
-        "models": ["qwen2.5-coder:latest", "codellama:latest", "deepseek-coder:latest"]
-      }
-    ],
+    "providers": $providers,
     "mcpServers": $mcp_servers
   }
 }
@@ -1123,7 +1145,9 @@ NANOCFG
 
     echo "Created config: $PERSIST/.nanocoder/agents.config.json"
     echo ""
-    echo "Provider: Ollama at $ollama_host"
+    echo "Providers:"
+    echo "  - Ollama at $ollama_host"
+    [ -n "$OPENROUTER_API_KEY" ] && echo "  - OpenRouter (cloud models)"
     echo ""
     echo "MCP Servers configured:"
     jq -r '.nanocoder.mcpServers[].name' "$PERSIST/.nanocoder/agents.config.json" 2>/dev/null | sed 's/^/  - /'
@@ -1475,7 +1499,8 @@ show_status() {
         else
             auth7="[ ] NanoCoder"
         fi
-        auth8=""  # Empty for alignment (Ollama row)
+        # OpenRouter - check if API key set
+        [ -n "$OPENROUTER_API_KEY" ] && auth8="[*] OpenRouter API Key" || auth8="[ ] OpenRouter"
 
         printf "%-40s%s\n" "$svc1" "$auth1"
         printf "%-40s%s\n" "$svc2" "$auth2"
