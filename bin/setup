@@ -1464,20 +1464,18 @@ show_status() {
         pgrep -x freeswitch >/dev/null 2>&1 && svc5+="[*] FreeSWITCH" || svc5+="[ ] FreeSWITCH"
         pgrep -x postgres >/dev/null 2>&1 && svc6+="[*] PostgreSQL" || svc6+="[ ] PostgreSQL"
         [ -S /var/run/docker.sock ] && svc7+="[*] Docker" || svc7+="[ ] Docker"
-        # Ollama (check if host is reachable)
+        # Ollama (check if host is reachable) - URL shown on separate line
         local svc8="  "
-        if [ -n "$OLLAMA_HOST" ]; then
-            if curl -s --connect-timeout 1 "$OLLAMA_HOST/api/tags" > /dev/null 2>&1; then
-                svc8+="[*] Ollama ($OLLAMA_HOST)"
-            else
-                svc8+="[!] Ollama (not reachable)"
-            fi
+        local ollama_url_display=""
+        local ollama_check_host="${OLLAMA_HOST:-http://host.docker.internal:11434}"
+        if curl -s --connect-timeout 1 "$ollama_check_host/api/tags" > /dev/null 2>&1; then
+            svc8+="[*] Ollama"
+            ollama_url_display="       -> $ollama_check_host"
+        elif [ -n "$OLLAMA_HOST" ]; then
+            svc8+="[!] Ollama (not reachable)"
+            ollama_url_display="       -> $OLLAMA_HOST"
         else
-            if curl -s --connect-timeout 1 "http://host.docker.internal:11434/api/tags" > /dev/null 2>&1; then
-                svc8+="[*] Ollama (host.docker.internal)"
-            else
-                svc8+="[ ] Ollama"
-            fi
+            svc8+="[ ] Ollama"
         fi
 
         # Auth column data
@@ -1517,6 +1515,7 @@ show_status() {
         printf "%-40s%s\n" "$svc6" "$auth6"
         printf "%-40s%s\n" "$svc7" "$auth7"
         printf "%-40s%s\n" "$svc8" "$auth8"
+        [ -n "$ollama_url_display" ] && echo "$ollama_url_display"
 
         echo ""
         echo "  CONFIGURATION                         DEV TOOLS"
