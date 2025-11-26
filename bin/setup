@@ -244,12 +244,12 @@ setup_credentials() {
     ngrok_token=$(whiptail --inputbox "NGROK Token (required):" 8 60 "$ngrok_token" --title "NGROK Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    # Optional fields
-    freeswitch_pat=$(whiptail --inputbox "FreeSWITCH PAT (optional - for FreeSWITCH install):" 8 65 "$freeswitch_pat" --title "Optional Settings" 3>&1 1>&2 2>&3)
-    [ $? -ne 0 ] && return
-
     # Use -- to prevent whiptail from interpreting default value as options (e.g., --url)
     ngrok_args=$(whiptail --inputbox "NGROK Args (optional - e.g., --url yourdomain.ngrok.io):" 8 70 --title "Optional Settings" -- "$ngrok_args" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    # Optional fields
+    freeswitch_pat=$(whiptail --inputbox "FreeSWITCH PAT (optional - for FreeSWITCH install):" 8 65 "$freeswitch_pat" --title "Optional Settings" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
     visual=$(whiptail --title "Default Editor (optional)" --default-item "$visual" --menu "Choose your editor:" 14 50 5 \
@@ -277,11 +277,11 @@ setup_credentials() {
 SIGNALWIRE_SPACE_NAME="$sw_space"
 SIGNALWIRE_PROJECT_ID="$project_id"
 SIGNALWIRE_TOKEN="$api_token"
-FREESWITCH_PAT="$freeswitch_pat"
 NGROK_TOKEN="$ngrok_token"
 NGROK_ARGS="$ngrok_args"
+FREESWITCH_PAT="$freeswitch_pat"
 VISUAL="$visual"
-WORKDIR="/workdir"
+WORKDIR="${WORKDIR:-/workdir}"
 ENVEOF
 
     # Append any existing extra variables

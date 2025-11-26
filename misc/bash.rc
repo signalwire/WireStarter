@@ -145,10 +145,10 @@ if [ ! -f "$PERSIST/.env" ]; then
     NGROK_TOKEN=$(whiptail --inputbox "NGROK Token (required):" 8 60 --title "NGROK Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && exit
 
-    FREESWITCH_PAT=$(whiptail --inputbox "FreeSWITCH PAT (optional):" 8 65 --title "Optional Settings" 3>&1 1>&2 2>&3)
+    NGROK_ARGS=$(whiptail --inputbox "NGROK Args (optional - e.g., --url yourdomain.ngrok.io):" 8 70 --title "Optional Settings" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && exit
 
-    NGROK_ARGS=$(whiptail --inputbox "NGROK Args (optional - e.g., --url yourdomain.ngrok.io):" 8 70 --title "Optional Settings" 3>&1 1>&2 2>&3)
+    FREESWITCH_PAT=$(whiptail --inputbox "FreeSWITCH PAT (optional):" 8 65 --title "Optional Settings" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && exit
 
     VISUAL=$(whiptail --title "Default Editor" --menu "Choose your editor:" 14 50 5 \
@@ -168,11 +168,11 @@ if [ ! -f "$PERSIST/.env" ]; then
 SIGNALWIRE_SPACE_NAME="$SIGNALWIRE_SPACE_NAME"
 SIGNALWIRE_PROJECT_ID="$SIGNALWIRE_PROJECT_ID"
 SIGNALWIRE_TOKEN="$SIGNALWIRE_TOKEN"
-FREESWITCH_PAT="$FREESWITCH_PAT"
 NGROK_TOKEN="$NGROK_TOKEN"
 NGROK_ARGS="$NGROK_ARGS"
+FREESWITCH_PAT="$FREESWITCH_PAT"
 VISUAL="$VISUAL"
-WORKDIR="/workdir"
+WORKDIR="${WORKDIR:-/workdir}"
 ENVEOF
 
     set -a
