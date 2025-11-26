@@ -49,8 +49,8 @@ The container runs these services on startup:
 
 ### Volume Mounting
 - Host `$WORKDIR` directory mounts to `/workdir` in container
-- Place persistent files (`.env`, `.bashrc`, `.ssh`, code) in WORKDIR
-- The container automatically sources `/workdir/.env` and `/workdir/.bashrc`
+- Persistent config/data lives in `/workdir/persistent` (auto-symlinked to home)
+- The container automatically sources `/workdir/persistent/.env`
 
 ### Environment Variables
 Required in `.env` (see `env.example`):

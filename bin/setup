@@ -4,10 +4,13 @@
 # Set TERM if not set (needed for whiptail)
 export TERM="${TERM:-xterm}"
 
+# Persistent storage directory
+PERSIST="/workdir/persistent"
+
 # Load existing .env if present
-if [ -f "/workdir/.env" ]; then
+if [ -f "$PERSIST/.env" ]; then
     set -a
-    . /workdir/.env 2>/dev/null || true
+    . $PERSIST/.env 2>/dev/null || true
     set +a
 fi
 
@@ -141,11 +144,11 @@ setup_cloudflare_tunnel() {
     fi
 
     # Check if already configured
-    if [ -f "/workdir/.cloudflared/token" ]; then
+    if [ -f "$PERSIST/.cloudflared/token" ]; then
         if whiptail --title "Cloudflare Tunnel" --yesno "Cloudflare Tunnel is already configured.\n\nReconfigure?" 10 50; then
             # Kill existing tunnel
             tmux kill-session -t cloudflared 2>/dev/null || true
-            rm -rf /workdir/.cloudflared
+            rm -rf "$PERSIST/.cloudflared"
         else
             return 0
         fi
@@ -158,13 +161,13 @@ setup_cloudflare_tunnel() {
     [ -z "$cf_token" ] && return
 
     # Create config directory and save token
-    mkdir -p /workdir/.cloudflared
+    mkdir -p "$PERSIST/.cloudflared"
     rm -rf ~/.cloudflared
-    ln -sf /workdir/.cloudflared ~/.cloudflared
+    ln -sf "$PERSIST/.cloudflared" ~/.cloudflared
 
     # Save token to file (more secure than .env, permissions restricted)
-    echo "$cf_token" > /workdir/.cloudflared/token
-    chmod 600 /workdir/.cloudflared/token
+    echo "$cf_token" > "$PERSIST/.cloudflared/token"
+    chmod 600 "$PERSIST/.cloudflared/token"
 
     (
         echo 30
@@ -173,7 +176,7 @@ setup_cloudflare_tunnel() {
         echo "XXX"
 
         # Start tunnel in tmux session using env var to hide token from process list
-        /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat /workdir/.cloudflared/token) exec cloudflared tunnel run"
+        /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat $PERSIST/.cloudflared/token) exec cloudflared tunnel run"
 
         # Wait for tunnel to connect
         sleep 3
@@ -193,7 +196,7 @@ setup_credentials() {
     # Reload .env to get latest values (in case file was modified externally)
     # Use a safer method that handles both quoted and unquoted values
     local sw_space="" project_id="" api_token="" freeswitch_pat="" ngrok_token="" ngrok_args="" visual="vim"
-    if [ -f "/workdir/.env" ]; then
+    if [ -f "$PERSIST/.env" ]; then
         # Parse each line manually to handle unquoted values with spaces
         while IFS= read -r line || [ -n "$line" ]; do
             # Skip comments and empty lines
@@ -216,7 +219,7 @@ setup_credentials() {
                     VISUAL) visual="$val" ;;
                 esac
             fi
-        done < /workdir/.env
+        done < "$PERSIST/.env"
     fi
 
     # Fall back to environment if not found in file
@@ -264,12 +267,13 @@ setup_credentials() {
     # Preserve existing extra variables from .env (like AI keys)
     # Match lines that don't start with the known variables (handles both quoted and unquoted)
     local existing_extra=""
-    if [ -f /workdir/.env ]; then
-        existing_extra=$(grep -v -E '^(SIGNALWIRE_SPACE_NAME|SIGNALWIRE_PROJECT_ID|SIGNALWIRE_TOKEN|FREESWITCH_PAT|NGROK_TOKEN|NGROK_ARGS|VISUAL|WORKDIR)=' /workdir/.env 2>/dev/null | grep -v '^#' | grep -v '^$' | grep -v '^[[:space:]]*$')
+    if [ -f "$PERSIST/.env" ]; then
+        existing_extra=$(grep -v -E '^(SIGNALWIRE_SPACE_NAME|SIGNALWIRE_PROJECT_ID|SIGNALWIRE_TOKEN|FREESWITCH_PAT|NGROK_TOKEN|NGROK_ARGS|VISUAL|WORKDIR)=' "$PERSIST/.env" 2>/dev/null | grep -v '^#' | grep -v '^$' | grep -v '^[[:space:]]*$')
     fi
 
     # Write .env file (quote values to handle special characters)
-    cat > /workdir/.env << ENVEOF
+    mkdir -p "$PERSIST"
+    cat > "$PERSIST/.env" << ENVEOF
 SIGNALWIRE_SPACE_NAME="$sw_space"
 SIGNALWIRE_PROJECT_ID="$project_id"
 SIGNALWIRE_TOKEN="$api_token"
@@ -282,9 +286,9 @@ ENVEOF
 
     # Append any existing extra variables
     if [ -n "$existing_extra" ]; then
-        echo "" >> /workdir/.env
-        echo "# Additional settings" >> /workdir/.env
-        echo "$existing_extra" >> /workdir/.env
+        echo "" >> "$PERSIST/.env"
+        echo "# Additional settings" >> "$PERSIST/.env"
+        echo "$existing_extra" >> "$PERSIST/.env"
     fi
 
     # Export for current session
@@ -327,24 +331,24 @@ ENVEOF
 
     # If ngrok token was provided and ngrok isn't running, offer to start it
     if [ -n "$ngrok_token" ] && [ "$ngrok_running" = "false" ]; then
-        if whiptail --title "Credentials Saved" --yesno "Credentials saved to /workdir/.env\n\n$status_msg\n\nngrok is not running. Start ngrok tunnel now?" 14 55; then
+        if whiptail --title "Credentials Saved" --yesno "Credentials saved to $PERSIST/.env\n\n$status_msg\n\nngrok is not running. Start ngrok tunnel now?" 14 55; then
             start_ngrok
             if whiptail --title "Setup Complete" --yesno "Reload shell to apply all changes?" 8 50; then
                 exec bash
             fi
         fi
     else
-        whiptail --title "Credentials Saved" --msgbox "Credentials saved to /workdir/.env\n\n$status_msg" 10 50
+        whiptail --title "Credentials Saved" --msgbox "Credentials saved to $PERSIST/.env\n\n$status_msg" 10 55
     fi
 }
 
 setup_golang() {
     ARCH=$(uname -m | sed 's/aarch64/arm64/g' | sed 's/x86_64/amd64/g')
 
-    if [ -d "/workdir/.go" ]; then
+    if [ -d "$PERSIST/.go" ]; then
         whiptail --title "Go Already Installed" --yesno "Go is already installed. Reinstall?" 8 50
         [ $? -ne 0 ] && return
-        rm -rf /workdir/.go
+        rm -rf "$PERSIST/.go"
     fi
 
     (
@@ -366,8 +370,8 @@ setup_golang() {
         echo "XXX"
         echo "Extracting..."
         echo "XXX"
-        mkdir -p /workdir/.go
-        tar -zxf "${GO_VERSION}.linux-${ARCH}.tar.gz" -C /workdir/.go --strip-components=1
+        mkdir -p "$PERSIST/.go"
+        tar -zxf "${GO_VERSION}.linux-${ARCH}.tar.gz" -C "$PERSIST/.go" --strip-components=1
         rm -f "${GO_VERSION}.linux-${ARCH}.tar.gz"
 
         echo 100
@@ -375,14 +379,14 @@ setup_golang() {
 
     GO_VERSION=$(cat /tmp/go_version.txt 2>/dev/null)
     rm -f /tmp/go_version.txt
-    whiptail --title "Go Installed" --msgbox "Go ${GO_VERSION} installed to /workdir/.go\n\nRun 'exec bash' to update PATH." 10 50
+    whiptail --title "Go Installed" --msgbox "Go ${GO_VERSION} installed to $PERSIST/.go\n\nRun 'exec bash' to update PATH." 10 55
 }
 
 setup_nvm() {
-    if [ -d "/workdir/.nvm" ]; then
+    if [ -d "$PERSIST/.nvm" ]; then
         whiptail --title "NVM Already Installed" --yesno "NVM is already installed. Reinstall?" 8 50
         [ $? -ne 0 ] && return
-        rm -rf /workdir/.nvm
+        rm -rf "$PERSIST/.nvm"
     fi
 
     (
@@ -390,26 +394,26 @@ setup_nvm() {
         echo "XXX"
         echo "Downloading NVM..."
         echo "XXX"
-        mkdir -p /workdir/.nvm
-        export NVM_DIR="/workdir/.nvm"
+        mkdir -p "$PERSIST/.nvm"
+        export NVM_DIR="$PERSIST/.nvm"
         curl -s -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash > /dev/null 2>&1
 
         echo 50
         echo "XXX"
         echo "Installing Node.js LTS..."
         echo "XXX"
-        source /workdir/.nvm/nvm.sh
+        source "$PERSIST/.nvm/nvm.sh"
         nvm install --lts > /dev/null 2>&1
 
         echo 100
     ) | whiptail --title "Installing NVM + Node.js" --gauge "Preparing..." 8 60 0
 
-    whiptail --title "NVM Installed" --msgbox "NVM installed to /workdir/.nvm\nNode LTS installed.\n\nRun 'exec bash' to update PATH." 10 50
+    whiptail --title "NVM Installed" --msgbox "NVM installed to $PERSIST/.nvm\nNode LTS installed.\n\nRun 'exec bash' to update PATH." 10 55
 }
 
 setup_pgsql() {
     PG_VERSION="15"
-    NEW_PGDATA="/workdir/postgres"
+    NEW_PGDATA="$PERSIST/postgres"
 
     # Check for existing PostgreSQL data (PG_VERSION file indicates valid cluster)
     if [ -f "$NEW_PGDATA/PG_VERSION" ]; then
@@ -445,19 +449,18 @@ setup_pgsql() {
         echo "XXX"
         echo "Starting PostgreSQL..."
         echo "XXX"
-        sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl -D "$NEW_PGDATA" -l /workdir/postgres/logfile start > /dev/null 2>&1
-        touch /workdir/.setuppgsql
+        sudo -u postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl -D "$NEW_PGDATA" -l "$PERSIST/postgres/logfile" start > /dev/null 2>&1
 
         echo 100
     ) | whiptail --title "Setting up PostgreSQL" --gauge "Preparing..." 8 60 0
 
-    whiptail --title "PostgreSQL Setup" --msgbox "PostgreSQL initialized in /workdir/postgres\n\nService is running." 10 50
+    whiptail --title "PostgreSQL Setup" --msgbox "PostgreSQL initialized in $PERSIST/postgres\n\nService is running." 10 55
 }
 
 setup_npm() {
-    mkdir -p /workdir/.npm
-    npm config set cache /workdir/.npm 2>/dev/null
-    whiptail --title "NPM Cache" --msgbox "NPM cache set to /workdir/.npm" 8 50
+    mkdir -p "$PERSIST/.npm"
+    npm config set cache "$PERSIST/.npm" 2>/dev/null
+    whiptail --title "NPM Cache" --msgbox "NPM cache set to $PERSIST/.npm" 8 55
 }
 
 setup_python_dev() {
@@ -512,8 +515,8 @@ setup_audio_tools() {
 }
 
 setup_ssh_key() {
-    if [ -f "/workdir/.ssh/id_ed25519.pub" ]; then
-        local pubkey=$(cat /workdir/.ssh/id_ed25519.pub)
+    if [ -f "$PERSIST/.ssh/id_ed25519.pub" ]; then
+        local pubkey=$(cat "$PERSIST/.ssh/id_ed25519.pub")
 
         # Show existing key in a textbox for easy copying
         local tmpfile=$(mktemp)
@@ -544,14 +547,14 @@ setup_ssh_key() {
     email=$(whiptail --inputbox "Email for SSH key:" 8 60 "$current_email" --title "SSH Key Setup" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    mkdir -p /workdir/.ssh
-    chmod 700 /workdir/.ssh
-    ssh-keygen -t ed25519 -C "$email" -f /workdir/.ssh/id_ed25519 -N "" > /dev/null 2>&1
+    mkdir -p "$PERSIST/.ssh"
+    chmod 700 "$PERSIST/.ssh"
+    ssh-keygen -t ed25519 -C "$email" -f "$PERSIST/.ssh/id_ed25519" -N "" > /dev/null 2>&1
 
     rm -rf ~/.ssh
-    ln -s /workdir/.ssh ~/.ssh
+    ln -s "$PERSIST/.ssh" ~/.ssh
 
-    local pubkey=$(cat /workdir/.ssh/id_ed25519.pub)
+    local pubkey=$(cat "$PERSIST/.ssh/id_ed25519.pub")
 
     # Show new key in a textbox for easy copying
     local tmpfile=$(mktemp)
@@ -590,7 +593,8 @@ setup_git_identity() {
     github_token=$(whiptail --inputbox "GitHub Personal Access Token (optional):\n\nUsed for: gh CLI, MCP github server, private repos" 10 70 "$current_token" --title "GitHub Token" 3>&1 1>&2 2>&3)
     [ $? -ne 0 ] && return
 
-    cat > /workdir/.gitconfig << GITEOF
+    mkdir -p "$PERSIST"
+    cat > "$PERSIST/.gitconfig" << GITEOF
 [user]
     name = $name
     email = $email
@@ -602,14 +606,14 @@ setup_git_identity() {
     rebase = false
 GITEOF
 
-    ln -sf /workdir/.gitconfig ~/.gitconfig
+    ln -sf "$PERSIST/.gitconfig" ~/.gitconfig
 
     # Save GitHub token to .env if provided
     if [ -n "$github_token" ]; then
-        if [ -f "/workdir/.env" ]; then
-            sed -i '/^GITHUB_TOKEN=/d' /workdir/.env
+        if [ -f "$PERSIST/.env" ]; then
+            sed -i '/^GITHUB_TOKEN=/d' "$PERSIST/.env"
         fi
-        echo "GITHUB_TOKEN=$github_token" >> /workdir/.env
+        echo "GITHUB_TOKEN=$github_token" >> "$PERSIST/.env"
         export GITHUB_TOKEN="$github_token"
     fi
 
@@ -630,13 +634,13 @@ setup_ai_keys() {
     local oauth_msg=""
 
     # Check Claude OAuth - credentials file with claudeAiOauth key
-    if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
+    if [ -f "$PERSIST/.claude/.credentials.json" ] && grep -q "claudeAiOauth" "$PERSIST/.claude/.credentials.json" 2>/dev/null; then
         claude_oauth=true
         oauth_msg+="Claude Code: OAuth logged in\n"
     fi
 
     # Check Gemini OAuth
-    if [ -f "/workdir/.gemini/oauth_creds.json" ]; then
+    if [ -f "$PERSIST/.gemini/oauth_creds.json" ]; then
         gemini_oauth=true
         oauth_msg+="Gemini CLI: OAuth logged in\n"
     fi
@@ -665,39 +669,39 @@ setup_ai_keys() {
     [ $? -ne 0 ] && return
 
     # Save keys to .env
-    if [ -f "/workdir/.env" ]; then
-        sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
-        sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
-        sed -i '/^SLACK_BOT_TOKEN=/d' /workdir/.env
-        sed -i '/^BRAVE_API_KEY=/d' /workdir/.env
+    if [ -f "$PERSIST/.env" ]; then
+        sed -i '/^ANTHROPIC_API_KEY=/d' "$PERSIST/.env"
+        sed -i '/^GEMINI_API_KEY=/d' "$PERSIST/.env"
+        sed -i '/^SLACK_BOT_TOKEN=/d' "$PERSIST/.env"
+        sed -i '/^BRAVE_API_KEY=/d' "$PERSIST/.env"
     fi
 
     if [ "$claude_oauth" = false ] && [ -n "$anthropic_key" ]; then
-        echo "ANTHROPIC_API_KEY=\"$anthropic_key\"" >> /workdir/.env
+        echo "ANTHROPIC_API_KEY=\"$anthropic_key\"" >> "$PERSIST/.env"
         export ANTHROPIC_API_KEY="$anthropic_key"
     fi
 
     if [ "$gemini_oauth" = false ] && [ -n "$gemini_key" ]; then
-        echo "GEMINI_API_KEY=\"$gemini_key\"" >> /workdir/.env
+        echo "GEMINI_API_KEY=\"$gemini_key\"" >> "$PERSIST/.env"
         export GEMINI_API_KEY="$gemini_key"
     fi
 
     if [ -n "$slack_token" ]; then
-        echo "SLACK_BOT_TOKEN=\"$slack_token\"" >> /workdir/.env
+        echo "SLACK_BOT_TOKEN=\"$slack_token\"" >> "$PERSIST/.env"
         export SLACK_BOT_TOKEN="$slack_token"
     fi
 
     if [ -n "$brave_key" ]; then
-        echo "BRAVE_API_KEY=\"$brave_key\"" >> /workdir/.env
+        echo "BRAVE_API_KEY=\"$brave_key\"" >> "$PERSIST/.env"
         export BRAVE_API_KEY="$brave_key"
     fi
 
-    whiptail --title "AI API Keys" --msgbox "API keys saved to /workdir/.env" 8 50
+    whiptail --title "AI API Keys" --msgbox "API keys saved to $PERSIST/.env" 8 55
 }
 
 setup_mcp() {
     # Check if NVM/Node is installed
-    if [ ! -d "/workdir/.nvm" ]; then
+    if [ ! -d "$PERSIST/.nvm" ]; then
         if whiptail --title "Node.js Required" --yesno "MCP servers require Node.js.\n\nInstall NVM + Node.js now?" 10 50; then
             setup_nvm
         else
@@ -706,7 +710,7 @@ setup_mcp() {
     fi
 
     # Source NVM
-    export NVM_DIR="/workdir/.nvm"
+    export NVM_DIR="$PERSIST/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 
     # Check what's available
@@ -778,7 +782,7 @@ setup_mcp() {
     add_mcp_server "sequential-thinking" -- npx -y @modelcontextprotocol/server-sequential-thinking
 
     # postgres - only if configured (requires connection URL as argument)
-    if [ -f "/workdir/postgres/PG_VERSION" ]; then
+    if [ -f "$PERSIST/postgres/PG_VERSION" ]; then
         add_mcp_server "postgres" -- npx -y @modelcontextprotocol/server-postgres postgresql://postgres@localhost/postgres
     fi
 
@@ -1032,16 +1036,16 @@ uninstall_freeswitch() {
 }
 
 toggle_swsh() {
-    if [ -f "/workdir/.noswsh" ]; then
+    if [ -f "$PERSIST/.noswsh" ]; then
         # Currently disabled, offer to enable
         if whiptail --title "SignalWire Shell" --yesno "swsh is currently DISABLED on login.\n\nEnable swsh to start automatically?" 10 55; then
-            rm -f /workdir/.noswsh
+            rm -f "$PERSIST/.noswsh"
             whiptail --title "swsh Enabled" --msgbox "swsh will now start on login.\n\nRun 'exec bash' to test." 10 50
         fi
     else
         # Currently enabled, offer to disable
         if whiptail --title "SignalWire Shell" --yesno "swsh is currently ENABLED on login.\n\nDisable swsh auto-start?\n\n(You can still run 'swsh' manually)" 12 55; then
-            touch /workdir/.noswsh
+            touch "$PERSIST/.noswsh"
             whiptail --title "swsh Disabled" --msgbox "swsh will no longer start on login.\n\nRun 'swsh' manually when needed." 10 50
         fi
     fi
@@ -1062,13 +1066,13 @@ clean_environment() {
     case $CLEAN_CHOICE in
         "1")
             if whiptail --title "Confirm" --yesno "Delete ALL Python virtual environments?" 8 50; then
-                rm -rf /workdir/.venvs
-                mkdir -p /workdir/.venvs
+                rm -rf "$PERSIST/.venvs"
+                mkdir -p "$PERSIST/.venvs"
                 whiptail --title "Cleaned" --msgbox "All venvs deleted." 8 40
             fi
             ;;
         "2")
-            rm -rf /workdir/.npm/*
+            rm -rf "$PERSIST/.npm"/*
             whiptail --title "Cleaned" --msgbox "NPM cache cleared." 8 40
             ;;
         "3")
@@ -1076,16 +1080,16 @@ clean_environment() {
             whiptail --title "Cleaned" --msgbox "Pip cache cleared." 8 40
             ;;
         "4")
-            rm -rf /workdir/.npm/*
+            rm -rf "$PERSIST/.npm"/*
             pip3 cache purge 2>/dev/null
             whiptail --title "Cleaned" --msgbox "All caches cleared." 8 40
             ;;
         "5")
             if whiptail --title "Confirm" --yesno "This will remove:\n\n- Claude Code config (.claude/)\n- Gemini CLI config (.gemini/)\n- AI API keys from .env\n\nYou will need to re-login or re-enter API keys." 14 55; then
-                rm -rf /workdir/.claude /workdir/.gemini
-                if [ -f "/workdir/.env" ]; then
-                    sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
-                    sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
+                rm -rf "$PERSIST/.claude" "$PERSIST/.gemini"
+                if [ -f "$PERSIST/.env" ]; then
+                    sed -i '/^ANTHROPIC_API_KEY=/d' "$PERSIST/.env"
+                    sed -i '/^GEMINI_API_KEY=/d' "$PERSIST/.env"
                 fi
                 unset ANTHROPIC_API_KEY GEMINI_API_KEY
                 whiptail --title "Cleaned" --msgbox "AI configs removed.\n\nRun 'claude login' or setup AI keys." 10 50
@@ -1093,12 +1097,11 @@ clean_environment() {
             ;;
         "6")
             if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n- Claude/Gemini configs\n- AI API keys\n\nCredentials and SSH keys kept.\n\nAre you SURE?" 20 50; then
-                rm -rf /workdir/.venvs /workdir/.go /workdir/.nvm /workdir/.npm /workdir/postgres
-                rm -rf /workdir/.claude /workdir/.gemini
-                rm -f /workdir/.setuppgsql
-                if [ -f "/workdir/.env" ]; then
-                    sed -i '/^ANTHROPIC_API_KEY=/d' /workdir/.env
-                    sed -i '/^GEMINI_API_KEY=/d' /workdir/.env
+                rm -rf "$PERSIST/.venvs" "$PERSIST/.go" "$PERSIST/.nvm" "$PERSIST/.npm" "$PERSIST/postgres"
+                rm -rf "$PERSIST/.claude" "$PERSIST/.gemini"
+                if [ -f "$PERSIST/.env" ]; then
+                    sed -i '/^ANTHROPIC_API_KEY=/d' "$PERSIST/.env"
+                    sed -i '/^GEMINI_API_KEY=/d' "$PERSIST/.env"
                 fi
                 pip3 cache purge 2>/dev/null
                 unset ANTHROPIC_API_KEY GEMINI_API_KEY
@@ -1126,8 +1129,8 @@ show_status() {
     local ngrok_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url // empty' 2>/dev/null)
     local py_ver=$(python3 --version 2>/dev/null | awk '{print $2}')
     local go_ver="" node_ver=""
-    [ -d "/workdir/.go" ] && go_ver=$(/workdir/.go/bin/go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
-    [ -f "/workdir/.nvm/nvm.sh" ] && node_ver=$(source /workdir/.nvm/nvm.sh 2>/dev/null && node --version 2>/dev/null)
+    [ -d "$PERSIST/.go" ] && go_ver=$("$PERSIST/.go/bin/go" version 2>/dev/null | awk '{print $3}' | sed 's/go//')
+    [ -f "$PERSIST/.nvm/nvm.sh" ] && node_ver=$(source "$PERSIST/.nvm/nvm.sh" 2>/dev/null && node --version 2>/dev/null)
     local git_name=$(git config --global user.name 2>/dev/null)
     local uptime=$(awk '{printf "%dd %dh %dm", $1/86400, ($1%86400)/3600, ($1%3600)/60}' /proc/uptime 2>/dev/null)
 
@@ -1140,8 +1143,8 @@ show_status() {
 
     # Gemini MCP servers
     local gemini_mcp=""
-    if [ -f "/workdir/.gemini/settings.json" ]; then
-        gemini_mcp=$(jq -r '.mcpServers // {} | keys | join(", ")' /workdir/.gemini/settings.json 2>/dev/null)
+    if [ -f "$PERSIST/.gemini/settings.json" ]; then
+        gemini_mcp=$(jq -r '.mcpServers // {} | keys | join(", ")' "$PERSIST/.gemini/settings.json" 2>/dev/null)
     fi
     [ -z "$gemini_mcp" ] && gemini_mcp="(none)"
 
@@ -1164,7 +1167,7 @@ show_status() {
             svc3+="[ ] ngrok"
         fi
         # Cloudflare Tunnel status
-        if [ -f "/workdir/.cloudflared/token" ]; then
+        if [ -f "$PERSIST/.cloudflared/token" ]; then
             if tmux has-session -t cloudflared 2>/dev/null; then
                 svc4+="[*] Cloudflare Tunnel"
             else
@@ -1179,14 +1182,14 @@ show_status() {
 
         # Auth column data
         local auth1="" auth2="" auth3="" auth4="" auth5="" auth6="" auth7=""
-        if [ -f "/workdir/.claude/.credentials.json" ] && grep -q "claudeAiOauth" /workdir/.claude/.credentials.json 2>/dev/null; then
+        if [ -f "$PERSIST/.claude/.credentials.json" ] && grep -q "claudeAiOauth" "$PERSIST/.claude/.credentials.json" 2>/dev/null; then
             auth1="[*] Claude (OAuth)"
         elif [ -n "$ANTHROPIC_API_KEY" ]; then
             auth1="[*] Claude (API Key)"
         else
             auth1="[ ] Claude"
         fi
-        if [ -f "/workdir/.gemini/oauth_creds.json" ]; then
+        if [ -f "$PERSIST/.gemini/oauth_creds.json" ]; then
             auth2="[*] Gemini (OAuth)"
         elif [ -n "$GEMINI_API_KEY" ]; then
             auth2="[*] Gemini (API Key)"
@@ -1215,7 +1218,7 @@ show_status() {
         local cfg1="  " cfg2="  " cfg3="  " cfg4="  "
         [ -n "$SIGNALWIRE_SPACE_NAME" ] && cfg1+="[*] SignalWire ($SIGNALWIRE_SPACE_NAME)" || cfg1+="[ ] SignalWire"
         cfg2+="[*] Editor: ${VISUAL:-vim}"
-        [ -f "/workdir/.ssh/id_ed25519" ] && cfg3+="[*] SSH Key" || cfg3+="[ ] SSH Key"
+        [ -f "$PERSIST/.ssh/id_ed25519" ] && cfg3+="[*] SSH Key" || cfg3+="[ ] SSH Key"
         [ -n "$git_name" ] && cfg4+="[*] Git ($git_name)" || cfg4+="[ ] Git Identity"
 
         # Dev tools column
@@ -1255,13 +1258,13 @@ while true; do
 
     # Check swsh status for menu
     swsh_status="Disable swsh on Login"
-    if [ -f "/workdir/.noswsh" ]; then
+    if [ -f "$PERSIST/.noswsh" ]; then
         swsh_status="Enable swsh on Login"
     fi
 
     # Check cloudflare tunnel status
     cf_status="Setup Cloudflare Tunnel"
-    if [ -f "/workdir/.cloudflared/token" ]; then
+    if [ -f "$PERSIST/.cloudflared/token" ]; then
         if tmux has-session -t cloudflared 2>/dev/null; then
             cf_status="Cloudflare Tunnel (running)"
         else

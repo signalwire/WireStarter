@@ -90,9 +90,9 @@ The setup menu provides:
 | Remove MCP Server | Remove configured MCP servers |
 | Setup Git Identity | Configure git user, email, and GitHub token |
 | Setup SSH Key | Generate ED25519 SSH key for git |
-| Setup Go | Install latest Go to /workdir/.go |
+| Setup Go | Install latest Go to /workdir/persistent/.go |
 | Setup NVM + Node.js | Install NVM and Node.js LTS |
-| Setup PostgreSQL | Initialize PostgreSQL in /workdir/postgres |
+| Setup PostgreSQL | Initialize PostgreSQL in /workdir/persistent/postgres |
 | Setup FreeSWITCH | Install FreeSWITCH (requires PAT) |
 | Setup Python Dev Tools | Install black, pytest, build, twine |
 | Setup Audio Tools | Install pydub for audio processing |
@@ -103,7 +103,7 @@ The setup menu provides:
 
 ### Python Virtual Environments
 
-Venvs are stored in `/workdir/.venvs/` and persist across container rebuilds.
+Venvs are stored in `/workdir/persistent/.venvs/` and persist across container rebuilds.
 
 ```bash
 venv init             # Create venv for current directory
@@ -217,37 +217,40 @@ On startup, WireStarter runs:
 
 ### Persistent Storage
 
-Everything in `/workdir` persists across container rebuilds. The following files and directories are automatically symlinked from `/workdir` to their expected locations:
+Everything in `/workdir/persistent` survives container rebuilds. The following files and directories are automatically symlinked from `/workdir/persistent` to their expected locations:
 
 | Path | Purpose |
 |------|---------|
-| `/workdir/.env` | Environment variables (SignalWire, ngrok, etc.) |
-| `/workdir/.bashrc` | Custom bash configuration |
-| `/workdir/.venvs/` | Python virtual environments |
-| `/workdir/.ssh/` | SSH keys |
-| `/workdir/.gitconfig` | Git configuration |
-| `/workdir/.git-credentials` | Git credential storage |
-| `/workdir/.gitignore_global` | Global gitignore (auto-created) |
-| `/workdir/.go/` | Go installation |
-| `/workdir/.nvm/` | NVM + Node.js |
-| `/workdir/.npm/` | NPM cache |
-| `/workdir/.npmrc` | NPM configuration |
-| `/workdir/.claude/` | Claude Code auth & session data |
-| `/workdir/.claude.json` | Claude Code MCP configuration |
-| `/workdir/.gemini/` | Gemini CLI auth & config |
-| `/workdir/.cloudflared/` | Cloudflare Tunnel config & token |
-| `/workdir/.config/` | XDG config (GitHub Copilot, etc.) |
-| `/workdir/.emacs` | Emacs configuration |
-| `/workdir/.vimrc` | Vim configuration |
-| `/workdir/.nanorc` | Nano configuration |
-| `/workdir/.pypirc` | PyPI configuration |
-| `/workdir/.swsh_history` | SignalWire Shell history |
-| `/workdir/postgres/` | PostgreSQL data directory |
-| `/workdir/public/` | Static files (served at tunnel URL/public) |
+| `/workdir/persistent/.env` | Environment variables (SignalWire, ngrok, etc.) |
+| `/workdir/persistent/.venvs/` | Python virtual environments |
+| `/workdir/persistent/.ssh/` | SSH keys |
+| `/workdir/persistent/.gitconfig` | Git configuration |
+| `/workdir/persistent/.git-credentials` | Git credential storage |
+| `/workdir/persistent/.gitignore_global` | Global gitignore (auto-created) |
+| `/workdir/persistent/.go/` | Go installation |
+| `/workdir/persistent/.nvm/` | NVM + Node.js |
+| `/workdir/persistent/.npm/` | NPM cache |
+| `/workdir/persistent/.npmrc` | NPM configuration |
+| `/workdir/persistent/.claude/` | Claude Code auth & session data |
+| `/workdir/persistent/.claude.json` | Claude Code MCP configuration |
+| `/workdir/persistent/.gemini/` | Gemini CLI auth & config |
+| `/workdir/persistent/.cloudflared/` | Cloudflare Tunnel config & token |
+| `/workdir/persistent/.config/` | XDG config (GitHub Copilot, etc.) |
+| `/workdir/persistent/.emacs` | Emacs configuration |
+| `/workdir/persistent/.vimrc` | Vim configuration |
+| `/workdir/persistent/.nanorc` | Nano configuration |
+| `/workdir/persistent/.pypirc` | PyPI configuration |
+| `/workdir/persistent/.swsh_history` | SignalWire Shell history |
+| `/workdir/persistent/.noswsh` | Disable swsh on login (if present) |
+| `/workdir/persistent/postgres/` | PostgreSQL data directory |
+| `/workdir/persistent/logs/` | Persistent logs (webhook, etc.) |
+| `/workdir/persistent/public/` | Static files (served at tunnel URL/public) |
+
+**Note for existing users:** Run `migrate-persistent` to move your config files from `/workdir` to the new `/workdir/persistent` structure. After running the migration script, rebuild the container with `make build && make up`.
 
 ### Security Features
 
-**Global Gitignore**: WireStarter automatically creates `/workdir/.gitignore_global` to prevent accidentally committing secrets. The following patterns are globally ignored in all git repositories:
+**Global Gitignore**: WireStarter automatically creates `/workdir/persistent/.gitignore_global` to prevent accidentally committing secrets. The following patterns are globally ignored in all git repositories:
 
 - `.env`, `.env.*`, `*.env`, `.envrc`
 - `credentials.json`, `*_credentials.json`
@@ -376,7 +379,7 @@ All incoming requests are pretty-printed to the console with headers, body, and 
 
 **Cloudflare Tunnel not working**
 - Check the tunnel session: `tmux attach -t cloudflared`
-- Verify token file exists: `ls -la /workdir/.cloudflared/token`
+- Verify token file exists: `ls -la /workdir/persistent/.cloudflared/token`
 - Re-run setup to reconfigure
 
 **SignalWire credentials fail**
@@ -388,7 +391,7 @@ All incoming requests are pretty-printed to the console with headers, body, and 
 - Run `venv init` to create one
 
 **PostgreSQL not starting**
-- Check if data exists: `ls /workdir/postgres/PG_VERSION`
+- Check if data exists: `ls /workdir/persistent/postgres/PG_VERSION`
 - Run `setup` → "Setup PostgreSQL" to initialize
 
 ## Platform-Specific Installation

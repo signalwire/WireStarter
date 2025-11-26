@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Persistent storage directory
+PERSIST="/workdir/persistent"
+mkdir -p "$PERSIST" 2>/dev/null
+
 # Start Ngrok
 if [ -n "$NGROK_TOKEN" ]; then
     /usr/local/bin/ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1
@@ -22,12 +26,12 @@ fi
 export HOSTNAME=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | jq -r '.tunnels[0].public_url' 2>/dev/null | sed 's/https:\/\///')
 
 # Start Cloudflare Tunnel if configured
-if [ -f "/workdir/.cloudflared/token" ]; then
+if [ -f "$PERSIST/.cloudflared/token" ]; then
     # Symlink config directory
     rm -rf ~/.cloudflared
-    ln -sf /workdir/.cloudflared ~/.cloudflared
+    ln -sf "$PERSIST/.cloudflared" ~/.cloudflared
     # Start tunnel in tmux using TUNNEL_TOKEN env var to avoid exposing token in process list
-    /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat /workdir/.cloudflared/token) exec cloudflared tunnel run"
+    /usr/bin/tmux new-session -d -s cloudflared "TUNNEL_TOKEN=\$(cat $PERSIST/.cloudflared/token) exec cloudflared tunnel run"
     echo "Cloudflare Tunnel starting..."
 fi
 
@@ -35,13 +39,13 @@ fi
 /etc/init.d/nginx start > /dev/null 2>&1
 
 # Start PostgreSQL if data directory exists (PG_VERSION file indicates valid cluster)
-if [ -f "/workdir/postgres/PG_VERSION" ]; then
-    sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start >/dev/null 2>&1
+if [ -f "$PERSIST/postgres/PG_VERSION" ]; then
+    sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D "$PERSIST/postgres" -l "$PERSIST/postgres/logfile" start >/dev/null 2>&1
 fi
 
-# Start webhook catcher in background (logs to /workdir/logs/webhook.log)
-mkdir -p /workdir/logs
-/usr/bin/tmux new-session -d -s webhook "python3 /usr/bin/webhook-catcher.py 5002 --log-file /workdir/logs/webhook.log"
+# Start webhook catcher in background (logs to persistent location)
+mkdir -p "$PERSIST/logs"
+/usr/bin/tmux new-session -d -s webhook "python3 /usr/bin/webhook-catcher.py 5002 --log-file $PERSIST/logs/webhook.log"
 
 
 # Loop so we can update the urls if they change while running.

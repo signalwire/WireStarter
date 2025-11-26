@@ -1,5 +1,9 @@
-# Better history settings (persist to /workdir)
-export HISTFILE=/workdir/.bash_history
+# Persistent storage directory
+PERSIST="/workdir/persistent"
+mkdir -p "$PERSIST" 2>/dev/null
+
+# Better history settings
+export HISTFILE=$PERSIST/.bash_history
 export HISTSIZE=10000
 export HISTFILESIZE=20000
 export HISTCONTROL=ignoredups:erasedups
@@ -96,9 +100,9 @@ __build_prompt() {
 
 PROMPT_COMMAND=__build_prompt
 
-if [ -f "/workdir/.env" ]; then
+if [ -f "$PERSIST/.env" ]; then
     set -a
-    . /workdir/.env
+    . $PERSIST/.env
     set +a
 fi
 
@@ -106,16 +110,16 @@ SW_TEST_URL="https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
 # Define the output file
-ENV_FILE="/workdir/.env"
+ENV_FILE="$PERSIST/.env"
 
 if [[ $response_code -eq 200 ]]; then
     echo "INFO: SignalWire Credentials work ✅"
 elif [[ $response_code -eq 404 ]]; then
     echo "ERROR: SignalWire Space NOT FOUND 🧐"
-    rm -f /workdir/.env
+    rm -f $PERSIST/.env
 elif [[ $response_code -eq 401 ]]; then
     echo "ERROR: SignalWire Credentials DO NOT WORK 🤨"
-    rm -f /workdir/.env
+    rm -f $PERSIST/.env
 elif [[ $response_code -eq 000 ]]; then
     echo "WARNING: Network unreachable, skipping validation ⚠️"
     # Don't delete .env - network might just be down
@@ -125,7 +129,7 @@ else
 fi
 
 
-if [ ! -f "/workdir/.env" ]; then
+if [ ! -f "$PERSIST/.env" ]; then
     # Display the form and collect the inputs
     {
 	SIGNALWIRE_SPACE_NAME=$(whiptail --inputbox "Please enter your SignalWire Space Domain:" 8 78 --title "Input" 3>&1 1>&2 2>&3)
@@ -235,42 +239,42 @@ echo -e ""
 echo -e "Commands: help | setup | swsh | webhook | urls"
 echo -e ""
 
-if [ -f "/workdir/.bashrc" ]; then
-   . "/workdir/.bashrc"
+if [ -f "$PERSIST/.bashrc" ]; then
+   . "$PERSIST/.bashrc"
 fi
 
 # Editor config persistence
-if [ -f "/workdir/.emacs" ]; then
-    ln -f -s /workdir/.emacs ~/.emacs
+if [ -f "$PERSIST/.emacs" ]; then
+    ln -f -s $PERSIST/.emacs ~/.emacs
 fi
-if [ -d "/workdir/.emacs.d" ]; then
+if [ -d "$PERSIST/.emacs.d" ]; then
     rm -rf ~/.emacs.d
-    ln -f -s /workdir/.emacs.d ~
+    ln -f -s $PERSIST/.emacs.d ~
 fi
-if [ -f "/workdir/.vimrc" ]; then
-    ln -f -s /workdir/.vimrc ~/.vimrc
+if [ -f "$PERSIST/.vimrc" ]; then
+    ln -f -s $PERSIST/.vimrc ~/.vimrc
 fi
-if [ -d "/workdir/.vim" ]; then
+if [ -d "$PERSIST/.vim" ]; then
     rm -rf ~/.vim
-    ln -f -s /workdir/.vim ~
+    ln -f -s $PERSIST/.vim ~
 fi
-if [ -f "/workdir/.nanorc" ]; then
-    ln -f -s /workdir/.nanorc ~/.nanorc
+if [ -f "$PERSIST/.nanorc" ]; then
+    ln -f -s $PERSIST/.nanorc ~/.nanorc
 fi
 
-if [ -f "/workdir/.gitconfig" ]; then
-    ln -f -s /workdir/.gitconfig ~
+if [ -f "$PERSIST/.gitconfig" ]; then
+    ln -f -s $PERSIST/.gitconfig ~
 fi
-if [ -f "/workdir/.git-credentials" ]; then
-    ln -f -s /workdir/.git-credentials ~
+if [ -f "$PERSIST/.git-credentials" ]; then
+    ln -f -s $PERSIST/.git-credentials ~
 fi
-if [ -f "/workdir/.pypirc" ]; then
-    ln -f -s /workdir/.pypirc ~
+if [ -f "$PERSIST/.pypirc" ]; then
+    ln -f -s $PERSIST/.pypirc ~
 fi
 
 # Global gitignore to prevent accidentally committing secrets
-if [ ! -f "/workdir/.gitignore_global" ]; then
-    cat > /workdir/.gitignore_global << 'GITIGNORE'
+if [ ! -f "$PERSIST/.gitignore_global" ]; then
+    cat > $PERSIST/.gitignore_global << 'GITIGNORE'
 # Global gitignore - prevents committing secrets
 .env
 .env.*
@@ -287,65 +291,65 @@ id_ed25519
 .claude.json.backup
 GITIGNORE
 fi
-git config --global core.excludesfile /workdir/.gitignore_global 2>/dev/null
+git config --global core.excludesfile $PERSIST/.gitignore_global 2>/dev/null
 
-if [  -d "/workdir/.ssh" ]; then
+if [  -d "$PERSIST/.ssh" ]; then
     rm -rf ~/.ssh
-    ln -f -s /workdir/.ssh ~
+    ln -f -s $PERSIST/.ssh ~
 fi
 
 # Claude Code config persistence
-if [ -d "/workdir/.claude" ]; then
+if [ -d "$PERSIST/.claude" ]; then
     rm -rf ~/.claude
-    ln -f -s /workdir/.claude ~
+    ln -f -s $PERSIST/.claude ~
 else
-    mkdir -p /workdir/.claude
-    ln -f -s /workdir/.claude ~
+    mkdir -p $PERSIST/.claude
+    ln -f -s $PERSIST/.claude ~
 fi
 # Claude Code MCP config (stored in ~/.claude.json, not in .claude directory)
-# If real file exists in ~ but not in /workdir, migrate it first
-if [ -f ~/.claude.json ] && [ ! -L ~/.claude.json ] && [ ! -f /workdir/.claude.json ]; then
-    mv ~/.claude.json /workdir/.claude.json
+# If real file exists in ~ but not in persistent, migrate it first
+if [ -f ~/.claude.json ] && [ ! -L ~/.claude.json ] && [ ! -f $PERSIST/.claude.json ]; then
+    mv ~/.claude.json $PERSIST/.claude.json
 fi
-if [ -f ~/.claude.json.backup ] && [ ! -L ~/.claude.json.backup ] && [ ! -f /workdir/.claude.json.backup ]; then
-    mv ~/.claude.json.backup /workdir/.claude.json.backup
+if [ -f ~/.claude.json.backup ] && [ ! -L ~/.claude.json.backup ] && [ ! -f $PERSIST/.claude.json.backup ]; then
+    mv ~/.claude.json.backup $PERSIST/.claude.json.backup
 fi
 # Create symlinks (even if target doesn't exist yet - Claude Code will create it)
-ln -sf /workdir/.claude.json ~/.claude.json
-ln -sf /workdir/.claude.json.backup ~/.claude.json.backup
+ln -sf $PERSIST/.claude.json ~/.claude.json
+ln -sf $PERSIST/.claude.json.backup ~/.claude.json.backup
 
 # Gemini CLI config persistence
-if [ -d "/workdir/.gemini" ]; then
+if [ -d "$PERSIST/.gemini" ]; then
     rm -rf ~/.gemini
-    ln -f -s /workdir/.gemini ~
+    ln -f -s $PERSIST/.gemini ~
 else
-    mkdir -p /workdir/.gemini
-    ln -f -s /workdir/.gemini ~
+    mkdir -p $PERSIST/.gemini
+    ln -f -s $PERSIST/.gemini ~
 fi
 # Ensure MCP settings file exists for Gemini CLI
-if [ ! -f "/workdir/.gemini/settings.json" ]; then
-    echo '{"mcpServers":{}}' > /workdir/.gemini/settings.json
+if [ ! -f "$PERSIST/.gemini/settings.json" ]; then
+    echo '{"mcpServers":{}}' > $PERSIST/.gemini/settings.json
 fi
 
 # Cloudflare Tunnel config persistence
-if [ -d "/workdir/.cloudflared" ]; then
+if [ -d "$PERSIST/.cloudflared" ]; then
     rm -rf ~/.cloudflared
-    ln -f -s /workdir/.cloudflared ~
+    ln -f -s $PERSIST/.cloudflared ~
 fi
 
 # PostgreSQL alias (server started by start_services.sh)
-if [ -f "/workdir/postgres/PG_VERSION" ]; then
+if [ -f "$PERSIST/postgres/PG_VERSION" ]; then
     alias psql='psql -U postgres'
 fi
 
 # ~/.config persistence (for various tools like GitHub Copilot, etc.)
-if [ -d "/workdir/.config" ]; then
+if [ -d "$PERSIST/.config" ]; then
     rm -rf ~/.config
-    ln -f -s /workdir/.config ~
+    ln -f -s $PERSIST/.config ~
 else
-    mkdir -p /workdir/.config
+    mkdir -p $PERSIST/.config
     rm -rf ~/.config
-    ln -f -s /workdir/.config ~
+    ln -f -s $PERSIST/.config ~
 fi
 
 if [  -f "/workdir/cpanfile" ]; then
@@ -387,7 +391,7 @@ NAVIGATION
   ..                    cd ..
   ...                   cd ../..
 
-PYTHON VIRTUAL ENVIRONMENTS (persistent in /workdir/.venvs/)
+PYTHON VIRTUAL ENVIRONMENTS (persistent in /workdir/persistent/.venvs/)
   venv init             Create and activate venv for current directory
   venv delete           Delete venv for current directory
   venv list             List all persistent venvs
@@ -449,17 +453,19 @@ AI ASSISTANTS
   claude                Claude Code CLI
   gemini                Gemini CLI
 
-PERSISTENT STORAGE (survives container rebuilds)
-  /workdir/.venvs/      Python virtual environments
-  /workdir/.go/         Go installation
-  /workdir/.nvm/        NVM + Node.js versions
-  /workdir/.npm/        NPM cache
-  /workdir/.claude/     Claude Code auth & config
-  /workdir/.gemini/     Gemini CLI auth & config
-  /workdir/.ssh/        SSH keys
-  /workdir/postgres/    PostgreSQL data
+PERSISTENT STORAGE (/workdir/persistent/ - survives container rebuilds)
+  .venvs/               Python virtual environments
+  .go/                  Go installation
+  .nvm/                 NVM + Node.js versions
+  .npm/                 NPM cache
+  .claude/              Claude Code auth & config
+  .gemini/              Gemini CLI auth & config
+  .ssh/                 SSH keys
+  postgres/             PostgreSQL data
+  logs/                 Webhook and service logs
+  .env                  Environment variables
+
   /workdir/public/      Static files (served at $NGROK_URL/public/)
-  /workdir/.env         Environment variables
 
 HELPEOF
 }
@@ -545,34 +551,34 @@ APPEOF
     echo "Run 'up' to start the server"
 }
 
-# NVM setup (persistent in /workdir/.nvm)
-export NVM_DIR="/workdir/.nvm"
+# NVM setup (persistent)
+export NVM_DIR="$PERSIST/.nvm"
 if [ -f "$NVM_DIR/nvm.sh" ]; then
     source "$NVM_DIR/nvm.sh" >/dev/null 2>&1
 fi
 
-# Go setup (persistent in /workdir/.go)
-if [ -d "/workdir/.go" ]; then
-    export PATH=/workdir/.go/bin:${PATH}
-    export GOPATH=/workdir/.go
+# Go setup (persistent)
+if [ -d "$PERSIST/.go" ]; then
+    export PATH=$PERSIST/.go/bin:${PATH}
+    export GOPATH=$PERSIST/.go
 fi
 
 # NPM cache and config persistence
-mkdir -p /workdir/.npm
-# If real npmrc exists in ~ but not in /workdir, migrate it first
-if [ -f ~/.npmrc ] && [ ! -L ~/.npmrc ] && [ ! -f /workdir/.npmrc ]; then
-    mv ~/.npmrc /workdir/.npmrc
+mkdir -p $PERSIST/.npm
+# If real npmrc exists in ~ but not in persistent, migrate it first
+if [ -f ~/.npmrc ] && [ ! -L ~/.npmrc ] && [ ! -f $PERSIST/.npmrc ]; then
+    mv ~/.npmrc $PERSIST/.npmrc
 fi
-# Ensure npmrc exists in /workdir
-if [ ! -f /workdir/.npmrc ]; then
-    echo "cache=/workdir/.npm" > /workdir/.npmrc
+# Ensure npmrc exists in persistent
+if [ ! -f $PERSIST/.npmrc ]; then
+    echo "cache=$PERSIST/.npm" > $PERSIST/.npmrc
 fi
-# Symlink npmrc to /workdir
+# Symlink npmrc
 rm -f ~/.npmrc
-ln -sf /workdir/.npmrc ~/.npmrc
+ln -sf $PERSIST/.npmrc ~/.npmrc
 # Symlink npm cache directory
 rm -rf ~/.npm
-ln -sf /workdir/.npm ~/.npm
+ln -sf $PERSIST/.npm ~/.npm
 
 if [ -z $VISUAL ]; then
     export VISUAL=vim
@@ -581,18 +587,18 @@ fi
 export PATH=$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 
 # swsh history persistence
-if [ -f "/workdir/.swsh_history" ]; then
-    ln -f -s /workdir/.swsh_history ~/.swsh_history
+if [ -f "$PERSIST/.swsh_history" ]; then
+    ln -f -s $PERSIST/.swsh_history ~/.swsh_history
 else
-    touch /workdir/.swsh_history
-    ln -f -s /workdir/.swsh_history ~/.swsh_history
+    touch $PERSIST/.swsh_history
+    ln -f -s $PERSIST/.swsh_history ~/.swsh_history
 fi
 
-if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f /workdir/.noswsh ]; then
+if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f $PERSIST/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
 
-# Persistent venv storage in /workdir/.venvs/
+# Persistent venv storage in $PERSIST/.venvs/
 # Converts directory path to venv name: /workdir/myproject -> myproject
 #                                       /workdir/foo/bar -> foo_bar
 
@@ -638,7 +644,7 @@ _get_venv_path() {
     local dir="${1:-$(pwd)}"
     # Strip /workdir/ prefix and replace / with _
     local venv_name=$(echo "$dir" | sed 's|^/workdir/||' | tr '/' '_')
-    echo "/workdir/.venvs/${venv_name}"
+    echo "$PERSIST/.venvs/${venv_name}"
 }
 
 _get_venv_for_pwd() {
@@ -650,7 +656,7 @@ _get_venv_for_pwd() {
 
 # Audit venvs and remove orphaned ones (where source directory no longer exists)
 _audit_venvs() {
-    local venvs_dir="/workdir/.venvs"
+    local venvs_dir="$PERSIST/.venvs"
     [ ! -d "$venvs_dir" ] && return 0
 
     local removed=0
@@ -724,7 +730,7 @@ venv() {
                     echo "Activated venv"
                 fi
             else
-                mkdir -p /workdir/.venvs
+                mkdir -p $PERSIST/.venvs
                 python3 -m venv "$venv_path"
                 echo "Created venv: $venv_path"
                 source "$venv_path/bin/activate"
@@ -757,8 +763,8 @@ venv() {
             fi
             ;;
         list)
-            echo "Persistent venvs in /workdir/.venvs/:"
-            ls -1 /workdir/.venvs/ 2>/dev/null || echo "  (none)"
+            echo "Persistent venvs in $PERSIST/.venvs/:"
+            ls -1 $PERSIST/.venvs/ 2>/dev/null || echo "  (none)"
             ;;
         path)
             echo "$venv_path"
@@ -783,7 +789,7 @@ venv() {
             ;;
         audit)
             echo "Auditing venvs for orphaned directories..."
-            local venvs_dir="/workdir/.venvs"
+            local venvs_dir="$PERSIST/.venvs"
             if [ ! -d "$venvs_dir" ]; then
                 echo "No venvs directory found"
                 return 0
@@ -854,7 +860,7 @@ rm() {
                         abs_path="$(cd "$(dirname "$arg")" 2>/dev/null && pwd)/$(basename "$arg")"
                     fi
 
-                    if [[ "$abs_path" == /workdir/* ]] && [[ "$abs_path" != /workdir/.venvs* ]]; then
+                    if [[ "$abs_path" == /workdir/* ]] && [[ "$abs_path" != $PERSIST/.venvs* ]]; then
                         dirs_to_check+=("$abs_path")
                     fi
                 fi
@@ -872,7 +878,7 @@ rm() {
             # Only if directory was actually removed
             if [ ! -d "$dir" ]; then
                 local venv_name=$(echo "$dir" | sed 's|^/workdir/||' | tr '/' '_')
-                local venv_path="/workdir/.venvs/$venv_name"
+                local venv_path="$PERSIST/.venvs/$venv_name"
 
                 if [ -d "$venv_path" ]; then
                     command rm -rf "$venv_path"
@@ -946,9 +952,9 @@ reqs() {
 }
 
 # Webhook catcher - view captured webhook requests
-# The catcher runs as a background service, logging to /workdir/logs/webhook.log
+# The catcher runs as a background service, logging to $PERSIST/logs/webhook.log
 webhook() {
-    local log_file="/workdir/logs/webhook.log"
+    local log_file="$PERSIST/logs/webhook.log"
 
     case "$1" in
         clear)
