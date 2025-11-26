@@ -719,7 +719,7 @@ setup_mcp() {
     [ "$has_claude" = "yes" ] && tools_msg+="- Claude Code\n"
     [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
 
-    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)" 18 60
+    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- serena (semantic code understanding)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)" 19 60
 
     # Install MCP servers using CLI commands
     clear
@@ -805,6 +805,12 @@ setup_mcp() {
     if [ -n "$BRAVE_API_KEY" ]; then
         add_mcp_server "brave-search" --env BRAVE_API_KEY="$BRAVE_API_KEY" -- "$NPX_PATH" -y @modelcontextprotocol/server-brave-search
     fi
+
+    # serena - AI coding assistant with semantic code understanding
+    # First install serena as a persistent uv tool, then add the MCP server
+    echo "Installing Serena (this may take a moment)..."
+    /usr/local/bin/uv tool install --force git+https://github.com/oraios/serena 2>/dev/null || true
+    add_mcp_server "serena" -- $PERSIST/.local/bin/serena start-mcp-server
 
     echo "========================================"
     echo "MCP Servers Installed!"
@@ -900,7 +906,7 @@ fix_mcp() {
     fi
 
     # Confirm fix
-    if ! whiptail --title "Fix MCP Servers" --yesno "This will:\n\n1. Clear corrupted npm/npx cache\n2. Fix npx paths to use system Node (/usr/bin/npx)\n\nThis fixes 'Failed to connect' errors caused by:\n- NVM path issues (MCP servers spawn without shell)\n- Corrupted npm cache\n\nProceed?" 16 60; then
+    if ! whiptail --title "Fix MCP Servers" --yesno "This will:\n\n1. Clear corrupted npm/npx cache\n2. Fix npx paths to use /usr/bin/npx\n3. Fix uvx paths to use /usr/local/bin/uvx\n\nThis fixes 'Failed to connect' errors caused by:\n- NVM path issues (MCP servers spawn without shell)\n- Corrupted npm cache\n\nProceed?" 17 60; then
         return
     fi
 
@@ -928,10 +934,12 @@ fix_mcp() {
             # Check if there are any MCP servers configured
             local server_count=$(jq '.mcpServers | keys | length' "$claude_config" 2>/dev/null || echo "0")
             if [ "$server_count" -gt 0 ]; then
-                # Fix all command paths that contain 'npx' to use /usr/bin/npx
+                # Fix all command paths: npx -> /usr/bin/npx, uvx -> /usr/local/bin/uvx
                 jq '(.mcpServers | to_entries | map(
                     if (.value.command | test("npx$")) then
                         .value.command = "/usr/bin/npx"
+                    elif (.value.command | test("uvx$")) then
+                        .value.command = "/usr/local/bin/uvx"
                     else .
                     end
                 ) | from_entries) as $fixed | .mcpServers = $fixed' "$claude_config" > /tmp/claude_fix.json
@@ -960,6 +968,8 @@ fix_mcp() {
                 jq '(.mcpServers | to_entries | map(
                     if (.value.command | test("npx$")) then
                         .value.command = "/usr/bin/npx"
+                    elif (.value.command | test("uvx$")) then
+                        .value.command = "/usr/local/bin/uvx"
                     else .
                     end
                 ) | from_entries) as $fixed | .mcpServers = $fixed' "$gemini_config" > /tmp/gemini_fix.json

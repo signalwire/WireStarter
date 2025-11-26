@@ -69,6 +69,15 @@ setup_persistence() {
         ln -sf "$PERSIST/.cloudflared" ~/.cloudflared
     fi
 
+    # UV (Python package manager) - tools and cache
+    mkdir -p "$PERSIST/.local/share/uv"
+    mkdir -p "$PERSIST/.local/bin"
+    mkdir -p ~/.local/share
+    rm -rf ~/.local/share/uv
+    ln -sf "$PERSIST/.local/share/uv" ~/.local/share/uv
+    rm -rf ~/.local/bin
+    ln -sf "$PERSIST/.local/bin" ~/.local/bin
+
     # NPM cache and config
     mkdir -p "$PERSIST/.npm"
     # Migrate /workdir/.npm if exists

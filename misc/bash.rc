@@ -487,7 +487,8 @@ if [ -z $VISUAL ]; then
     export VISUAL=vim
 fi
 
-export PATH=$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
+# UV (Python package manager) - ensure tools bin is in PATH
+export PATH=$PERSIST/.local/bin:$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 
 if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f $PERSIST/.noswsh ]; then
     python3 /usr/local/bin/swsh
