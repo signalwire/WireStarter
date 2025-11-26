@@ -255,6 +255,9 @@ fi
 if [ -f "/workdir/.gitconfig" ]; then
     ln -f -s /workdir/.gitconfig ~
 fi
+if [ -f "/workdir/.git-credentials" ]; then
+    ln -f -s /workdir/.git-credentials ~
+fi
 if [ -f "/workdir/.pypirc" ]; then
     ln -f -s /workdir/.pypirc ~
 fi
