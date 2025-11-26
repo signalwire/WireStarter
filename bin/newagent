@@ -606,6 +606,7 @@ def main():
     if proxy_url:
         print()
         print(f"{BOLD}{YELLOW}Public URLs:{RESET}")
+        print(f"  Web root:    {proxy_url}/")
         print(f"  SWML:        {proxy_url}/swml")
         print(f"  SWAIG:       {proxy_url}/swml/swaig/")
         print(f"  Get token:   {proxy_url}/get_token")

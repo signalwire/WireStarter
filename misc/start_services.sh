@@ -39,6 +39,10 @@ if [ -f "/workdir/postgres/PG_VERSION" ]; then
     sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D /workdir/postgres -l /workdir/postgres/logfile start >/dev/null 2>&1
 fi
 
+# Start webhook catcher in background (logs to /workdir/logs/webhook.log)
+mkdir -p /workdir/logs
+/usr/bin/tmux new-session -d -s webhook "python3 /usr/bin/webhook-catcher.py 5002 --log-file /workdir/logs/webhook.log"
+
 
 # Loop so we can update the urls if they change while running.
 while true

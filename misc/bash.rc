@@ -219,15 +219,21 @@ echo -e "Welcome to WireStarter!";
 echo -e "\n"
 
 if [ -n "$NGROK_URL" ]; then
-    echo -e "NGROK Tunnel: $NGROK_URL";
-    echo -e "/workdir/public -> $NGROK_URL/public\n";
+    echo -e "NGROK Tunnel:  $NGROK_URL"
+    echo -e "Public files:  $NGROK_URL/public/"
+    echo -e "Webhook:       $NGROK_URL/webhook"
+    echo -e ""
 fi
 
 if [ -n "$HOST_WORKDIR" ]; then
-    echo -e "Persistent host directory is $HOST_WORKDIR -> /workdir\n";
+    echo -e "Workdir: $HOST_WORKDIR -> /workdir"
 elif [ -n "$WORKDIR" ]; then
-    echo -e "Persistent host directory is /workdir\n";
+    echo -e "Workdir: /workdir"
 fi
+
+echo -e ""
+echo -e "Commands: help | setup | swsh | webhook | urls"
+echo -e ""
 
 if [ -f "/workdir/.bashrc" ]; then
    . "/workdir/.bashrc"
@@ -421,9 +427,11 @@ NETWORKING
 LOGS & DEBUGGING
   logs                  Tail nginx access log
   reqs                  Tail nginx access log (formatted)
-  webhook               Start webhook catcher (dumps requests to console)
-                        Available at $NGROK_URL/webhook
-                        XML responses at $NGROK_URL/webhook/xml
+  webhook               Tail webhook log (catcher runs in background)
+  webhook clear         Clear webhook log
+  webhook status        Show webhook catcher status
+  webhook attach        Attach to webhook catcher tmux session
+                        Webhook URLs: $NGROK_URL/webhook, $NGROK_URL/webhook/xml
 
 REDIS
   redis                 Redis CLI
@@ -937,13 +945,46 @@ reqs() {
     tail -f /var/log/nginx/access.log | awk '{print $4, $6, $7, $9}'
 }
 
-# Webhook catcher - dumps all incoming requests to console
+# Webhook catcher - view captured webhook requests
+# The catcher runs as a background service, logging to /workdir/logs/webhook.log
 webhook() {
-    echo ""
-    echo "Webhook URL: ${NGROK_URL:-http://localhost:9080}/webhook"
-    echo "XML endpoint: ${NGROK_URL:-http://localhost:9080}/webhook/xml"
-    echo ""
-    python3 /usr/bin/webhook-catcher.py "${1:-5002}"
+    local log_file="/workdir/logs/webhook.log"
+
+    case "$1" in
+        clear)
+            # Truncate log and signal catcher to reopen
+            > "$log_file"
+            pkill -HUP -f "webhook-catcher.py" 2>/dev/null || true
+            echo "Webhook log cleared"
+            ;;
+        attach)
+            # Attach to the tmux session for debugging
+            tmux attach -t webhook
+            ;;
+        status)
+            # Show webhook catcher status
+            if tmux has-session -t webhook 2>/dev/null; then
+                echo "Webhook catcher: running"
+            else
+                echo "Webhook catcher: not running"
+            fi
+            echo "Log file: $log_file"
+            if [ -f "$log_file" ]; then
+                echo "Log size: $(du -h "$log_file" | cut -f1)"
+            fi
+            ;;
+        *)
+            # Default: show URLs and tail the log
+            echo ""
+            echo "Webhook URL: ${NGROK_URL:-http://localhost:9080}/webhook"
+            echo "XML endpoint: ${NGROK_URL:-http://localhost:9080}/webhook/xml"
+            echo ""
+            echo "Commands: webhook clear | webhook attach | webhook status"
+            echo "Press Ctrl+C to stop watching"
+            echo ""
+            tail -f "$log_file"
+            ;;
+    esac
 }
 
 # Python REPL with SignalWire client pre-loaded
