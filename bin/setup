@@ -735,6 +735,16 @@ setup_mcp() {
     echo "========================================"
     echo ""
 
+    # Get absolute path to npx (MCP servers spawn without shell, need full path)
+    local NPX_PATH=$(which npx 2>/dev/null)
+    if [ -z "$NPX_PATH" ]; then
+        echo "ERROR: npx not found in PATH. Install Node.js first."
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    echo "Using npx: $NPX_PATH"
+    echo ""
+
     # Helper function to add server to both CLIs
     # Usage: add_mcp_server "name" [--env KEY=VALUE ...] -- command args...
     add_mcp_server() {
@@ -773,32 +783,32 @@ setup_mcp() {
     }
 
     # filesystem - file operations on /workdir
-    add_mcp_server "filesystem" -- npx -y @modelcontextprotocol/server-filesystem /workdir
+    add_mcp_server "filesystem" -- "$NPX_PATH" -y @modelcontextprotocol/server-filesystem /workdir
 
     # memory - persistent notes
-    add_mcp_server "memory" -- npx -y @modelcontextprotocol/server-memory
+    add_mcp_server "memory" -- "$NPX_PATH" -y @modelcontextprotocol/server-memory
 
     # sequential-thinking - step-by-step reasoning
-    add_mcp_server "sequential-thinking" -- npx -y @modelcontextprotocol/server-sequential-thinking
+    add_mcp_server "sequential-thinking" -- "$NPX_PATH" -y @modelcontextprotocol/server-sequential-thinking
 
     # postgres - only if configured (requires connection URL as argument)
     if [ -f "$PERSIST/postgres/PG_VERSION" ]; then
-        add_mcp_server "postgres" -- npx -y @modelcontextprotocol/server-postgres postgresql://postgres@localhost/postgres
+        add_mcp_server "postgres" -- "$NPX_PATH" -y @modelcontextprotocol/server-postgres postgresql://postgres@localhost/postgres
     fi
 
     # github - only if token set
     if [ -n "$GITHUB_TOKEN" ]; then
-        add_mcp_server "github" --env GITHUB_TOKEN="$GITHUB_TOKEN" -- npx -y @modelcontextprotocol/server-github
+        add_mcp_server "github" --env GITHUB_TOKEN="$GITHUB_TOKEN" -- "$NPX_PATH" -y @modelcontextprotocol/server-github
     fi
 
     # slack - only if token set
     if [ -n "$SLACK_BOT_TOKEN" ]; then
-        add_mcp_server "slack" --env SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" -- npx -y @modelcontextprotocol/server-slack
+        add_mcp_server "slack" --env SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" -- "$NPX_PATH" -y @modelcontextprotocol/server-slack
     fi
 
     # brave-search - only if API key set
     if [ -n "$BRAVE_API_KEY" ]; then
-        add_mcp_server "brave-search" --env BRAVE_API_KEY="$BRAVE_API_KEY" -- npx -y @modelcontextprotocol/server-brave-search
+        add_mcp_server "brave-search" --env BRAVE_API_KEY="$BRAVE_API_KEY" -- "$NPX_PATH" -y @modelcontextprotocol/server-brave-search
     fi
 
     echo "========================================"
