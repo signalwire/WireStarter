@@ -47,6 +47,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Install Claude Code and Gemini CLI
 RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli
 
+# Install Ollama CLI (for connecting to Ollama running on host)
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
 RUN pwd
 COPY misc/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 

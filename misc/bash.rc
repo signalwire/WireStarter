@@ -295,6 +295,23 @@ alias ...='cd ../..'
 alias work='cd /workdir'
 alias public='cd /workdir/persistent/public'
 
+# Ollama - default to host.docker.internal if not set
+if [ -z "$OLLAMA_HOST" ]; then
+    export OLLAMA_HOST="http://host.docker.internal:11434"
+fi
+
+ollama_url() {
+    echo "$OLLAMA_HOST"
+    # Test connection
+    if curl -s --connect-timeout 2 "$OLLAMA_HOST/api/tags" > /dev/null 2>&1; then
+        echo "Status: Connected"
+        echo "Models:"
+        curl -s "$OLLAMA_HOST/api/tags" | jq -r '.models[].name' 2>/dev/null | sed 's/^/  /'
+    else
+        echo "Status: Not connected (is Ollama running on host?)"
+    fi
+}
+
 # Help command
 help() {
     cat << 'HELPEOF'
@@ -372,6 +389,8 @@ GIT
 AI ASSISTANTS
   claude                Claude Code CLI
   gemini                Gemini CLI
+  ollama                Ollama CLI (connects to OLLAMA_HOST)
+  ollama_url            Show Ollama host URL
 
 PERSISTENT STORAGE (/workdir/persistent/ - survives container rebuilds)
   .venvs/               Python virtual environments
