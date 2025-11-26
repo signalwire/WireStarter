@@ -133,6 +133,73 @@ start_ngrok() {
     fi
 }
 
+setup_cloudflare_tunnel() {
+    # Check if cloudflared is installed
+    if ! command -v cloudflared >/dev/null 2>&1; then
+        whiptail --title "Cloudflare Tunnel" --msgbox "cloudflared is not installed.\n\nPlease rebuild the container with the latest image." 10 60
+        return 1
+    fi
+
+    # Check if already configured
+    if [ -f "/workdir/.cloudflared/config.yml" ]; then
+        if whiptail --title "Cloudflare Tunnel" --yesno "Cloudflare Tunnel is already configured.\n\nReconfigure?" 10 50; then
+            cloudflared service uninstall 2>/dev/null || true
+            rm -rf /workdir/.cloudflared
+        else
+            return 0
+        fi
+    fi
+
+    # Get the tunnel token
+    local cf_token=$(whiptail --inputbox "Enter your Cloudflare Tunnel Token:\n\n(From: Zero Trust > Networks > Tunnels > Create)" 12 70 "" --title "Cloudflare Tunnel Setup" 3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+    [ -z "$cf_token" ] && return
+
+    # Create config directory
+    mkdir -p /workdir/.cloudflared
+    rm -rf ~/.cloudflared
+    ln -sf /workdir/.cloudflared ~/.cloudflared
+
+    # Create config.yml for port 9080
+    cat > /workdir/.cloudflared/config.yml << 'CFEOF'
+# Cloudflare Tunnel config
+# Tunnel traffic to local port 9080 (same as ngrok)
+url: http://localhost:9080
+CFEOF
+
+    (
+        echo 30
+        echo "XXX"
+        echo "Installing Cloudflare Tunnel service..."
+        echo "XXX"
+        cloudflared service install "$cf_token" > /tmp/cf_install.log 2>&1
+        local result=$?
+        echo $result > /tmp/cf_result.txt
+
+        echo 100
+    ) | whiptail --title "Cloudflare Tunnel" --gauge "Configuring..." 8 60 0
+
+    local result=$(cat /tmp/cf_result.txt 2>/dev/null)
+    rm -f /tmp/cf_result.txt
+
+    if [ "$result" = "0" ]; then
+        # Save token to .env
+        if [ -f "/workdir/.env" ]; then
+            sed -i '/^CLOUDFLARE_TOKEN=/d' /workdir/.env
+        fi
+        echo "CLOUDFLARE_TOKEN=\"$cf_token\"" >> /workdir/.env
+        export CLOUDFLARE_TOKEN="$cf_token"
+
+        whiptail --title "Cloudflare Tunnel" --msgbox "Cloudflare Tunnel installed successfully!\n\nThe tunnel service is now running.\nTraffic will be routed to port 9080.\n\nConfigure your tunnel hostname in the\nCloudflare Zero Trust dashboard." 14 55
+    else
+        local err=$(cat /tmp/cf_install.log 2>/dev/null | tail -5)
+        whiptail --title "Cloudflare Tunnel Failed" --msgbox "Failed to install tunnel.\n\n$err" 14 60
+        rm -f /tmp/cf_install.log
+        return 1
+    fi
+    rm -f /tmp/cf_install.log
+}
+
 setup_credentials() {
     # Reload .env to get latest values (in case file was modified externally)
     # Use a safer method that handles both quoted and unquoted values
@@ -1184,25 +1251,32 @@ while true; do
         swsh_status="Enable swsh on Login"
     fi
 
-    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 30 60 20 \
+    # Check cloudflare tunnel status
+    cf_status="Setup Cloudflare Tunnel"
+    if [ -f "/workdir/.cloudflared/config.yml" ]; then
+        cf_status="Cloudflare Tunnel (configured)"
+    fi
+
+    CHOICE=$(whiptail --title "WireStarter Environment Setup" --menu "Select an option (Cancel to exit):" 32 60 22 \
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "$ngrok_status" \
-        "3" "Setup AI API Keys (Claude/Gemini)" \
-        "4" "Add MCP Servers (Claude/Gemini)" \
-        "5" "Remove MCP Server" \
-        "6" "Setup Git Identity" \
-        "7" "Setup SSH Key" \
-        "8" "Setup Go (latest stable)" \
-        "9" "Setup NVM + Node.js" \
-        "10" "Setup PostgreSQL" \
-        "11" "Setup FreeSWITCH" \
-        "12" "Uninstall FreeSWITCH" \
-        "13" "Setup Python Dev Tools" \
-        "14" "Setup Audio Tools (ffmpeg/sox)" \
-        "15" "Setup All Dev Tools" \
-        "16" "$swsh_status" \
-        "17" "Show Status" \
-        "18" "Clean Environment" \
+        "3" "$cf_status" \
+        "4" "Setup AI API Keys (Claude/Gemini)" \
+        "5" "Add MCP Servers (Claude/Gemini)" \
+        "6" "Remove MCP Server" \
+        "7" "Setup Git Identity" \
+        "8" "Setup SSH Key" \
+        "9" "Setup Go (latest stable)" \
+        "10" "Setup NVM + Node.js" \
+        "11" "Setup PostgreSQL" \
+        "12" "Setup FreeSWITCH" \
+        "13" "Uninstall FreeSWITCH" \
+        "14" "Setup Python Dev Tools" \
+        "15" "Setup Audio Tools (ffmpeg/sox)" \
+        "16" "Setup All Dev Tools" \
+        "17" "$swsh_status" \
+        "18" "Show Status" \
+        "19" "Clean Environment" \
         3>&1 1>&2 2>&3)
 
     # Cancel button or ESC exits
@@ -1211,21 +1285,22 @@ while true; do
     case $CHOICE in
         "1") setup_credentials ;;
         "2") start_ngrok ;;
-        "3") setup_ai_keys ;;
-        "4") setup_mcp ;;
-        "5") remove_mcp ;;
-        "6") setup_git_identity ;;
-        "7") setup_ssh_key ;;
-        "8") setup_golang ;;
-        "9") setup_nvm ;;
-        "10") setup_pgsql ;;
-        "11") setup_freeswitch ;;
-        "12") uninstall_freeswitch ;;
-        "13") setup_python_dev ;;
-        "14") setup_audio_tools ;;
-        "15") setup_all ;;
-        "16") toggle_swsh ;;
-        "17") show_status ;;
-        "18") clean_environment ;;
+        "3") setup_cloudflare_tunnel ;;
+        "4") setup_ai_keys ;;
+        "5") setup_mcp ;;
+        "6") remove_mcp ;;
+        "7") setup_git_identity ;;
+        "8") setup_ssh_key ;;
+        "9") setup_golang ;;
+        "10") setup_nvm ;;
+        "11") setup_pgsql ;;
+        "12") setup_freeswitch ;;
+        "13") uninstall_freeswitch ;;
+        "14") setup_python_dev ;;
+        "15") setup_audio_tools ;;
+        "16") setup_all ;;
+        "17") toggle_swsh ;;
+        "18") show_status ;;
+        "19") clean_environment ;;
     esac
 done
