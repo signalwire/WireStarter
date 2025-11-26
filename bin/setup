@@ -1032,7 +1032,7 @@ setup_nanocoder() {
         models=$(curl -s "$ollama_host/api/tags" | jq -r '.models[].name' 2>/dev/null | head -5 | tr '\n' ', ' | sed 's/,$//')
     fi
 
-    if ! whiptail --title "Setup NanoCoder" --yesno "This will configure NanoCoder with:\n\n• Ollama provider: $ollama_host\n  Status: $ollama_status\n  Models: ${models:-none found}\n\n• MCP Servers:\n  - filesystem (file operations)\n  - memory (persistent notes)\n  - sequential-thinking (reasoning)\n  - ollama (LLM access)\n\nProceed?" 20 65; then
+    if ! whiptail --title "Setup NanoCoder" --yesno "This will configure NanoCoder with:\n\n• Ollama provider: $ollama_host\n  Status: $ollama_status\n  Models: ${models:-none found}\n\n• MCP Servers:\n  - filesystem (file operations)\n  - memory (persistent notes)\n  - sequential-thinking (reasoning)\n  - ollama (LLM access)\n  - serena (semantic code understanding)\n\nProceed?" 21 65; then
         return
     fi
 
@@ -1071,6 +1071,12 @@ setup_nanocoder() {
       "command": "/usr/bin/npx",
       "args": ["-y", "ollama-mcp"],
       "env": {"OLLAMA_HOST": "'"$ollama_host"'"}
+    },
+    {
+      "name": "serena",
+      "transport": "stdio",
+      "command": "'"$PERSIST"'/.local/bin/serena",
+      "args": ["start-mcp-server"]
     }'
 
     # Add postgres if configured
