@@ -259,6 +259,27 @@ if [ -f "/workdir/.pypirc" ]; then
     ln -f -s /workdir/.pypirc ~
 fi
 
+# Global gitignore to prevent accidentally committing secrets
+if [ ! -f "/workdir/.gitignore_global" ]; then
+    cat > /workdir/.gitignore_global << 'GITIGNORE'
+# Global gitignore - prevents committing secrets
+.env
+.env.*
+*.env
+.envrc
+.npmrc
+credentials.json
+*_credentials.json
+*.pem
+*.key
+id_rsa
+id_ed25519
+.claude.json
+.claude.json.backup
+GITIGNORE
+fi
+git config --global core.excludesfile /workdir/.gitignore_global 2>/dev/null
+
 if [  -d "/workdir/.ssh" ]; then
     rm -rf ~/.ssh
     ln -f -s /workdir/.ssh ~
