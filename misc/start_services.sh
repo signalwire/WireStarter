@@ -140,6 +140,12 @@ GITIGNORE
 # Run persistence setup
 setup_persistence
 
+# Auto-unlock encrypted secrets if key file exists (for automation)
+if [ -f /workdir/.secrets/age-key.txt ] && [ -d /workdir/.git-crypt ]; then
+    echo "Auto-unlocking encrypted secrets..."
+    /usr/bin/secrets unlock --quiet 2>/dev/null || true
+fi
+
 # Start Ngrok
 if [ -n "$NGROK_TOKEN" ]; then
     /usr/local/bin/ngrok config add-authtoken "$NGROK_TOKEN" > /dev/null 2>&1

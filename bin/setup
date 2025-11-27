@@ -1350,6 +1350,107 @@ toggle_swsh() {
     fi
 }
 
+# ============================================================================
+# Setup Encrypted Secrets
+# ============================================================================
+setup_secrets() {
+    # Check if encryption tools are installed
+    if ! command -v git-crypt >/dev/null 2>&1 || ! command -v age >/dev/null 2>&1 || ! command -v sops >/dev/null 2>&1; then
+        whiptail --title "Tools Not Found" --msgbox "Encryption tools (git-crypt, age, sops) not installed.\n\nPlease rebuild the container with the latest image." 10 60
+        return 1
+    fi
+
+    local SECRETS_DIR="/workdir/.secrets"
+
+    # Check if already initialized
+    if [ -d "$SECRETS_DIR" ] && [ -f "$SECRETS_DIR/age-key.pub" ]; then
+        # Already initialized - show management menu
+        local SECRET_CHOICE
+        SECRET_CHOICE=$(whiptail --title "Secrets Management" --menu "Encryption is initialized:" 18 65 7 \
+            "1" "Unlock secrets (decrypt for use)" \
+            "2" "Lock secrets (encrypt for commit)" \
+            "3" "Show status" \
+            "4" "Export key backup" \
+            "5" "Import key from backup" \
+            "6" "Edit JSON config with SOPS" \
+            3>&1 1>&2 2>&3)
+
+        [ $? -ne 0 ] && return
+
+        case $SECRET_CHOICE in
+            "1")
+                clear
+                secrets unlock
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            "2")
+                clear
+                secrets lock
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            "3")
+                clear
+                secrets status
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            "4")
+                local export_path
+                export_path=$(whiptail --inputbox "Export keys to directory:" 8 60 "/tmp/wirestarter-backup" 3>&1 1>&2 2>&3)
+                [ $? -ne 0 ] && return
+                clear
+                secrets export-key "$export_path"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            "5")
+                local import_path
+                import_path=$(whiptail --inputbox "Import keys from (directory or file):" 8 60 "" 3>&1 1>&2 2>&3)
+                [ $? -ne 0 ] && return
+                clear
+                secrets import-key "$import_path"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            "6")
+                local file_choice
+                file_choice=$(whiptail --title "Edit Config" --menu "Select file to edit:" 16 60 6 \
+                    "1" "persistent/.claude.json" \
+                    "2" "persistent/.gemini/settings.json" \
+                    "3" "Custom file path" \
+                    3>&1 1>&2 2>&3)
+                [ $? -ne 0 ] && return
+
+                local edit_file=""
+                case $file_choice in
+                    "1") edit_file="/workdir/persistent/.claude.json" ;;
+                    "2") edit_file="/workdir/persistent/.gemini/settings.json" ;;
+                    "3")
+                        edit_file=$(whiptail --inputbox "File path:" 8 60 "/workdir/persistent/" 3>&1 1>&2 2>&3)
+                        [ $? -ne 0 ] && return
+                        ;;
+                esac
+
+                if [ -n "$edit_file" ] && [ -f "$edit_file" ]; then
+                    sops "$edit_file"
+                else
+                    whiptail --title "Error" --msgbox "File not found: $edit_file" 8 50
+                fi
+                ;;
+        esac
+    else
+        # Not initialized - offer to initialize
+        if whiptail --title "Setup Encrypted Secrets" --yesno "Initialize encryption for your workdir?\n\nThis will:\n- Create encryption keys (age + git-crypt)\n- Configure .gitattributes for transparent encryption\n- Configure .sops.yaml for JSON config encryption\n- Allow you to safely version control secrets\n\nYour .env, credentials, and config files will be\nencrypted when committed to git.\n\nProceed?" 20 65; then
+            clear
+            secrets init
+            echo ""
+            read -p "Press Enter to continue..."
+        fi
+    fi
+}
+
 clean_environment() {
     CLEAN_CHOICE=$(whiptail --title "Clean Environment" --menu "What do you want to clean?" 16 60 6 \
         "1" "Clean all Python venvs" \
@@ -1623,6 +1724,7 @@ while true; do
         "19" "$swsh_status" \
         "20" "Show Status" \
         "21" "Clean Environment" \
+        "22" "Setup Encrypted Secrets" \
         3>&1 1>&2 2>&3)
 
     # Cancel button or ESC exits
@@ -1650,5 +1752,6 @@ while true; do
         "19") toggle_swsh ;;
         "20") show_status ;;
         "21") clean_environment ;;
+        "22") setup_secrets ;;
     esac
 done

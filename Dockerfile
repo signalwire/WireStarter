@@ -68,6 +68,14 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
     && apt update \
     && apt install -y azure-cli
 
+# Install encryption tools (git-crypt, age, SOPS) for secrets management
+RUN apt update && apt install -y git-crypt \
+    && ARCH=$(dpkg --print-architecture) \
+    && curl -fsSL "https://github.com/FiloSottile/age/releases/download/v1.2.0/age-v1.2.0-linux-${ARCH}.tar.gz" \
+       | tar -xz -C /usr/local/bin --strip-components=1 age/age age/age-keygen \
+    && curl -fsSL "https://github.com/getsops/sops/releases/download/v3.9.0/sops-v3.9.0.linux.${ARCH}" \
+       -o /usr/local/bin/sops && chmod +x /usr/local/bin/sops
+
 RUN pwd
 COPY misc/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 

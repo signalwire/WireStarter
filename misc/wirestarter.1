@@ -242,6 +242,42 @@ Ollama CLI - Interface to Ollama running on host machine
 Show Ollama host URL and connection status
 .PP
 All AI assistants support MCP (Model Context Protocol) servers for enhanced capabilities including file system access, semantic code search (Serena), and more.
+.SH SECRETS MANAGEMENT
+WireStarter supports encrypting your persistent directory for safe version control:
+.TP
+.B secrets init
+Initialize encryption - generates age keypair, configures git-crypt and SOPS.
+Choose between passphrase protection or key file for automation.
+.TP
+.B secrets unlock
+Decrypt secrets for use. Required after cloning a repo with encrypted secrets.
+.TP
+.B secrets lock
+Encrypt secrets for committing. Run before git push.
+.TP
+.B secrets status
+Show encryption status - key mode, locked/unlocked state, file counts.
+.TP
+.B secrets export-key [dir]
+Export encryption keys for backup. Store securely outside the repository.
+.TP
+.B secrets import-key <path>
+Import encryption keys from backup.
+.TP
+.B sops <file>
+Edit JSON/YAML config files with automatic encryption/decryption via SOPS.
+.PP
+The encryption system uses:
+.IP \(bu 2
+.B git-crypt
+for transparent encryption of simple files (.env, tokens, credentials)
+.IP \(bu 2
+.B SOPS + age
+for structured configs (JSON/YAML) - keys visible, values encrypted for better diffs
+.PP
+Initialize via:
+.B setup
+menu option "22) Setup Encrypted Secrets"
 .SH CLOUD CLIs
 Pre-installed cloud provider command-line interfaces with persistent credential storage:
 .TP
@@ -257,6 +293,9 @@ Azure CLI. Configure with: az login
 Credentials are stored persistently in /workdir/persistent/ and survive container rebuilds.
 .SH PERSISTENT STORAGE
 The /workdir/persistent/ directory survives container rebuilds. Key directories:
+.PP
+.B /workdir/.secrets/
+(at workdir root) Encryption keys for secrets management
 .TP
 .B .venvs/
 Python virtual environments

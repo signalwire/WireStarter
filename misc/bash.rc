@@ -106,6 +106,21 @@ if [ -f "$PERSIST/.env" ]; then
     set +a
 fi
 
+# Check for encrypted secrets - warn if locked
+if [ -d /workdir/.secrets ] && [ -f /workdir/.secrets/age-key.pub ]; then
+    if [ -d /workdir/.git-crypt ]; then
+        # Check if git-crypt is locked by looking for encrypted marker in .env
+        if [ -f "$PERSIST/.env" ] && head -1 "$PERSIST/.env" 2>/dev/null | grep -q "^GITCRYPT"; then
+            echo "WARNING: Secrets are locked (encrypted). Run 'secrets unlock' to decrypt."
+        else
+            # Export SOPS key if available
+            if [ -f /workdir/.secrets/age-key.txt ]; then
+                export SOPS_AGE_KEY_FILE="/workdir/.secrets/age-key.txt"
+            fi
+        fi
+    fi
+fi
+
 SW_TEST_URL="https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01/Accounts -u ${SIGNALWIRE_PROJECT_ID}:${SIGNALWIRE_TOKEN}"
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
