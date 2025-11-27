@@ -8,8 +8,8 @@ FROM debian:12.11-slim
 
 ARG python_version=python3.11
 
-# Install the basic packages
-RUN apt update && apt install -y screen tmux jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools ffmpeg sox sqlite3 ncdu 
+# Install the basic packages (includes man-db for man pages)
+RUN apt update && apt install -y screen tmux jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools ffmpeg sox sqlite3 ncdu man-db 
 
 # Install Editors
 RUN apt update && apt install -y nano vim emacs-nox micro ne
@@ -89,6 +89,10 @@ COPY misc/signalwire.ans /.sw.ans
 COPY misc/bash.rc /root/.bashrc
 COPY bin/ /usr/bin
 COPY conf/nginx.site /etc/nginx/sites-enabled/default
+
+# Install WireStarter man page
+COPY misc/wirestarter.1 /usr/share/man/man1/wirestarter.1
+RUN gzip -f /usr/share/man/man1/wirestarter.1 && mandb -q
 # Clean up
 RUN /usr/bin/dos2unix /root/.bashrc         # Fixes DOS formatting when using Windows
 RUN /usr/bin/dos2unix /start_services.sh    # Fixes DOS formatting when using Windows

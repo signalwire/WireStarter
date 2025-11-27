@@ -1,0 +1,405 @@
+.\" WireStarter Manual Page
+.\" Contact support@signalwire.com for questions
+.TH WIRESTARTER 1 "November 2025" "WireStarter 2.0" "WireStarter Manual"
+.SH NAME
+wirestarter \- Docker-based development environment for SignalWire applications
+.SH SYNOPSIS
+.B docker compose up -d
+.br
+.B docker compose exec wirestarter bash
+.SH DESCRIPTION
+.B WireStarter
+is a comprehensive Docker-based development environment designed for building SignalWire voice, messaging, and AI applications. It provides a containerized workspace with pre-installed tools, SDKs, AI coding assistants, cloud CLIs, and demo templates for rapid development.
+.PP
+The environment includes automatic ngrok tunneling for webhook development, persistent storage across container rebuilds, and a rich set of command-line tools for SignalWire API interaction.
+.SH GETTING STARTED
+.SS Initial Setup
+.TP
+1. Clone the repository:
+.B git clone https://github.com/signalwire/WireStarter.git
+.TP
+2. Copy and edit environment file:
+.B cp env.example .env
+.TP
+3. Start the container:
+.B make up
+.TP
+4. Enter the container:
+.B make enter
+.TP
+5. Run interactive setup:
+.B setup
+.SS Required Environment Variables
+.TP
+.B SIGNALWIRE_SPACE_NAME
+Your SignalWire space name (without .signalwire.com)
+.TP
+.B SIGNALWIRE_PROJECT_ID
+Your SignalWire project ID
+.TP
+.B SIGNALWIRE_TOKEN
+Your SignalWire API token
+.TP
+.B NGROK_TOKEN
+Your ngrok authentication token (recommended)
+.TP
+.B WORKDIR
+Host directory to mount as /workdir in container
+.SS Optional Environment Variables
+.TP
+.B NGROK_ARGS
+Additional ngrok arguments (e.g., --url yourdomain.ngrok.io)
+.TP
+.B FREESWITCH_PAT
+FreeSWITCH Personal Access Token
+.TP
+.B VISUAL
+Preferred editor (vim, emacs, nano, micro, ne)
+.TP
+.B OLLAMA_HOST
+Ollama API endpoint (default: http://host.docker.internal:11434)
+.TP
+.B OPENROUTER_API_KEY
+OpenRouter API key for multi-model LLM access
+.SH HOST COMMANDS
+These commands run on the host machine (outside the container):
+.TP
+.B make up
+Build and start container in detached mode
+.TP
+.B make down
+Stop the container
+.TP
+.B make enter
+Enter running container shell
+.TP
+.B make build
+Rebuild Docker image (no cache)
+.TP
+.B make debug
+Run container interactively (foreground)
+.TP
+.B make push
+Build and push multi-arch image to Docker Hub
+.TP
+.B make clean
+Stop container and prune Docker system
+.SH CONTAINER COMMANDS
+.SS Setup & Status
+.TP
+.B setup
+Interactive environment setup menu. Configure Go, NVM, PostgreSQL, npm packages, AI assistants (Claude, Gemini, NanoCoder), and more.
+.TP
+.B help
+Display command reference
+.SS Navigation
+.TP
+.B work
+cd /workdir
+.TP
+.B public
+cd /workdir/persistent/public
+.TP
+.B ..
+cd ..
+.TP
+.B ...
+cd ../..
+.SS Python Virtual Environments
+Virtual environments are stored persistently in /workdir/persistent/.venvs/ and automatically activate when entering directories.
+.TP
+.B venv init
+Create and activate venv for current directory
+.TP
+.B venv delete
+Delete venv for current directory
+.TP
+.B venv list
+List all persistent venvs
+.TP
+.B venv path
+Show venv path for current directory
+.TP
+.B venv nuke
+Deactivate and delete currently active venv
+.TP
+.B venv audit
+Find and remove orphaned venvs
+.SS Project Scaffolding
+.TP
+.B newproject [name]
+Create new Flask project with venv
+.TP
+.B newagent [name]
+Create SignalWire agent project with full structure (agents/, skills/, tests/, web/, .env with credentials)
+.SS Running Applications
+.TP
+.B up [script]
+Run Python script in infinite loop (default: app.py). Auto-restarts on exit. Ctrl+C to stop.
+.TP
+.B watch [script]
+Run script, auto-restart on .py file changes
+.TP
+.B serve [port]
+Run Flask app on port (default: 5000)
+.SS Process Management
+.TP
+.B ports
+Show what's running on ports 5000, 5002, 9080
+.TP
+.B killport <port>
+Kill process on specified port
+.TP
+.B reload
+Reload nginx configuration
+.SS SignalWire Tools
+.TP
+.B swsh
+SignalWire Shell - interactive CLI for SignalWire API
+.TP
+.B sw_test
+Test SignalWire API credentials
+.TP
+.B sw_numbers
+List SignalWire phone numbers
+.TP
+.B swpy
+Python REPL with SignalWire client pre-loaded
+.SS Networking
+.TP
+.B urls
+Show ngrok tunnel URLs (main app, public, webhook)
+.TP
+.B tunnel
+Print current ngrok URL
+.TP
+.B ngrok_url
+Get raw ngrok URL
+.TP
+.B testapp
+Test local and public endpoints
+.SS Logs & Debugging
+.TP
+.B logs
+Tail nginx access log
+.TP
+.B reqs
+Tail nginx access log (formatted)
+.TP
+.B webhook
+Tail webhook log (catcher runs in background)
+.TP
+.B webhook clear
+Clear webhook log
+.TP
+.B webhook status
+Show webhook catcher status
+.TP
+.B webhook attach
+Attach to webhook catcher tmux session
+.SS Redis
+.TP
+.B redis
+Redis CLI
+.TP
+.B rkeys
+List all Redis keys
+.TP
+.B rget <key>
+Get Redis value
+.TP
+.B rclear
+Flush all Redis data
+.SS Git Shortcuts
+.TP
+.B gs
+git status
+.TP
+.B gd
+git diff
+.TP
+.B gl
+git log --oneline -20
+.TP
+.B gp
+git pull
+.SH AI ASSISTANTS
+WireStarter includes multiple AI coding assistants for accelerating development:
+.TP
+.B claude
+Claude Code CLI - Anthropic's AI coding assistant. Requires Anthropic API key (configure via setup menu).
+.TP
+.B gemini
+Gemini CLI - Google's AI assistant. Requires Google API key (configure via setup menu).
+.TP
+.B nanocoder
+NanoCoder CLI - Local-first coding agent optimized for Ollama. Supports tool-capable models with MCP server integration.
+.TP
+.B ollama
+Ollama CLI - Interface to Ollama running on host machine
+.TP
+.B ollama_url
+Show Ollama host URL and connection status
+.PP
+All AI assistants support MCP (Model Context Protocol) servers for enhanced capabilities including file system access, semantic code search (Serena), and more.
+.SH CLOUD CLIs
+Pre-installed cloud provider command-line interfaces with persistent credential storage:
+.TP
+.B aws
+AWS CLI v2. Configure with: aws configure
+.TP
+.B gcloud
+Google Cloud CLI. Configure with: gcloud init
+.TP
+.B az
+Azure CLI. Configure with: az login
+.PP
+Credentials are stored persistently in /workdir/persistent/ and survive container rebuilds.
+.SH PERSISTENT STORAGE
+The /workdir/persistent/ directory survives container rebuilds. Key directories:
+.TP
+.B .venvs/
+Python virtual environments
+.TP
+.B .nanocoder/
+NanoCoder configuration
+.TP
+.B .aws/
+AWS CLI configuration & credentials
+.TP
+.B .config/gcloud/
+Google Cloud CLI configuration
+.TP
+.B .azure/
+Azure CLI configuration
+.TP
+.B .go/
+Go installation
+.TP
+.B .nvm/
+NVM and Node.js versions
+.TP
+.B .npm/
+NPM cache
+.TP
+.B .claude/
+Claude Code authentication & configuration
+.TP
+.B .gemini/
+Gemini CLI authentication & configuration
+.TP
+.B .ssh/
+SSH keys
+.TP
+.B postgres/
+PostgreSQL data directory
+.TP
+.B logs/
+Webhook and service logs
+.TP
+.B .env
+Environment variables
+.TP
+.B public/
+Static files served at $NGROK_URL/public/
+.SH SERVICES
+The following services start automatically with the container:
+.TP
+.B nginx
+Web server on port 9080, proxies to Flask apps
+.TP
+.B ngrok
+Tunnel service providing public URLs (if NGROK_TOKEN set)
+.TP
+.B redis
+Redis server for caching and session storage
+.TP
+.B webhook-catcher
+Captures incoming webhooks for debugging
+.TP
+.B cloudflared
+Cloudflare Tunnel (if configured in .cloudflared/)
+.TP
+.B PostgreSQL
+Database server (if data directory exists)
+.SH WEBHOOK DEVELOPMENT
+The webhook catcher captures all POST requests to /webhook endpoints for debugging:
+.PP
+.B POST $NGROK_URL/webhook
+- Captures JSON payloads
+.br
+.B POST $NGROK_URL/webhook/xml
+- Captures XML payloads
+.PP
+View captured webhooks with the
+.B webhook
+command.
+.SH FILES
+.TP
+.B /workdir/
+Main working directory (mounted from host)
+.TP
+.B /workdir/persistent/
+Persistent storage directory
+.TP
+.B /workdir/persistent/.env
+Environment configuration file
+.TP
+.B /usr/local/ai-agent-starter-pack/
+SignalWire AI Agent demo templates
+.SH EXAMPLES
+.SS Create a new SignalWire agent project
+.nf
+newagent mybot
+cd mybot
+up
+.fi
+.SS Test webhook integration
+.nf
+# In one terminal
+webhook
+# In another terminal
+curl -X POST $NGROK_URL/webhook -H "Content-Type: application/json" -d '{"test": true}'
+.fi
+.SS Set up Python environment for existing project
+.nf
+cd /workdir/existing-project
+venv init
+pip install -r requirements.txt
+.fi
+.SS Configure Claude Code MCP servers
+.nf
+setup
+# Select "Configure Claude Code MCP servers"
+.fi
+.SH RESOURCES
+.SS GitHub Repository
+.B https://github.com/signalwire/WireStarter
+.SS SignalWire Documentation
+.B https://developer.signalwire.com
+.SS SignalWire Community Discord
+.B https://signalwire.community
+.SS SignalWire Support Portal
+.B https://support.signalwire.com
+.SS Get a SignalWire Account
+.B https://signalwire.com/signup
+.SH SUPPORT
+For assistance with WireStarter or SignalWire:
+.TP
+.B Email
+support@signalwire.com
+.TP
+.B Discord
+https://signalwire.community
+.TP
+.B GitHub Issues
+https://github.com/signalwire/WireStarter/issues
+.SH AUTHORS
+SignalWire, Inc.
+.br
+support@signalwire.com
+.SH SEE ALSO
+.BR docker (1),
+.BR docker-compose (1),
+.BR ngrok (1),
+.BR flask (1)
