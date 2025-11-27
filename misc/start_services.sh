@@ -80,10 +80,9 @@ setup_persistence() {
     ln -sf "$PERSIST/.aws" ~/.aws
 
     # Google Cloud CLI config (~/.config/gcloud)
+    # Note: ~/.config is already symlinked to $PERSIST/.config above,
+    # so we just need to ensure the gcloud subdirectory exists
     mkdir -p "$PERSIST/.config/gcloud"
-    mkdir -p ~/.config
-    rm -rf ~/.config/gcloud
-    ln -sf "$PERSIST/.config/gcloud" ~/.config/gcloud
 
     # Azure CLI config (~/.azure)
     mkdir -p "$PERSIST/.azure"
