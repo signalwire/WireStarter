@@ -74,6 +74,22 @@ setup_persistence() {
         ln -sf "$PERSIST/.cloudflared" ~/.cloudflared
     fi
 
+    # AWS CLI config (~/.aws)
+    mkdir -p "$PERSIST/.aws"
+    rm -rf ~/.aws
+    ln -sf "$PERSIST/.aws" ~/.aws
+
+    # Google Cloud CLI config (~/.config/gcloud)
+    mkdir -p "$PERSIST/.config/gcloud"
+    mkdir -p ~/.config
+    rm -rf ~/.config/gcloud
+    ln -sf "$PERSIST/.config/gcloud" ~/.config/gcloud
+
+    # Azure CLI config (~/.azure)
+    mkdir -p "$PERSIST/.azure"
+    rm -rf ~/.azure
+    ln -sf "$PERSIST/.azure" ~/.azure
+
     # UV (Python package manager) - tools and cache
     mkdir -p "$PERSIST/.local/share/uv"
     mkdir -p "$PERSIST/.local/bin"

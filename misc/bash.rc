@@ -397,9 +397,17 @@ AI ASSISTANTS
   ollama                Ollama CLI (connects to OLLAMA_HOST)
   ollama_url            Show Ollama host URL
 
+CLOUD CLIs
+  aws                   AWS CLI v2 (configure with: aws configure)
+  gcloud                Google Cloud CLI (configure with: gcloud init)
+  az                    Azure CLI (configure with: az login)
+
 PERSISTENT STORAGE (/workdir/persistent/ - survives container rebuilds)
   .venvs/               Python virtual environments
   .nanocoder/           NanoCoder config
+  .aws/                 AWS CLI config & credentials
+  .config/gcloud/       Google Cloud CLI config
+  .azure/               Azure CLI config
   .go/                  Go installation
   .nvm/                 NVM + Node.js versions
   .npm/                 NPM cache

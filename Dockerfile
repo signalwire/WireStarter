@@ -50,6 +50,24 @@ RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli @nanocollective/
 # Install Ollama CLI (for connecting to Ollama running on host)
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
+# Install AWS CLI v2
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o /tmp/awscliv2.zip \
+    && unzip -q /tmp/awscliv2.zip -d /tmp \
+    && /tmp/aws/install \
+    && rm -rf /tmp/aws /tmp/awscliv2.zip
+
+# Install Google Cloud CLI
+RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee /etc/apt/sources.list.d/google-cloud-sdk.list \
+    && apt update \
+    && apt install -y google-cloud-cli
+
+# Install Azure CLI
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/azure-cli.list \
+    && apt update \
+    && apt install -y azure-cli
+
 RUN pwd
 COPY misc/foo_laml.xml.orig /tmp/.foo_laml.xml.orig
 
