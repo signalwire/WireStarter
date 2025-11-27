@@ -719,7 +719,9 @@ setup_mcp() {
     [ "$has_claude" = "yes" ] && tools_msg+="- Claude Code\n"
     [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
 
-    whiptail --title "MCP Servers" --msgbox "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- serena (semantic code understanding)\n- ollama (local LLM via host Ollama)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)" 20 60
+    if ! whiptail --title "MCP Servers" --yesno "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- serena (semantic code understanding)\n- ollama (local LLM via host Ollama)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)\n\nProceed with installation?" 22 60; then
+        return
+    fi
 
     # Install MCP servers using CLI commands
     clear
@@ -1472,17 +1474,23 @@ clean_environment() {
             fi
             ;;
         "2")
-            rm -rf "$PERSIST/.npm"/*
-            whiptail --title "Cleaned" --msgbox "NPM cache cleared." 8 40
+            if whiptail --title "Confirm" --yesno "Clear NPM cache?" 8 40; then
+                rm -rf "$PERSIST/.npm"/*
+                whiptail --title "Cleaned" --msgbox "NPM cache cleared." 8 40
+            fi
             ;;
         "3")
-            pip3 cache purge 2>/dev/null
-            whiptail --title "Cleaned" --msgbox "Pip cache cleared." 8 40
+            if whiptail --title "Confirm" --yesno "Clear Pip cache?" 8 40; then
+                pip3 cache purge 2>/dev/null
+                whiptail --title "Cleaned" --msgbox "Pip cache cleared." 8 40
+            fi
             ;;
         "4")
-            rm -rf "$PERSIST/.npm"/*
-            pip3 cache purge 2>/dev/null
-            whiptail --title "Cleaned" --msgbox "All caches cleared." 8 40
+            if whiptail --title "Confirm" --yesno "Clear all caches (NPM + Pip)?" 8 45; then
+                rm -rf "$PERSIST/.npm"/*
+                pip3 cache purge 2>/dev/null
+                whiptail --title "Cleaned" --msgbox "All caches cleared." 8 40
+            fi
             ;;
         "5")
             if whiptail --title "Confirm" --yesno "This will remove:\n\n- Claude Code config (.claude/)\n- Gemini CLI config (.gemini/)\n- AI API keys from .env\n\nYou will need to re-login or re-enter API keys." 14 55; then
