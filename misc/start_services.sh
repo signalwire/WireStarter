@@ -89,14 +89,16 @@ setup_persistence() {
     rm -rf ~/.azure
     ln -sf "$PERSIST/.azure" ~/.azure
 
-    # UV (Python package manager) - tools and cache
-    mkdir -p "$PERSIST/.local/share/uv"
+    # ~/.local (UV, pip user installs, etc.)
+    # Migrate existing content from Docker image if present
+    if [ -d ~/.local ] && [ ! -L ~/.local ]; then
+        mkdir -p "$PERSIST/.local"
+        cp -a ~/.local/. "$PERSIST/.local/" 2>/dev/null || true
+        rm -rf ~/.local
+    fi
     mkdir -p "$PERSIST/.local/bin"
-    mkdir -p ~/.local/share
-    rm -rf ~/.local/share/uv
-    ln -sf "$PERSIST/.local/share/uv" ~/.local/share/uv
-    rm -rf ~/.local/bin
-    ln -sf "$PERSIST/.local/bin" ~/.local/bin
+    mkdir -p "$PERSIST/.local/share/uv"
+    ln -sf "$PERSIST/.local" ~/.local
 
     # NPM cache and config - use $PERSIST/.npm directly (no double symlinks)
     mkdir -p "$PERSIST/.npm"
