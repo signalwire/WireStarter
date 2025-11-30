@@ -772,18 +772,18 @@ setup_mcp() {
 
         if [ "$has_claude" = "yes" ]; then
             echo "  -> Claude Code"
-            eval "claude mcp add --scope user \"$name\" $claude_env_args-- \"\$@\"" 2>/dev/null || true
+            eval "claude mcp add --scope user \"$name\" $claude_env_args-- \"\$@\"" >/dev/null 2>&1 || true
         fi
 
         if [ "$has_gemini" = "yes" ]; then
             echo "  -> Gemini CLI"
             # Gemini CLI doesn't use -- separator, and uses -e for env vars
-            eval "gemini mcp add -s user \"$name\" $gemini_env_args\"\$@\"" 2>/dev/null || true
+            eval "gemini mcp add -s user \"$name\" $gemini_env_args\"\$@\"" >/dev/null 2>&1 || true
         fi
 
         if [ "$has_codex" = "yes" ]; then
             echo "  -> OpenAI Codex"
-            eval "codex mcp add --scope user \"$name\" $codex_env_args-- \"\$@\"" 2>/dev/null || true
+            eval "codex mcp add \"$name\" $codex_env_args-- \"\$@\"" >/dev/null 2>&1 || true
         fi
         echo ""
     }
