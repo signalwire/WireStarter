@@ -11,7 +11,7 @@ A batteries-included Docker development environment for building SignalWire appl
 - **Persistent storage** - Your code, venvs, configs, and credentials survive container rebuilds
 - **Interactive setup** - TUI menus for configuring credentials and tools
 - **Built-in services** - Redis, nginx, PostgreSQL, FreeSWITCH available on demand
-- **AI coding assistants** - Claude Code and Gemini CLI pre-installed with MCP support
+- **AI coding assistants** - Claude Code, Gemini CLI, and OpenAI Codex pre-installed with MCP support
 - **Developer tools** - Git, tmux, editors (vim/emacs/nano/micro/ne), debugging utilities
 - **Security** - Global gitignore prevents accidental credential commits
 
@@ -235,6 +235,7 @@ Everything in `/workdir/persistent` survives container rebuilds. The following f
 | `/workdir/persistent/.claude/` | Claude Code auth & session data |
 | `/workdir/persistent/.claude.json` | Claude Code MCP configuration |
 | `/workdir/persistent/.gemini/` | Gemini CLI auth & config |
+| `/workdir/persistent/.codex/` | OpenAI Codex CLI auth & config |
 | `/workdir/persistent/.cloudflared/` | Cloudflare Tunnel config & token |
 | `/workdir/persistent/.config/` | XDG config (GitHub Copilot, etc.) |
 | `/workdir/persistent/.emacs` | Emacs configuration |
@@ -270,7 +271,7 @@ Everything in `/workdir/persistent` survives container rebuilds. The following f
 
 **Python:** signalwire, signalwire-agents, signalwire-swml, signalwire-swaig, flask, requests, ipython, httpie, black
 
-**AI Tools:** Claude Code, Gemini CLI (with MCP server support)
+**AI Tools:** Claude Code, Gemini CLI, OpenAI Codex (with MCP server support)
 
 ## Tunneling Options
 
@@ -309,6 +310,7 @@ Access the cloudflared session: `tmux attach -t cloudflared`
 | `VISUAL` | No | Preferred editor (vim/emacs/nano/micro/ne) |
 | `ANTHROPIC_API_KEY` | No | Claude API key (alternative to OAuth) |
 | `GEMINI_API_KEY` | No | Gemini API key (alternative to OAuth) |
+| `OPENAI_API_KEY` | No | OpenAI Codex API key (alternative to OAuth) |
 | `GITHUB_TOKEN` | No | GitHub personal access token |
 | `SLACK_BOT_TOKEN` | No | Slack bot token (for MCP server) |
 | `BRAVE_API_KEY` | No | Brave Search API key (for MCP server) |
@@ -328,6 +330,14 @@ MCP servers can be added via the setup menu for enhanced capabilities (filesyste
 Gemini CLI is pre-installed. Authenticate via:
 - OAuth: `gemini` (browser-based login)
 - API Key: Set `GEMINI_API_KEY` in setup
+
+### OpenAI Codex CLI
+
+OpenAI Codex CLI is pre-installed. Authenticate via:
+- OAuth: `codex auth login` (browser-based login)
+- API Key: Set `OPENAI_API_KEY` in setup
+
+Codex supports the same MCP servers as Claude and Gemini.
 
 ## Example: Creating a SignalWire Agent
 
