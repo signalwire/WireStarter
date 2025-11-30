@@ -324,6 +324,15 @@ elif [ ! -d "$PERSIST/.codex" ] && [ ! -L ~/.codex ]; then
     ln -sf "$PERSIST/.codex" ~/.codex
 fi
 
+# Serena - ensure .serena persists
+if [ ! -L ~/.serena ] && [ -d "$PERSIST/.serena" ]; then
+    rm -rf ~/.serena 2>/dev/null
+    ln -sf "$PERSIST/.serena" ~/.serena
+elif [ ! -d "$PERSIST/.serena" ] && [ ! -L ~/.serena ]; then
+    mkdir -p "$PERSIST/.serena"
+    ln -sf "$PERSIST/.serena" ~/.serena
+fi
+
 ollama_url() {
     echo "$OLLAMA_HOST"
     # Test connection
