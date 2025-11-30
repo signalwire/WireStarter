@@ -88,7 +88,7 @@ Stop container and prune Docker system
 .SS Setup & Status
 .TP
 .B setup
-Interactive environment setup menu. Configure Go, NVM, PostgreSQL, npm packages, AI assistants (Claude, Gemini, NanoCoder), and more.
+Interactive environment setup menu. Configure Go, NVM, PostgreSQL, npm packages, AI assistants (Claude, Gemini, Codex), and more.
 .TP
 .B help
 Display command reference
@@ -232,8 +232,8 @@ Claude Code CLI - Anthropic's AI coding assistant. Requires Anthropic API key (c
 .B gemini
 Gemini CLI - Google's AI assistant. Requires Google API key (configure via setup menu).
 .TP
-.B nanocoder
-NanoCoder CLI - Local-first coding agent optimized for Ollama. Supports tool-capable models with MCP server integration.
+.B codex
+OpenAI Codex CLI - AI coding assistant powered by OpenAI. Requires OPENAI_API_KEY (configure via setup menu).
 .TP
 .B ollama
 Ollama CLI - Interface to Ollama running on host machine
@@ -300,8 +300,8 @@ The /workdir/persistent/ directory survives container rebuilds. Key directories:
 .B .venvs/
 Python virtual environments
 .TP
-.B .nanocoder/
-NanoCoder configuration
+.B .codex/
+OpenAI Codex CLI configuration
 .TP
 .B .aws/
 AWS CLI configuration & credentials

@@ -44,8 +44,8 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings \
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt install -y nodejs
 
-# Install Claude Code, Gemini CLI, and NanoCoder
-RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli @nanocollective/nanocoder
+# Install Claude Code, Gemini CLI, and OpenAI Codex CLI
+RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli @openai/codex
 
 # Install Ollama CLI (for connecting to Ollama running on host)
 RUN curl -fsSL https://ollama.com/install.sh | sh

@@ -1016,170 +1016,40 @@ fix_mcp() {
     read -p "Press Enter to continue..."
 }
 
-setup_nanocoder() {
-    # Configure NanoCoder with Ollama provider and MCP servers
+setup_codex() {
+    # Install and configure OpenAI Codex CLI
 
-    if ! command -v nanocoder >/dev/null 2>&1; then
-        whiptail --title "NanoCoder Not Found" --msgbox "NanoCoder is not installed.\n\nIt should be pre-installed in the container." 10 50
-        return
+    if ! command -v codex >/dev/null 2>&1; then
+        whiptail --title "Installing Codex" --infobox "Installing OpenAI Codex CLI...\n\nnpm install -g @openai/codex" 8 50
+        npm install -g @openai/codex > /dev/null 2>&1
+        if ! command -v codex >/dev/null 2>&1; then
+            whiptail --title "Installation Failed" --msgbox "Failed to install Codex CLI.\n\nTry manually: npm install -g @openai/codex" 10 50
+            return
+        fi
     fi
 
-    local ollama_host="${OLLAMA_HOST:-http://host.docker.internal:11434}"
+    # Check for OpenAI API key
+    local openai_key="${OPENAI_API_KEY:-}"
 
-    # Check Ollama connection
-    local ollama_status="not connected"
-    local models=""
-    if curl -s --connect-timeout 2 "$ollama_host/api/tags" > /dev/null 2>&1; then
-        ollama_status="connected"
-        models=$(curl -s "$ollama_host/api/tags" | jq -r '.models[].name' 2>/dev/null | head -5 | tr '\n' ', ' | sed 's/,$//')
+    if [ -z "$openai_key" ]; then
+        openai_key=$(whiptail --inputbox "OpenAI API Key (required for Codex):\n\nGet one at: https://platform.openai.com/api-keys" 12 70 "" --title "OpenAI Codex Setup" 3>&1 1>&2 2>&3)
+        [ $? -ne 0 ] && return
+        [ -z "$openai_key" ] && { whiptail --title "Error" --msgbox "OpenAI API key is required." 8 50; return; }
+
+        # Save to .env
+        if [ -f "$PERSIST/.env" ]; then
+            sed -i '/^OPENAI_API_KEY=/d' "$PERSIST/.env"
+        fi
+        echo "OPENAI_API_KEY=\"$openai_key\"" >> "$PERSIST/.env"
+        export OPENAI_API_KEY="$openai_key"
     fi
 
-    # Check OpenRouter
-    local openrouter_info=""
-    if [ -n "$OPENROUTER_API_KEY" ]; then
-        openrouter_info="\n\n• OpenRouter provider: configured\n  Models: claude-3.5-sonnet, gpt-4o, llama-3.1, etc."
-    fi
+    # Ensure .codex directory persists
+    mkdir -p "$PERSIST/.codex"
+    rm -rf ~/.codex 2>/dev/null
+    ln -sf "$PERSIST/.codex" ~/.codex
 
-    if ! whiptail --title "Setup NanoCoder" --yesno "This will configure NanoCoder with:\n\n• Ollama provider: $ollama_host\n  Status: $ollama_status\n  Models: auto-detect tool-capable models${openrouter_info}\n\n• MCP Servers:\n  - filesystem, memory, sequential-thinking\n  - ollama, serena\n  - postgres (if configured), github (if token set)\n\nProceed?" 22 65; then
-        return
-    fi
-
-    clear
-    echo "========================================"
-    echo "Configuring NanoCoder"
-    echo "========================================"
-    echo ""
-
-    # Create config directory
-    mkdir -p "$PERSIST/.nanocoder"
-
-    # Build MCP servers config
-    local mcp_servers='[
-    {
-      "name": "filesystem",
-      "transport": "stdio",
-      "command": "/usr/bin/npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workdir"]
-    },
-    {
-      "name": "memory",
-      "transport": "stdio",
-      "command": "/usr/bin/npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
-    },
-    {
-      "name": "sequential-thinking",
-      "transport": "stdio",
-      "command": "/usr/bin/npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    },
-    {
-      "name": "ollama",
-      "transport": "stdio",
-      "command": "/usr/bin/npx",
-      "args": ["-y", "ollama-mcp"],
-      "env": {"OLLAMA_HOST": "'"$ollama_host"'"}
-    },
-    {
-      "name": "serena",
-      "transport": "stdio",
-      "command": "'"$PERSIST"'/.local/bin/serena",
-      "args": ["start-mcp-server"]
-    }'
-
-    # Add postgres if configured
-    if [ -f "$PERSIST/postgres/PG_VERSION" ]; then
-        mcp_servers+=',
-    {
-      "name": "postgres",
-      "transport": "stdio",
-      "command": "/usr/bin/npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://postgres@localhost/postgres"]
-    }'
-    fi
-
-    # Add github if token set
-    if [ -n "$GITHUB_TOKEN" ]; then
-        mcp_servers+=',
-    {
-      "name": "github",
-      "transport": "stdio",
-      "command": "/usr/bin/npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {"GITHUB_TOKEN": "'"$GITHUB_TOKEN"'"}
-    }'
-    fi
-
-    mcp_servers+='
-  ]'
-
-    # Detect Ollama models that support tools
-    echo "Detecting Ollama models with tool support..."
-    local tool_models=""
-    if curl -s --connect-timeout 2 "$ollama_host/api/tags" > /dev/null 2>&1; then
-        # Get list of models and check each for tool support
-        local all_models=$(curl -s "$ollama_host/api/tags" | jq -r '.models[].name' 2>/dev/null)
-        for model in $all_models; do
-            # Check if model supports tools by querying its info
-            if curl -s "$ollama_host/api/show" -d "{\"name\":\"$model\"}" 2>/dev/null | grep -qi "tools"; then
-                [ -n "$tool_models" ] && tool_models+=", "
-                tool_models+="\"$model\""
-                echo "  [+] $model (supports tools)"
-            else
-                echo "  [ ] $model"
-            fi
-        done
-    fi
-    # Fallback to common tool-capable models if none detected
-    [ -z "$tool_models" ] && tool_models='"qwen2.5-coder:latest", "llama3.1:latest"'
-    echo ""
-
-    # Build providers array
-    local providers='[
-      {
-        "name": "Ollama",
-        "baseUrl": "'"${ollama_host}"'/v1",
-        "models": ['"$tool_models"']
-      }'
-
-    # Add OpenRouter if API key is set
-    if [ -n "$OPENROUTER_API_KEY" ]; then
-        providers+=',
-      {
-        "name": "OpenRouter",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "apiKey": "'"$OPENROUTER_API_KEY"'",
-        "models": ["anthropic/claude-3.5-sonnet", "openai/gpt-4o", "meta-llama/llama-3.1-70b-instruct", "mistralai/mistral-large"]
-      }'
-    fi
-
-    providers+='
-    ]'
-
-    # Create the config file
-    cat > "$PERSIST/.nanocoder/agents.config.json" << NANOCFG
-{
-  "nanocoder": {
-    "providers": $providers,
-    "mcpServers": $mcp_servers
-  }
-}
-NANOCFG
-
-    echo "Created config: $PERSIST/.nanocoder/agents.config.json"
-    echo ""
-    echo "Providers:"
-    echo "  - Ollama at $ollama_host"
-    [ -n "$OPENROUTER_API_KEY" ] && echo "  - OpenRouter (cloud models)"
-    echo ""
-    echo "MCP Servers configured:"
-    jq -r '.nanocoder.mcpServers[].name' "$PERSIST/.nanocoder/agents.config.json" 2>/dev/null | sed 's/^/  - /'
-    echo ""
-    echo "To use: run 'nanocoder' and select a model"
-    echo "To customize: edit $PERSIST/.nanocoder/agents.config.json"
-    echo ""
-
-    read -p "Press Enter to continue..."
+    whiptail --title "Codex CLI Ready" --msgbox "OpenAI Codex CLI is installed and configured!\n\nAPI Key: Saved to .env\nConfig: $PERSIST/.codex/\n\nUsage:\n  codex \"your prompt here\"\n  codex --help\n\nCodex will use your OpenAI API key for completions." 16 60
 }
 
 setup_freeswitch() {
@@ -1556,12 +1426,17 @@ show_status() {
     fi
     [ -z "$gemini_mcp" ] && gemini_mcp="(none)"
 
-    # NanoCoder MCP servers
-    local nanocoder_mcp=""
-    if [ -f "$PERSIST/.nanocoder/agents.config.json" ]; then
-        nanocoder_mcp=$(jq -r '.nanocoder.mcpServers // [] | map(.name) | join(", ")' "$PERSIST/.nanocoder/agents.config.json" 2>/dev/null)
+    # Codex status
+    local codex_status=""
+    if command -v codex >/dev/null 2>&1; then
+        if [ -n "$OPENAI_API_KEY" ]; then
+            codex_status="configured"
+        else
+            codex_status="installed (no API key)"
+        fi
+    else
+        codex_status="not installed"
     fi
-    [ -z "$nanocoder_mcp" ] && nanocoder_mcp="(none)"
 
     # Build status using a temp file for reliable whiptail display
     local tmpfile=$(mktemp)
@@ -1628,11 +1503,13 @@ show_status() {
         [ -n "$SLACK_BOT_TOKEN" ] && auth4="[*] Slack Token" || auth4="[ ] Slack Token"
         [ -n "$BRAVE_API_KEY" ] && auth5="[*] Brave API Key" || auth5="[ ] Brave API Key"
         [ -n "$FREESWITCH_PAT" ] && auth6="[*] FreeSWITCH PAT" || auth6="[ ] FreeSWITCH PAT"
-        # NanoCoder - check if configured
-        if [ -f "$PERSIST/.nanocoder/agents.config.json" ]; then
-            auth7="[*] NanoCoder (configured)"
+        # Codex - check if configured
+        if [ -n "$OPENAI_API_KEY" ] && command -v codex >/dev/null 2>&1; then
+            auth7="[*] Codex (configured)"
+        elif command -v codex >/dev/null 2>&1; then
+            auth7="[!] Codex (no API key)"
         else
-            auth7="[ ] NanoCoder"
+            auth7="[ ] Codex"
         fi
         # OpenRouter - check if API key set
         [ -n "$OPENROUTER_API_KEY" ] && auth8="[*] OpenRouter API Key" || auth8="[ ] OpenRouter"
@@ -1675,7 +1552,7 @@ show_status() {
         echo "  ============================================================================"
         echo "  Claude:    $claude_mcp"
         echo "  Gemini:    $gemini_mcp"
-        echo "  NanoCoder: $nanocoder_mcp"
+        echo "  Codex:     $codex_status"
         echo ""
         echo "  ============================================================================"
         echo "  Uptime: $uptime"
@@ -1718,7 +1595,7 @@ while true; do
         "5" "Add MCP Servers (Claude/Gemini)" \
         "6" "Remove MCP Server" \
         "7" "Fix MCP Servers (connection issues)" \
-        "8" "Setup NanoCoder (Ollama + MCP)" \
+        "8" "Setup OpenAI Codex CLI" \
         "9" "Setup Git Identity" \
         "10" "Setup SSH Key" \
         "11" "Setup Go (latest stable)" \
@@ -1746,7 +1623,7 @@ while true; do
         "5") setup_mcp ;;
         "6") remove_mcp ;;
         "7") fix_mcp ;;
-        "8") setup_nanocoder ;;
+        "8") setup_codex ;;
         "9") setup_git_identity ;;
         "10") setup_ssh_key ;;
         "11") setup_golang ;;

@@ -315,9 +315,14 @@ if [ -z "$OLLAMA_HOST" ]; then
     export OLLAMA_HOST="http://host.docker.internal:11434"
 fi
 
-# NanoCoder - set config dir to persistent storage
-export NANOCODER_CONFIG_DIR="$PERSIST/.nanocoder"
-export NANOCODER_DATA_DIR="$PERSIST/.nanocoder"
+# OpenAI Codex CLI - ensure .codex persists
+if [ ! -L ~/.codex ] && [ -d "$PERSIST/.codex" ]; then
+    rm -rf ~/.codex 2>/dev/null
+    ln -sf "$PERSIST/.codex" ~/.codex
+elif [ ! -d "$PERSIST/.codex" ] && [ ! -L ~/.codex ]; then
+    mkdir -p "$PERSIST/.codex"
+    ln -sf "$PERSIST/.codex" ~/.codex
+fi
 
 ollama_url() {
     echo "$OLLAMA_HOST"
@@ -408,7 +413,7 @@ GIT
 AI ASSISTANTS
   claude                Claude Code CLI
   gemini                Gemini CLI
-  nanocoder             NanoCoder CLI (local-first coding agent for Ollama)
+  codex                 OpenAI Codex CLI (AI coding assistant)
   ollama                Ollama CLI (connects to OLLAMA_HOST)
   ollama_url            Show Ollama host URL
 
@@ -419,7 +424,7 @@ CLOUD CLIs
 
 PERSISTENT STORAGE (/workdir/persistent/ - survives container rebuilds)
   .venvs/               Python virtual environments
-  .nanocoder/           NanoCoder config
+  .codex/               OpenAI Codex CLI config
   .aws/                 AWS CLI config & credentials
   .config/gcloud/       Google Cloud CLI config
   .azure/               Azure CLI config
