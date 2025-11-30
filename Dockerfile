@@ -16,9 +16,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y screen tmux jq cu
 RUN apt-get update && apt-get install -y nano vim emacs-nox micro ne
 
 # Install Python and dev tools (includes uv/uvx - fast Python package manager)
-# Upgrade pip, setuptools first for security, then install packages
+# Upgrade pip, setuptools first for security (setuptools>=78.1.1 fixes CVE-2025-47273, CVE-2024-6345)
 RUN apt-get update && apt-get install -y python3 python3-pip python3.11-venv \
-    && pip3 install --upgrade --break-system-packages pip setuptools \
+    && pip3 install --upgrade --break-system-packages pip 'setuptools>=78.1.1' \
     && pip3 install --upgrade --break-system-packages signalwire requests python-dotenv cmd2 pygments swsh flask signalwire-agents signalwire-swml signalwire-swaig signalwire-pom ipython httpie watchdog black build twine uv pyjwt aiohttp
 
 # Install Docker
@@ -27,11 +27,12 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | tee /etc/apt/trust
     && apt-get update \
     && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Install GitHub CLI
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-    && apt-get update \
-    && apt-get install -y gh
+# Install GitHub CLI (>=2.62.0 fixes CVE-2024-52308)
+RUN ARCH=$(dpkg --print-architecture) \
+    && GH_VERSION=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') \
+    && curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${ARCH}.deb" -o /tmp/gh.deb \
+    && dpkg -i /tmp/gh.deb \
+    && rm /tmp/gh.deb
 
 RUN curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc |  tee /etc/apt/trusted.gpg.d/ngrok.asc > /dev/null \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/trusted.gpg.d/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list > /dev/null \
