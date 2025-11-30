@@ -709,15 +709,17 @@ setup_mcp() {
     # Check what's available
     local has_claude=$(command -v claude >/dev/null 2>&1 && echo "yes" || echo "no")
     local has_gemini=$(command -v gemini >/dev/null 2>&1 && echo "yes" || echo "no")
+    local has_codex=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
 
-    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ]; then
-        whiptail --title "No AI CLI Found" --msgbox "Neither Claude Code nor Gemini CLI is installed.\n\nInstall one of them first:\n- claude: npm install -g @anthropic-ai/claude-code\n- gemini: npm install -g @anthropic-ai/gemini-cli" 12 60
+    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ] && [ "$has_codex" = "no" ]; then
+        whiptail --title "No AI CLI Found" --msgbox "No AI CLI tools are installed.\n\nInstall one of them first:\n- claude: npm install -g @anthropic-ai/claude-code\n- gemini: npm install -g @google/gemini-cli\n- codex: npm install -g @openai/codex" 14 60
         return
     fi
 
     local tools_msg=""
     [ "$has_claude" = "yes" ] && tools_msg+="- Claude Code\n"
     [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
+    [ "$has_codex" = "yes" ] && tools_msg+="- OpenAI Codex\n"
 
     if ! whiptail --title "MCP Servers" --yesno "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- serena (semantic code understanding)\n- ollama (local LLM via host Ollama)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)\n\nProceed with installation?" 22 60; then
         return
@@ -742,7 +744,7 @@ setup_mcp() {
     echo "Using npx: $NPX_PATH (system Node - required for MCP)"
     echo ""
 
-    # Helper function to add server to both CLIs
+    # Helper function to add server to all CLIs
     # Usage: add_mcp_server "name" [--env KEY=VALUE ...] -- command args...
     add_mcp_server() {
         local name="$1"
@@ -751,11 +753,13 @@ setup_mcp() {
         # Parse --env arguments
         local claude_env_args=""
         local gemini_env_args=""
+        local codex_env_args=""
         while [ "$1" != "--" ] && [ $# -gt 0 ]; do
             if [ "$1" = "--env" ]; then
                 shift
                 claude_env_args+="--env $1 "
                 gemini_env_args+="-e $1 "
+                codex_env_args+="--env $1 "
                 shift
             else
                 shift
@@ -775,6 +779,11 @@ setup_mcp() {
             echo "  -> Gemini CLI"
             # Gemini CLI doesn't use -- separator, and uses -e for env vars
             eval "gemini mcp add -s user \"$name\" $gemini_env_args\"\$@\"" 2>/dev/null || true
+        fi
+
+        if [ "$has_codex" = "yes" ]; then
+            echo "  -> OpenAI Codex"
+            eval "codex mcp add --scope user \"$name\" $codex_env_args-- \"\$@\"" 2>/dev/null || true
         fi
         echo ""
     }
@@ -836,6 +845,12 @@ setup_mcp() {
         echo ""
     fi
 
+    if [ "$has_codex" = "yes" ]; then
+        echo "OpenAI Codex servers:"
+        codex mcp list 2>/dev/null || echo "  (run 'codex mcp list' to verify)"
+        echo ""
+    fi
+
     read -p "Press Enter to continue..."
 }
 
@@ -843,9 +858,10 @@ remove_mcp() {
     # Check what's available
     local has_claude=$(command -v claude >/dev/null 2>&1 && echo "yes" || echo "no")
     local has_gemini=$(command -v gemini >/dev/null 2>&1 && echo "yes" || echo "no")
+    local has_codex=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
 
-    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ]; then
-        whiptail --title "No AI CLI Found" --msgbox "Neither Claude Code nor Gemini CLI is installed." 8 50
+    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ] && [ "$has_codex" = "no" ]; then
+        whiptail --title "No AI CLI Found" --msgbox "No AI CLI tools are installed." 8 50
         return
     fi
 
@@ -857,6 +873,10 @@ remove_mcp() {
     if [ "$has_gemini" = "yes" ]; then
         local gemini_servers=$(gemini mcp list 2>/dev/null | grep -E "^\s+\w+" | awk '{print $1}' | sort -u)
         servers=$(echo -e "$servers\n$gemini_servers" | sort -u | grep -v '^$')
+    fi
+    if [ "$has_codex" = "yes" ]; then
+        local codex_servers=$(codex mcp list 2>/dev/null | grep -E "^\s+\w+" | awk '{print $1}' | sort -u)
+        servers=$(echo -e "$servers\n$codex_servers" | sort -u | grep -v '^$')
     fi
 
     if [ -z "$servers" ]; then
@@ -893,6 +913,11 @@ remove_mcp() {
             gemini mcp remove "$server_name" 2>/dev/null || true
         fi
 
+        if [ "$has_codex" = "yes" ]; then
+            echo "  -> OpenAI Codex"
+            codex mcp remove "$server_name" 2>/dev/null || true
+        fi
+
         echo ""
         echo "Done!"
         read -p "Press Enter to continue..."
@@ -906,9 +931,10 @@ fix_mcp() {
 
     local has_claude=$(command -v claude >/dev/null 2>&1 && echo "yes" || echo "no")
     local has_gemini=$(command -v gemini >/dev/null 2>&1 && echo "yes" || echo "no")
+    local has_codex=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
 
-    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ]; then
-        whiptail --title "No AI CLI Found" --msgbox "Neither Claude Code nor Gemini CLI is installed." 8 50
+    if [ "$has_claude" = "no" ] && [ "$has_gemini" = "no" ] && [ "$has_codex" = "no" ]; then
+        whiptail --title "No AI CLI Found" --msgbox "No AI CLI tools are installed." 8 50
         return
     fi
 
@@ -995,7 +1021,37 @@ fix_mcp() {
         echo ""
     fi
 
-    # Step 4: Verify
+    # Step 4: Fix Codex config
+    if [ "$has_codex" = "yes" ]; then
+        echo "Step 4: Fixing OpenAI Codex MCP config..."
+        local codex_config="$PERSIST/.codex/config.json"
+        if [ -f "$codex_config" ]; then
+            local server_count=$(jq '.mcpServers | keys | length' "$codex_config" 2>/dev/null || echo "0")
+            if [ "$server_count" -gt 0 ]; then
+                jq '(.mcpServers | to_entries | map(
+                    if (.value.command | test("npx$")) then
+                        .value.command = "/usr/bin/npx"
+                    elif (.value.command | test("uvx$")) then
+                        .value.command = "/usr/local/bin/uvx"
+                    else .
+                    end
+                ) | from_entries) as $fixed | .mcpServers = $fixed' "$codex_config" > /tmp/codex_fix.json
+                if [ -s /tmp/codex_fix.json ]; then
+                    mv /tmp/codex_fix.json "$codex_config"
+                    echo "  -> Fixed $server_count server(s)"
+                else
+                    echo "  -> No changes needed"
+                fi
+            else
+                echo "  -> No MCP servers configured"
+            fi
+        else
+            echo "  -> Config file not found"
+        fi
+        echo ""
+    fi
+
+    # Step 5: Verify
     echo "========================================"
     echo "Verifying MCP Servers"
     echo "========================================"
@@ -1010,6 +1066,12 @@ fix_mcp() {
     if [ "$has_gemini" = "yes" ]; then
         echo "Gemini CLI servers:"
         gemini mcp list 2>/dev/null || echo "  (unable to list)"
+        echo ""
+    fi
+
+    if [ "$has_codex" = "yes" ]; then
+        echo "OpenAI Codex servers:"
+        codex mcp list 2>/dev/null || echo "  (unable to list)"
         echo ""
     fi
 
@@ -1028,28 +1090,85 @@ setup_codex() {
         fi
     fi
 
-    # Check for OpenAI API key
-    local openai_key="${OPENAI_API_KEY:-}"
-
-    if [ -z "$openai_key" ]; then
-        openai_key=$(whiptail --inputbox "OpenAI API Key (required for Codex):\n\nGet one at: https://platform.openai.com/api-keys" 12 70 "" --title "OpenAI Codex Setup" 3>&1 1>&2 2>&3)
-        [ $? -ne 0 ] && return
-        [ -z "$openai_key" ] && { whiptail --title "Error" --msgbox "OpenAI API key is required." 8 50; return; }
-
-        # Save to .env
-        if [ -f "$PERSIST/.env" ]; then
-            sed -i '/^OPENAI_API_KEY=/d' "$PERSIST/.env"
-        fi
-        echo "OPENAI_API_KEY=\"$openai_key\"" >> "$PERSIST/.env"
-        export OPENAI_API_KEY="$openai_key"
-    fi
-
     # Ensure .codex directory persists
     mkdir -p "$PERSIST/.codex"
     rm -rf ~/.codex 2>/dev/null
     ln -sf "$PERSIST/.codex" ~/.codex
 
-    whiptail --title "Codex CLI Ready" --msgbox "OpenAI Codex CLI is installed and configured!\n\nAPI Key: Saved to .env\nConfig: $PERSIST/.codex/\n\nUsage:\n  codex \"your prompt here\"\n  codex --help\n\nCodex will use your OpenAI API key for completions." 16 60
+    # Check if already authenticated via OAuth
+    local codex_oauth=false
+    if [ -f "$PERSIST/.codex/auth.json" ] && grep -q "access_token" "$PERSIST/.codex/auth.json" 2>/dev/null; then
+        codex_oauth=true
+    fi
+
+    # Check for existing API key
+    local openai_key="${OPENAI_API_KEY:-}"
+
+    if [ "$codex_oauth" = true ]; then
+        # Already logged in via OAuth
+        local auth_choice
+        auth_choice=$(whiptail --title "Codex Authentication" --menu "Codex is logged in via OAuth.\n\nWhat would you like to do?" 14 60 3 \
+            "1" "Keep current OAuth login" \
+            "2" "Switch to API key" \
+            "3" "Re-login with OAuth" \
+            3>&1 1>&2 2>&3)
+        [ $? -ne 0 ] && return
+
+        case $auth_choice in
+            "1")
+                whiptail --title "Codex CLI Ready" --msgbox "OpenAI Codex CLI is configured!\n\nAuth: OAuth (logged in)\nConfig: $PERSIST/.codex/\n\nUsage:\n  codex \"your prompt here\"\n  codex --help" 14 60
+                return
+                ;;
+            "2")
+                # Remove OAuth and set up API key
+                rm -f "$PERSIST/.codex/auth.json"
+                codex_oauth=false
+                ;;
+            "3")
+                # Re-login with OAuth
+                clear
+                echo "Running 'codex auth login'..."
+                echo ""
+                codex auth login
+                whiptail --title "Codex CLI Ready" --msgbox "OAuth login complete!\n\nConfig: $PERSIST/.codex/\n\nUsage:\n  codex \"your prompt here\"\n  codex --help" 12 60
+                return
+                ;;
+        esac
+    fi
+
+    # Not using OAuth - offer choice
+    local auth_method
+    auth_method=$(whiptail --title "Codex Authentication" --menu "Choose authentication method:" 12 60 2 \
+        "1" "OAuth (login with OpenAI account)" \
+        "2" "API Key (manual entry)" \
+        3>&1 1>&2 2>&3)
+    [ $? -ne 0 ] && return
+
+    case $auth_method in
+        "1")
+            # OAuth login
+            clear
+            echo "Running 'codex auth login'..."
+            echo ""
+            codex auth login
+            whiptail --title "Codex CLI Ready" --msgbox "OAuth login complete!\n\nConfig: $PERSIST/.codex/\n\nUsage:\n  codex \"your prompt here\"\n  codex --help" 12 60
+            ;;
+        "2")
+            # API key
+            openai_key=$(whiptail --inputbox "OpenAI API Key:\n\nGet one at: https://platform.openai.com/api-keys" 12 70 "$openai_key" --title "OpenAI Codex Setup" 3>&1 1>&2 2>&3)
+            [ $? -ne 0 ] && return
+            [ -z "$openai_key" ] && { whiptail --title "Error" --msgbox "OpenAI API key is required." 8 50; return; }
+
+            # Save to .env
+            if [ -f "$PERSIST/.env" ]; then
+                sed -i '/^OPENAI_API_KEY=/d' "$PERSIST/.env"
+            fi
+            echo "OPENAI_API_KEY=\"$openai_key\"" >> "$PERSIST/.env"
+            export OPENAI_API_KEY="$openai_key"
+
+            whiptail --title "Codex CLI Ready" --msgbox "OpenAI Codex CLI is configured!\n\nAuth: API Key (saved to .env)\nConfig: $PERSIST/.codex/\n\nUsage:\n  codex \"your prompt here\"\n  codex --help" 14 60
+            ;;
+    esac
 }
 
 setup_freeswitch() {
@@ -1329,7 +1448,7 @@ clean_environment() {
         "2" "Clean NPM cache" \
         "3" "Clean pip cache" \
         "4" "Clean all caches" \
-        "5" "Clean AI configs (Claude/Gemini)" \
+        "5" "Clean AI configs (Claude/Gemini/Codex)" \
         "6" "Full reset (remove all dev tools + AI)" \
         3>&1 1>&2 2>&3)
 
@@ -1363,26 +1482,28 @@ clean_environment() {
             fi
             ;;
         "5")
-            if whiptail --title "Confirm" --yesno "This will remove:\n\n- Claude Code config (.claude/)\n- Gemini CLI config (.gemini/)\n- AI API keys from .env\n\nYou will need to re-login or re-enter API keys." 14 55; then
-                rm -rf "$PERSIST/.claude" "$PERSIST/.gemini"
+            if whiptail --title "Confirm" --yesno "This will remove:\n\n- Claude Code config (.claude/)\n- Gemini CLI config (.gemini/)\n- Codex CLI config (.codex/)\n- AI API keys from .env\n\nYou will need to re-login or re-enter API keys." 16 55; then
+                rm -rf "$PERSIST/.claude" "$PERSIST/.gemini" "$PERSIST/.codex"
                 if [ -f "$PERSIST/.env" ]; then
                     sed -i '/^ANTHROPIC_API_KEY=/d' "$PERSIST/.env"
                     sed -i '/^GEMINI_API_KEY=/d' "$PERSIST/.env"
+                    sed -i '/^OPENAI_API_KEY=/d' "$PERSIST/.env"
                 fi
-                unset ANTHROPIC_API_KEY GEMINI_API_KEY
+                unset ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY
                 whiptail --title "Cleaned" --msgbox "AI configs removed.\n\nRun 'claude login' or setup AI keys." 10 50
             fi
             ;;
         "6")
-            if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n- Claude/Gemini configs\n- AI API keys\n\nCredentials and SSH keys kept.\n\nAre you SURE?" 20 50; then
+            if whiptail --title "DANGER" --yesno "This will remove:\n\n- All venvs\n- Go installation\n- NVM + Node\n- PostgreSQL data\n- All caches\n- Claude/Gemini/Codex configs\n- AI API keys\n\nCredentials and SSH keys kept.\n\nAre you SURE?" 20 50; then
                 rm -rf "$PERSIST/.venvs" "$PERSIST/.go" "$PERSIST/.nvm" "$PERSIST/.npm" "$PERSIST/postgres"
-                rm -rf "$PERSIST/.claude" "$PERSIST/.gemini"
+                rm -rf "$PERSIST/.claude" "$PERSIST/.gemini" "$PERSIST/.codex"
                 if [ -f "$PERSIST/.env" ]; then
                     sed -i '/^ANTHROPIC_API_KEY=/d' "$PERSIST/.env"
                     sed -i '/^GEMINI_API_KEY=/d' "$PERSIST/.env"
+                    sed -i '/^OPENAI_API_KEY=/d' "$PERSIST/.env"
                 fi
                 pip3 cache purge 2>/dev/null
-                unset ANTHROPIC_API_KEY GEMINI_API_KEY
+                unset ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY
                 whiptail --title "Reset Complete" --msgbox "Environment reset.\n\nRun 'exec bash' then 'setup' to reinstall." 10 50
             fi
             ;;
@@ -1426,16 +1547,26 @@ show_status() {
     fi
     [ -z "$gemini_mcp" ] && gemini_mcp="(none)"
 
-    # Codex status
-    local codex_status=""
-    if command -v codex >/dev/null 2>&1; then
-        if [ -n "$OPENAI_API_KEY" ]; then
-            codex_status="configured"
-        else
-            codex_status="installed (no API key)"
+    # Codex MCP servers
+    local codex_mcp=""
+    if [ -f "$PERSIST/.codex/config.json" ]; then
+        codex_mcp=$(jq -r '.mcpServers // {} | keys | join(", ")' "$PERSIST/.codex/config.json" 2>/dev/null)
+    fi
+    if [ -z "$codex_mcp" ]; then
+        # Check auth status
+        local codex_has_oauth=false
+        if [ -f "$PERSIST/.codex/auth.json" ] && grep -q "access_token" "$PERSIST/.codex/auth.json" 2>/dev/null; then
+            codex_has_oauth=true
         fi
-    else
-        codex_status="not installed"
+        if command -v codex >/dev/null 2>&1; then
+            if [ "$codex_has_oauth" = true ] || [ -n "$OPENAI_API_KEY" ]; then
+                codex_mcp="(configured, no MCP)"
+            else
+                codex_mcp="(no auth)"
+            fi
+        else
+            codex_mcp="(not installed)"
+        fi
     fi
 
     # Build status using a temp file for reliable whiptail display
@@ -1483,8 +1614,8 @@ show_status() {
             svc8+="[ ] Ollama"
         fi
 
-        # Auth column data
-        local auth1="" auth2="" auth3="" auth4="" auth5="" auth6="" auth7=""
+        # Auth column data - AI tools first (Claude, Gemini, Codex), then tokens
+        local auth1="" auth2="" auth3="" auth4="" auth5="" auth6="" auth7="" auth8=""
         if [ -f "$PERSIST/.claude/.credentials.json" ] && grep -q "claudeAiOauth" "$PERSIST/.claude/.credentials.json" 2>/dev/null; then
             auth1="[*] Claude (OAuth)"
         elif [ -n "$ANTHROPIC_API_KEY" ]; then
@@ -1499,18 +1630,20 @@ show_status() {
         else
             auth2="[ ] Gemini"
         fi
-        [ -n "$GITHUB_TOKEN" ] && auth3="[*] GitHub Token" || auth3="[ ] GitHub Token"
-        [ -n "$SLACK_BOT_TOKEN" ] && auth4="[*] Slack Token" || auth4="[ ] Slack Token"
-        [ -n "$BRAVE_API_KEY" ] && auth5="[*] Brave API Key" || auth5="[ ] Brave API Key"
-        [ -n "$FREESWITCH_PAT" ] && auth6="[*] FreeSWITCH PAT" || auth6="[ ] FreeSWITCH PAT"
-        # Codex - check if configured
-        if [ -n "$OPENAI_API_KEY" ] && command -v codex >/dev/null 2>&1; then
-            auth7="[*] Codex (configured)"
+        # Codex - check if configured (OAuth or API key)
+        if [ -f "$PERSIST/.codex/auth.json" ] && grep -q "access_token" "$PERSIST/.codex/auth.json" 2>/dev/null; then
+            auth3="[*] Codex (OAuth)"
+        elif [ -n "$OPENAI_API_KEY" ]; then
+            auth3="[*] Codex (API Key)"
         elif command -v codex >/dev/null 2>&1; then
-            auth7="[!] Codex (no API key)"
+            auth3="[!] Codex (no auth)"
         else
-            auth7="[ ] Codex"
+            auth3="[ ] Codex"
         fi
+        [ -n "$GITHUB_TOKEN" ] && auth4="[*] GitHub Token" || auth4="[ ] GitHub Token"
+        [ -n "$SLACK_BOT_TOKEN" ] && auth5="[*] Slack Token" || auth5="[ ] Slack Token"
+        [ -n "$BRAVE_API_KEY" ] && auth6="[*] Brave API Key" || auth6="[ ] Brave API Key"
+        [ -n "$FREESWITCH_PAT" ] && auth7="[*] FreeSWITCH PAT" || auth7="[ ] FreeSWITCH PAT"
         # OpenRouter - check if API key set
         [ -n "$OPENROUTER_API_KEY" ] && auth8="[*] OpenRouter API Key" || auth8="[ ] OpenRouter"
 
@@ -1552,7 +1685,7 @@ show_status() {
         echo "  ============================================================================"
         echo "  Claude:    $claude_mcp"
         echo "  Gemini:    $gemini_mcp"
-        echo "  Codex:     $codex_status"
+        echo "  Codex:     $codex_mcp"
         echo ""
         echo "  ============================================================================"
         echo "  Uptime: $uptime"
@@ -1591,8 +1724,8 @@ while true; do
         "1" "Setup SignalWire & NGROK Credentials" \
         "2" "$ngrok_status" \
         "3" "$cf_status" \
-        "4" "Setup AI API Keys (Claude/Gemini)" \
-        "5" "Add MCP Servers (Claude/Gemini)" \
+        "4" "Setup AI API Keys (Claude/Gemini/Codex)" \
+        "5" "Add MCP Servers (Claude/Gemini/Codex)" \
         "6" "Remove MCP Server" \
         "7" "Fix MCP Servers (connection issues)" \
         "8" "Setup OpenAI Codex CLI" \
