@@ -53,12 +53,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
 # Install Claude Code, Gemini CLI, and OpenAI Codex CLI
-# Dependencies managed in package.json with security overrides for transitive deps
-COPY package.json package-lock.json /tmp/node-deps/
-RUN cd /tmp/node-deps \
-    && npm ci \
-    && npm link @anthropic-ai/claude-code @google/gemini-cli @openai/codex \
-    && rm -rf /tmp/node-deps
+# Note: Transitive dep CVEs (cross-spawn, glob) require upstream updates
+RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli @openai/codex
 
 # Install Ollama CLI (for connecting to Ollama running on host)
 RUN curl -fsSL https://ollama.com/install.sh | sh
