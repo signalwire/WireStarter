@@ -1,0 +1,45 @@
+# WireStarter Python Dependencies
+# Minimum versions specified for security fixes where applicable
+#
+# To audit: pip-audit -r requirements.txt
+# To update: pip install --upgrade -r requirements.txt
+
+# Core tooling (security-pinned)
+pip>=25.3                  # CVE-2023-5752, CVE-2025-8869
+setuptools>=78.1.1         # CVE-2025-47273, CVE-2024-6345
+
+# SignalWire SDKs
+signalwire
+signalwire-agents
+signalwire-swml
+signalwire-swaig
+signalwire-pom
+swsh
+
+# Web framework
+flask>=3.0.0
+
+# HTTP clients (security-pinned)
+requests>=2.32.0
+aiohttp>=3.12.14           # CVE-2024-52304, CVE-2024-42367, CVE-2025-53643
+httpie>=3.2.2
+
+# Auth (security-pinned)
+pyjwt>=2.4.0               # CVE-2022-29217 (HIGH)
+
+# Environment & config
+python-dotenv>=1.0.0
+
+# CLI tools
+cmd2>=2.4.0
+pygments>=2.17.0
+
+# Development tools
+ipython>=8.18.0
+black>=24.0.0
+build>=1.0.0
+twine>=5.0.0
+watchdog>=4.0.0
+
+# Fast Python package manager
+uv>=0.1.0

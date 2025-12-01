@@ -15,11 +15,13 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y screen tmux jq cu
 # Install Editors
 RUN apt-get update && apt-get install -y nano vim emacs-nox micro ne
 
-# Install Python and dev tools (includes uv/uvx - fast Python package manager)
-# Upgrade pip, setuptools first for security (setuptools>=78.1.1 fixes CVE-2025-47273, CVE-2024-6345)
+# Install Python and dev tools
+# Dependencies managed in requirements.txt for easier auditing and updates
+# Security fixes documented in requirements.txt comments
+COPY requirements.txt /tmp/requirements.txt
 RUN apt-get update && apt-get install -y python3 python3-pip python3.11-venv \
-    && pip3 install --upgrade --break-system-packages pip 'setuptools>=78.1.1' \
-    && pip3 install --upgrade --break-system-packages signalwire requests python-dotenv cmd2 pygments swsh flask signalwire-agents signalwire-swml signalwire-swaig signalwire-pom ipython httpie watchdog black build twine uv pyjwt aiohttp
+    && pip3 install --upgrade --break-system-packages -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 
 # Install Docker
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | tee /etc/apt/trusted.gpg.d/docker.asc > /dev/null \
@@ -46,12 +48,17 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings \
     && apt-get update \
     && apt-get install -y cloudflared
 
-# Install Node.js 20 for AI CLI tools
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+# Install Node.js 22 LTS for AI CLI tools (newer transitive deps for security)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
 # Install Claude Code, Gemini CLI, and OpenAI Codex CLI
-RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli @openai/codex
+# Dependencies managed in package.json with security overrides for transitive deps
+COPY package.json package-lock.json /tmp/node-deps/
+RUN cd /tmp/node-deps \
+    && npm ci \
+    && npm link @anthropic-ai/claude-code @google/gemini-cli @openai/codex \
+    && rm -rf /tmp/node-deps
 
 # Install Ollama CLI (for connecting to Ollama running on host)
 RUN curl -fsSL https://ollama.com/install.sh | sh

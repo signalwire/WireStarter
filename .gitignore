@@ -3,3 +3,6 @@
 \#*\#
 examples/fax-ruby-sinatra/config/env.yml
 examples/fax-ruby-sinatra/files
+
+# Node.js (package-lock.json is committed, node_modules is not)
+node_modules/
