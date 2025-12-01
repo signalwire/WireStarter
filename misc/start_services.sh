@@ -63,11 +63,6 @@ setup_persistence() {
     # Ensure MCP settings file exists
     [ ! -f "$PERSIST/.gemini/settings.json" ] && echo '{"mcpServers":{}}' > "$PERSIST/.gemini/settings.json"
 
-    # NanoCoder config (local-first CLI coding agent for Ollama/local LLMs)
-    mkdir -p "$PERSIST/.nanocoder"
-    rm -rf ~/.nanocoder
-    ln -sf "$PERSIST/.nanocoder" ~/.nanocoder
-
     # Cloudflare Tunnel config
     if [ -d "$PERSIST/.cloudflared" ]; then
         rm -rf ~/.cloudflared

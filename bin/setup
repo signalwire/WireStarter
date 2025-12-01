@@ -1615,7 +1615,7 @@ show_status() {
         fi
 
         # Auth column data - AI tools first (Claude, Gemini, Codex), then tokens
-        local auth1="" auth2="" auth3="" auth4="" auth5="" auth6="" auth7="" auth8=""
+        local auth1="" auth2="" auth3="" auth4="" auth5="" auth6="" auth7=""
         if [ -f "$PERSIST/.claude/.credentials.json" ] && grep -q "claudeAiOauth" "$PERSIST/.claude/.credentials.json" 2>/dev/null; then
             auth1="[*] Claude (OAuth)"
         elif [ -n "$ANTHROPIC_API_KEY" ]; then
@@ -1644,8 +1644,6 @@ show_status() {
         [ -n "$SLACK_BOT_TOKEN" ] && auth5="[*] Slack Token" || auth5="[ ] Slack Token"
         [ -n "$BRAVE_API_KEY" ] && auth6="[*] Brave API Key" || auth6="[ ] Brave API Key"
         [ -n "$FREESWITCH_PAT" ] && auth7="[*] FreeSWITCH PAT" || auth7="[ ] FreeSWITCH PAT"
-        # OpenRouter - check if API key set
-        [ -n "$OPENROUTER_API_KEY" ] && auth8="[*] OpenRouter API Key" || auth8="[ ] OpenRouter"
 
         printf "%-40s%s\n" "$svc1" "$auth1"
         printf "%-40s%s\n" "$svc2" "$auth2"
@@ -1654,7 +1652,7 @@ show_status() {
         printf "%-40s%s\n" "$svc5" "$auth5"
         printf "%-40s%s\n" "$svc6" "$auth6"
         printf "%-40s%s\n" "$svc7" "$auth7"
-        printf "%-40s%s\n" "$svc8" "$auth8"
+        printf "%-40s\n" "$svc8"
         [ -n "$ollama_url_display" ] && echo "$ollama_url_display"
 
         echo ""
