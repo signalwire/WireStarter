@@ -23,36 +23,34 @@ A batteries-included Docker development environment for building SignalWire appl
 
 ## Quick Start
 
-### 1. Clone and configure
+### One-Line Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/signalwire/WireStarter/master/misc/install.sh | bash
+```
+
+This pulls the image from Docker Hub and drops you directly into the container. Run `setup` to configure your SignalWire credentials and environment.
+
+### Alternative: Clone Repository
+
+For developers who want to customize the image or contribute:
 
 ```bash
 git clone https://github.com/signalwire/WireStarter.git
 cd WireStarter
 cp env.example .env
-```
-
-Edit `.env` with your credentials:
-
-```bash
-SIGNALWIRE_SPACE_NAME=yourspace
-SIGNALWIRE_PROJECT_ID=your-project-id
-SIGNALWIRE_TOKEN=your-api-token
-NGROK_TOKEN=your-ngrok-token
-WORKDIR=/path/to/your/workspace
-```
-
-### 2. Start the container
-
-```bash
+# Edit .env with your credentials
 make up      # Start in background
 make enter   # Enter the container
 ```
 
-### 3. First run
+### First Run
 
-On first entry, WireStarter validates your SignalWire credentials and drops you into the SignalWire Shell (`swsh`). Type `exit` to access the full bash environment.
-
-Run `setup` for the interactive configuration menu.
+On first entry, WireStarter shows a welcome screen. Run `setup` for the interactive configuration menu to set up:
+- SignalWire credentials
+- ngrok or Cloudflare tunnel
+- AI assistants (Claude, Gemini, Codex)
+- Development tools
 
 ## Container Commands
 
@@ -407,31 +405,26 @@ Requests are logged with headers, body, and query parameters.
 - Check if data exists: `ls /workdir/persistent/postgres/PG_VERSION`
 - Run `setup` → "Setup PostgreSQL" to initialize
 
-## Platform-Specific Installation
-
-### Windows
-
-1. Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) and [GitHub Desktop](https://desktop.github.com/)
-2. Clone repository via GitHub Desktop
-3. Open in Command Prompt: `Repository` > `Open in Command Prompt`
-4. Run `windows-start.bat`
-
-### Linux Quick Start
-
-```bash
-chmod +x Start-WireStarter.sh
-./Start-WireStarter.sh
-```
+## Platform-Specific Notes
 
 ### macOS / Linux
 
+The one-line install works directly:
+
 ```bash
-git clone https://github.com/signalwire/WireStarter.git
-cd WireStarter
-cp env.example .env
-# Edit .env with your credentials
-make up
-make enter
+curl -fsSL https://raw.githubusercontent.com/signalwire/WireStarter/master/misc/install.sh | bash
+```
+
+### Windows
+
+1. Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/)
+2. Open PowerShell or Command Prompt
+3. Run the install script or use Docker directly:
+
+```powershell
+docker pull briankwest/wirestarter:latest
+docker run -d --name wirestarter -v wirestarter_workdir:/workdir -v /var/run/docker.sock:/var/run/docker.sock -p 9080:9080 briankwest/wirestarter:latest
+docker exec -it wirestarter bash
 ```
 
 ## Contributing
