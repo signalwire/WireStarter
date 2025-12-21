@@ -56,9 +56,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Note: Transitive dep CVEs (cross-spawn, glob) require upstream updates
 RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli @openai/codex
 
-# Install Ollama CLI (for connecting to Ollama running on host)
-RUN curl -fsSL https://ollama.com/install.sh | sh
-
 # Install AWS CLI v2
 RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o /tmp/awscliv2.zip \
     && unzip -q /tmp/awscliv2.zip -d /tmp \

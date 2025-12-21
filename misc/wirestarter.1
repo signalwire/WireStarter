@@ -55,9 +55,6 @@ FreeSWITCH Personal Access Token
 .TP
 .B VISUAL
 Preferred editor (vim, emacs, nano, micro, ne)
-.TP
-.B OLLAMA_HOST
-Ollama API endpoint (default: http://host.docker.internal:11434)
 .SH HOST COMMANDS
 These commands run on the host machine (outside the container):
 .TP
@@ -127,8 +124,8 @@ Find and remove orphaned venvs
 .B newproject [name]
 Create new Flask project with venv
 .TP
-.B newagent [name]
-Create SignalWire agent project with full structure (agents/, skills/, tests/, web/, .env with credentials)
+.B sw-agent-init
+Create SignalWire agent project (from signalwire-agents package)
 .SS Running Applications
 .TP
 .B up [script]
@@ -231,12 +228,6 @@ Gemini CLI - Google's AI assistant. Requires Google API key (configure via setup
 .TP
 .B codex
 OpenAI Codex CLI - AI coding assistant powered by OpenAI. Requires OPENAI_API_KEY (configure via setup menu).
-.TP
-.B ollama
-Ollama CLI - Interface to Ollama running on host machine
-.TP
-.B ollama_url
-Show Ollama host URL and connection status
 .PP
 All AI assistants support MCP (Model Context Protocol) servers for enhanced capabilities including file system access, semantic code search (Serena), and more.
 .SH SECRETS MANAGEMENT

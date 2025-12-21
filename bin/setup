@@ -721,7 +721,7 @@ setup_mcp() {
     [ "$has_gemini" = "yes" ] && tools_msg+="- Gemini CLI\n"
     [ "$has_codex" = "yes" ] && tools_msg+="- OpenAI Codex\n"
 
-    if ! whiptail --title "MCP Servers" --yesno "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- serena (semantic code understanding)\n- ollama (local LLM via host Ollama)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)\n\nProceed with installation?" 22 60; then
+    if ! whiptail --title "MCP Servers" --yesno "This will configure MCP servers for:\n\n${tools_msg}\nServers to be added:\n- filesystem (file operations)\n- memory (persistent notes)\n- sequential-thinking (reasoning)\n- serena (semantic code understanding)\n- postgres (if PostgreSQL configured)\n- github (if GITHUB_TOKEN set)\n- slack (if SLACK_BOT_TOKEN set)\n- brave-search (if BRAVE_API_KEY set)\n\nProceed with installation?" 21 60; then
         return
     fi
 
@@ -822,11 +822,6 @@ setup_mcp() {
     echo "Installing Serena (this may take a moment)..."
     /usr/local/bin/uv tool install --force git+https://github.com/oraios/serena 2>/dev/null || true
     add_mcp_server "serena" -- $PERSIST/.local/bin/serena start-mcp-server
-
-    # ollama - local LLM access via host Ollama
-    # Uses OLLAMA_HOST env var (defaults to host.docker.internal:11434)
-    local ollama_host="${OLLAMA_HOST:-http://host.docker.internal:11434}"
-    add_mcp_server "ollama" --env OLLAMA_HOST="$ollama_host" -- "$NPX_PATH" -y ollama-mcp
 
     echo "========================================"
     echo "MCP Servers Installed!"
@@ -1600,19 +1595,6 @@ show_status() {
         pgrep -x freeswitch >/dev/null 2>&1 && svc5+="[*] FreeSWITCH" || svc5+="[ ] FreeSWITCH"
         pgrep -x postgres >/dev/null 2>&1 && svc6+="[*] PostgreSQL" || svc6+="[ ] PostgreSQL"
         [ -S /var/run/docker.sock ] && svc7+="[*] Docker" || svc7+="[ ] Docker"
-        # Ollama (check if host is reachable) - URL shown on separate line
-        local svc8="  "
-        local ollama_url_display=""
-        local ollama_check_host="${OLLAMA_HOST:-http://host.docker.internal:11434}"
-        if curl -s --connect-timeout 1 "$ollama_check_host/api/tags" > /dev/null 2>&1; then
-            svc8+="[*] Ollama"
-            ollama_url_display="       -> $ollama_check_host"
-        elif [ -n "$OLLAMA_HOST" ]; then
-            svc8+="[!] Ollama (not reachable)"
-            ollama_url_display="       -> $OLLAMA_HOST"
-        else
-            svc8+="[ ] Ollama"
-        fi
 
         # Auth column data - AI tools first (Claude, Gemini, Codex), then tokens
         local auth1="" auth2="" auth3="" auth4="" auth5="" auth6="" auth7=""
@@ -1652,8 +1634,6 @@ show_status() {
         printf "%-40s%s\n" "$svc5" "$auth5"
         printf "%-40s%s\n" "$svc6" "$auth6"
         printf "%-40s%s\n" "$svc7" "$auth7"
-        printf "%-40s\n" "$svc8"
-        [ -n "$ollama_url_display" ] && echo "$ollama_url_display"
 
         echo ""
         echo "  CONFIGURATION                         DEV TOOLS"

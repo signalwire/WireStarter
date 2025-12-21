@@ -80,8 +80,8 @@ After setup completes, you'll be in the SignalWire Shell (`swsh`). Type `exit` t
 Inside the container:
 
 ```bash
-# Create a new agent project
-newagent myagent
+# Create a new agent project (interactive wizard)
+sw-agent-init
 
 # Change to the project directory
 cd /workdir/myagent
@@ -129,7 +129,7 @@ Debug level: 1 (0=off, 1=basic, 2=verbose)
 
 ## Step 6: Customize Your Agent
 
-Your agent's code is in `/workdir/myagent/agents/main_agent.py`. Here's what you can customize:
+Your agent's code is in `/workdir/myagent/agent.py`. Here's what you can customize:
 
 ### Change the Voice
 
@@ -208,20 +208,14 @@ This runs the test suite which verifies:
 
 ## Project Structure
 
+The `sw-agent-init` wizard creates a project structure based on your selections. A typical agent project includes:
+
 ```
 myagent/
-├── agents/
-│   ├── __init__.py
-│   └── main_agent.py      # Your agent code
-├── skills/
-│   └── __init__.py        # Reusable skills
-├── tests/
-│   └── test_agent.py      # Test suite
-├── web/
-│   └── index.html         # Web interface
-├── app.py                  # Server entry point
-├── .env                    # Your credentials
-└── README.md              # Project documentation
+├── agent.py               # Your agent code
+├── app.py                 # Server entry point
+├── .env                   # Your credentials
+└── requirements.txt       # Dependencies
 ```
 
 ## Useful Commands

@@ -116,15 +116,8 @@ Venvs auto-activate when you `cd` into a directory that has one.
 
 ```bash
 newproject myapp      # Create Flask project with venv
-newagent mybot        # Create full SignalWire agent project
+sw-agent-init         # Create SignalWire agent project (from signalwire-agents)
 ```
-
-The `newagent` command creates a complete project structure:
-- `agents/` - Agent modules with AgentBase patterns
-- `skills/` - Reusable skills
-- `tests/` - Pytest test scaffolding
-- `web/` - Static files with WebRTC calling interface
-- `.env` - Pre-configured with your SignalWire credentials
 
 ### Running Applications
 
@@ -347,11 +340,11 @@ make enter
 exit
 
 # Create a new agent project
-newagent mybot
-cd /workdir/mybot
+sw-agent-init
+cd /workdir/myagent
 
 # Edit the agent logic
-vim agents/main_agent.py
+vim agent.py
 
 # Run it
 up

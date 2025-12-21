@@ -310,11 +310,6 @@ alias ...='cd ../..'
 alias work='cd /workdir'
 alias public='cd /workdir/persistent/public'
 
-# Ollama - default to host.docker.internal if not set
-if [ -z "$OLLAMA_HOST" ]; then
-    export OLLAMA_HOST="http://host.docker.internal:11434"
-fi
-
 # OpenAI Codex CLI - ensure .codex persists
 if [ ! -L ~/.codex ] && [ -d "$PERSIST/.codex" ]; then
     rm -rf ~/.codex 2>/dev/null
@@ -332,18 +327,6 @@ elif [ ! -d "$PERSIST/.serena" ] && [ ! -L ~/.serena ]; then
     mkdir -p "$PERSIST/.serena"
     ln -sf "$PERSIST/.serena" ~/.serena
 fi
-
-ollama_url() {
-    echo "$OLLAMA_HOST"
-    # Test connection
-    if curl -s --connect-timeout 2 "$OLLAMA_HOST/api/tags" > /dev/null 2>&1; then
-        echo "Status: Connected"
-        echo "Models:"
-        curl -s "$OLLAMA_HOST/api/tags" | jq -r '.models[].name' 2>/dev/null | sed 's/^/  /'
-    else
-        echo "Status: Not connected (is Ollama running on host?)"
-    fi
-}
 
 # Help command
 help() {
@@ -373,8 +356,7 @@ PYTHON VIRTUAL ENVIRONMENTS (persistent in /workdir/persistent/.venvs/)
 
 PROJECT SCAFFOLDING
   newproject [name]     Create new Flask project with venv
-  newagent [name]       Create SignalWire agent project with full structure
-                        (agents/, skills/, tests/, web/, .env with credentials)
+  sw-agent-init         Create SignalWire agent project (from signalwire-agents)
 
 RUNNING APPS
   up [script]           Run Python script in loop (default: app.py), Ctrl+C to stop
@@ -423,8 +405,6 @@ AI ASSISTANTS
   claude                Claude Code CLI
   gemini                Gemini CLI
   codex                 OpenAI Codex CLI (AI coding assistant)
-  ollama                Ollama CLI (connects to OLLAMA_HOST)
-  ollama_url            Show Ollama host URL
 
 CLOUD CLIs
   aws                   AWS CLI v2 (configure with: aws configure)
@@ -970,7 +950,4 @@ testapp() {
         curl -s -o /dev/null -w "  Status: %{http_code}\n" "${NGROK_URL}/" 2>/dev/null || echo "  Not reachable"
     fi
 }
-
-# newagent is now a standalone script in /usr/bin/newagent
-# Creates full project structure with credentials injection
 
