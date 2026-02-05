@@ -48,8 +48,8 @@ down: ## Stop running container
 
 restart: down up ## Restart container
 
-enter: ## Enter running container (interactive bash)
-	@docker exec -it $(CONTAINER_NAME) /bin/bash
+enter: ## Enter running container (interactive bash as devuser)
+	@docker exec -it -u devuser $(CONTAINER_NAME) /bin/bash
 
 shell: enter ## Alias for enter
 
@@ -115,7 +115,7 @@ debug: ## Run container in foreground (for debugging)
 		$(IMAGE_NAME)
 
 exec: ## Execute a command in container (usage: make exec CMD="command")
-	@docker exec -it $(CONTAINER_NAME) $(CMD)
+	@docker exec -it -u devuser $(CONTAINER_NAME) $(CMD)
 
 copy-in: ## Copy file to container (usage: make copy-in SRC=local DST=/path)
 	@docker cp $(SRC) $(CONTAINER_NAME):$(DST)

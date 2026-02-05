@@ -479,7 +479,7 @@ killport() {
         echo "Usage: killport <port>"
         return 1
     fi
-    fuser -k "$port/tcp" 2>/dev/null
+    sudo fuser -k "$port/tcp" 2>/dev/null
     echo "Killed processes on port $port"
 }
 
@@ -848,7 +848,7 @@ up() {
 
 # Reload nginx configuration
 reload() {
-    nginx -t && nginx -s reload && echo "nginx reloaded"
+    sudo nginx -t && sudo nginx -s reload && echo "nginx reloaded"
 }
 
 # Watch for file changes and auto-restart app

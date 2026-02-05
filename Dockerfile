@@ -4,13 +4,18 @@
 # - Variablize the space name and API Key
 # - Research how to take API key and made Basic Auth Header
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
-ARG python_version=python3.11
+ARG python_version=python3.13
 
 # Install the basic packages (includes man-db for man pages)
 # apt-get upgrade ensures all security patches are applied
-RUN apt-get update && apt-get upgrade -y && apt-get install -y screen tmux jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools ffmpeg sox sqlite3 ncdu man-db 
+RUN apt-get update && apt-get upgrade -y && apt-get install -y screen tmux jq curl wget less git gawk lsb-release ca-certificates gnupg unzip dos2unix bind9-dnsutils bind9-dnsutils libjson-perl perl-doc libcgi-pm-perl libtest-lwp-useragent-perl liburl-encode-perl libfile-slurp-perl libuuid-perl libyaml-perl cpanminus libpq-dev ca-certificates nginx postgresql-all sudo whiptail pkg-config libgd-dev redis-server inotify-tools ffmpeg sox sqlite3 ncdu man-db
+
+# Create non-root user with sudo access
+RUN useradd -m -s /bin/bash -u 1000 -G sudo,adm devuser \
+    && echo 'devuser ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/devuser \
+    && chmod 0440 /etc/sudoers.d/devuser
 
 # Install Editors
 RUN apt-get update && apt-get install -y nano vim emacs-nox micro ne
@@ -19,7 +24,7 @@ RUN apt-get update && apt-get install -y nano vim emacs-nox micro ne
 # Dependencies managed in requirements.txt for easier auditing and updates
 # Security fixes documented in requirements.txt comments
 COPY requirements.txt /tmp/requirements.txt
-RUN apt-get update && apt-get install -y python3 python3-pip python3.11-venv \
+RUN apt-get update && apt-get install -y python3 python3-pip python3.13-venv \
     && pip3 install --upgrade --break-system-packages -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
@@ -27,7 +32,8 @@ RUN apt-get update && apt-get install -y python3 python3-pip python3.11-venv \
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg | tee /etc/apt/trusted.gpg.d/docker.asc > /dev/null \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/trusted.gpg.d/docker.asc] https://download.docker.com/linux/debian  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt-get update \
-    && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+    && usermod -aG docker devuser
 
 # Install GitHub CLI (>=2.62.0 fixes CVE-2024-52308)
 RUN ARCH=$(dpkg --print-architecture) \
@@ -93,15 +99,15 @@ RUN git clone https://github.com/signalwire/ai-agent-starter-pack.git /usr/local
 COPY misc/start_services.sh /start_services.sh
 RUN chmod +x /start_services.sh
 
-# Make workdir
-RUN mkdir -p /workdir/public
+# Make workdir (owned by devuser)
+RUN mkdir -p /workdir/public && chown -R devuser:devuser /workdir
 
 #Create public web folder
 RUN ln -s /workdir/public/ /var/www/html/public
 
 # Misc
 COPY misc/signalwire.ans /.sw.ans
-COPY misc/bash.rc /root/.bashrc
+COPY misc/bash.rc /home/devuser/.bashrc
 COPY bin/ /usr/bin
 COPY conf/nginx.site /etc/nginx/sites-enabled/default
 
@@ -109,7 +115,8 @@ COPY conf/nginx.site /etc/nginx/sites-enabled/default
 COPY misc/wirestarter.1 /usr/share/man/man1/wirestarter.1
 RUN gzip -f /usr/share/man/man1/wirestarter.1 && mandb -q
 # Clean up
-RUN /usr/bin/dos2unix /root/.bashrc         # Fixes DOS formatting when using Windows
+RUN /usr/bin/dos2unix /home/devuser/.bashrc   # Fixes DOS formatting when using Windows
+RUN chown devuser:devuser /home/devuser/.bashrc
 RUN /usr/bin/dos2unix /start_services.sh    # Fixes DOS formatting when using Windows
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 

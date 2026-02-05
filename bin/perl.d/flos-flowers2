@@ -50,7 +50,7 @@ echo -e  "Complete!"
 
 ## DATABASE
 # update pg_hba to use trust instead of peer
-sed -i "s/peer$/trust/g" /etc/postgresql/15/main/pg_hba.conf
+sed -i "s/peer$/trust/g" /etc/postgresql/17/main/pg_hba.conf
 
 echo -en "Starting Database... "
 service postgresql start > /dev/null
