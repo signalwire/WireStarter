@@ -121,6 +121,13 @@ if [ -d /workdir/.secrets ] && [ -f /workdir/.secrets/age-key.pub ]; then
     fi
 fi
 
+# Only run interactive setup (credential check, services, welcome) for interactive shells.
+# Non-interactive shells (e.g. claude running bash -c) skip straight to aliases/functions.
+if [[ $- != *i* ]]; then
+    # Source env and bail — aliases/functions defined below will still load
+    true
+else
+
 SW_TEST_URL="https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01/Accounts -u ${SIGNALWIRE_PROJECT_ID}:${SIGNALWIRE_TOKEN}"
 response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
 
@@ -277,6 +284,8 @@ fi
 echo -e ""
 echo -e "Commands: help | setup | swsh | webhook | urls"
 echo -e ""
+
+fi  # end interactive-only block
 
 if [ -f "$PERSIST/.bashrc" ]; then
    . "$PERSIST/.bashrc"
@@ -436,6 +445,9 @@ alias h='help'
 
 alias ngrok_url="curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'"
 
+# Claude Code - skip permissions by default (we're in a container)
+alias claude='claude --dangerously-skip-permissions'
+
 # Git shortcuts
 alias gs='git status'
 alias gd='git diff'
@@ -532,7 +544,7 @@ fi
 # UV (Python package manager) - ensure tools bin is in PATH
 export PATH=$PERSIST/.local/bin:$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 
-if [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f $PERSIST/.noswsh ]; then
+if [[ $- == *i* ]] && [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f $PERSIST/.noswsh ]; then
     python3 /usr/local/bin/swsh
 fi
 

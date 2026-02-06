@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y nano vim emacs-nox micro ne
 # Security fixes documented in requirements.txt comments
 COPY requirements.txt /tmp/requirements.txt
 RUN apt-get update && apt-get install -y python3 python3-pip python3.13-venv \
-    && pip3 install --upgrade --break-system-packages -r /tmp/requirements.txt \
+    && pip3 install --upgrade --break-system-packages --ignore-installed -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
 # Install Docker
@@ -58,9 +58,9 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings \
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
-# Install Claude Code, Gemini CLI, and OpenAI Codex CLI
-# Note: Transitive dep CVEs (cross-spawn, glob) require upstream updates
-RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli @openai/codex
+# Install Claude Code (native installer), Gemini CLI, and OpenAI Codex CLI
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+    && npm install -g @google/gemini-cli @openai/codex
 
 # Install AWS CLI v2
 RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o /tmp/awscliv2.zip \
@@ -74,9 +74,9 @@ RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dea
     && apt-get update \
     && apt-get install -y google-cloud-cli
 
-# Install Azure CLI
+# Install Azure CLI (pinned to bookworm - no trixie repo yet)
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/azure-cli.list \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ bookworm main" | tee /etc/apt/sources.list.d/azure-cli.list \
     && apt-get update \
     && apt-get install -y azure-cli
 
