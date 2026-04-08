@@ -128,8 +128,7 @@ if [[ $- != *i* ]]; then
     true
 else
 
-SW_TEST_URL="https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01/Accounts -u ${SIGNALWIRE_PROJECT_ID}:${SIGNALWIRE_TOKEN}"
-response_code=$(curl -s -o /dev/null -I -w "%{http_code}" $SW_TEST_URL )
+response_code=$(curl -s -o /dev/null -w "%{http_code}" "https://${SIGNALWIRE_SPACE_NAME}.signalwire.com/api/laml/2010-04-01/Accounts" -u "${SIGNALWIRE_PROJECT_ID}:${SIGNALWIRE_TOKEN}")
 
 # Define the output file
 ENV_FILE="$PERSIST/.env"
@@ -545,6 +544,10 @@ fi
 export PATH=$PERSIST/.local/bin:$PATH:/usr/bin/nodejs.d:/usr/bin/perl.d:/usr/bin/python.d
 
 if [[ $- == *i* ]] && [ -n "$SIGNALWIRE_SPACE_NAME" ] && [ -n "$SIGNALWIRE_PROJECT_ID" ] && [ -n "$SIGNALWIRE_TOKEN" ] && [ ! -f $PERSIST/.noswsh ]; then
+    # swsh expects these env var names
+    export SIGNALWIRE_SPACE="$SIGNALWIRE_SPACE_NAME"
+    export PROJECT_ID="$SIGNALWIRE_PROJECT_ID"
+    export REST_API_TOKEN="$SIGNALWIRE_TOKEN"
     python3 /usr/local/bin/swsh
 fi
 
